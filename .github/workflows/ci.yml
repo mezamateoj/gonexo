@@ -68,6 +68,15 @@ jobs:
       - name: Validate back deploy
         run: pnpm --dir apps/back exec wrangler deploy --dry-run
 
+  deploy-back:
+    name: Deploy Back
+    needs:
+      - changes
+      - check-back
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.back == 'true'
+    uses: ./.github/workflows/deploy-back.yml
+    secrets: inherit
+
   check-front:
     name: Check Front
     runs-on: ubuntu-latest
@@ -99,3 +108,12 @@ jobs:
 
       - name: Validate front deploy
         run: pnpm --dir apps/front exec wrangler deploy --dry-run
+
+  deploy-front:
+    name: Deploy Front
+    needs:
+      - changes
+      - check-front
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.front == 'true'
+    uses: ./.github/workflows/deploy-front.yml
+    secrets: inherit

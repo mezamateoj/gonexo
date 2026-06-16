@@ -1,11 +1,7 @@
 name: Deploy Front
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -15,52 +11,25 @@ jobs:
   deploy:
     name: Deploy Front
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 2
-
-      - name: Detect affected frontend
-        id: affected
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "deploy=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          changed_files="$(git diff --name-only HEAD^ HEAD)"
-          if grep -Eq '^(apps/front/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|\.github/workflows/(ci|deploy-front)\.yml$)' <<< "$changed_files"; then
-            echo "deploy=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "deploy=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - uses: pnpm/action-setup@v4
-        if: steps.affected.outputs.deploy == 'true'
         with:
           version: 11.7.0
 
       - uses: actions/setup-node@v6
-        if: steps.affected.outputs.deploy == 'true'
         with:
           node-version: 24
           cache: pnpm
 
       - name: Install dependencies
-        if: steps.affected.outputs.deploy == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build front
-        if: steps.affected.outputs.deploy == 'true'
         run: pnpm --filter @gonexo/front build
 
       - name: Deploy Worker
-        if: steps.affected.outputs.deploy == 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN_FRONT }}

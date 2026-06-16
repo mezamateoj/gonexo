@@ -1,11 +1,7 @@
 name: Deploy Back
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -15,33 +11,10 @@ jobs:
   deploy:
     name: Deploy Back
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 2
-
-      - name: Detect affected backend
-        id: affected
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "deploy=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          changed_files="$(git diff --name-only HEAD^ HEAD)"
-          if grep -Eq '^(apps/back/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|\.github/workflows/(ci|deploy-back)\.yml$)' <<< "$changed_files"; then
-            echo "deploy=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "deploy=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Deploy Worker
-        if: steps.affected.outputs.deploy == 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
