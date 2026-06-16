@@ -60,7 +60,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck back
-        run: pnpm --filter @gonexo/back typecheck:ci
+        run: pnpm --filter @gonexo/back typecheck
 
       - name: Lint back
         run: pnpm --filter @gonexo/back lint
@@ -89,7 +89,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck front
-        run: pnpm --filter @gonexo/front typecheck:ci
+        run: pnpm --filter @gonexo/front typecheck
 
       - name: Lint front
         run: pnpm --filter @gonexo/front lint

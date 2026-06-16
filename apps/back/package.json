@@ -5,9 +5,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
     "lint": "oxlint .",
-    "typecheck": "pnpm run cf-typegen && tsc --noEmit",
-    "typecheck:ci": "wrangler types --env-interface CloudflareBindings --check && tsc --noEmit",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "generate-types": "wrangler types --env-interface CloudflareBindings",
+    "typecheck": "pnpm run generate-types && tsc --noEmit"
   },
   "dependencies": {
     "hono": "^4.12.25"

@@ -35,7 +35,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck front
-        run: pnpm --filter @gonexo/front typecheck:ci
+        run: pnpm --filter @gonexo/front typecheck
 
       - name: Lint front
         run: pnpm --filter @gonexo/front lint

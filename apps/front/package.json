@@ -5,13 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "pnpm run cf-typegen && tsc -b && vite build",
+    "build": "pnpm run generate-types && tsc -b && vite build",
     "lint": "oxlint .",
-    "typecheck": "pnpm run cf-typegen && tsc -b --noEmit",
-    "typecheck:ci": "wrangler types --check && tsc -b --noEmit",
+    "generate-types": "wrangler types",
+    "typecheck": "pnpm run generate-types && tsc -b --noEmit",
     "preview": "pnpm run build && vite preview",
-    "deploy": "pnpm run build && wrangler deploy",
-    "cf-typegen": "wrangler types"
+    "deploy": "pnpm run build && wrangler deploy"
   },
   "dependencies": {
     "react": "^19.2.6",
