@@ -34,11 +34,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check generated Worker types
-        run: pnpm --dir apps/back exec wrangler types --check
-
       - name: Typecheck back
-        run: pnpm --filter @gonexo/back typecheck
+        run: pnpm --filter @gonexo/back typecheck:ci
 
       - name: Lint back
         run: pnpm --filter @gonexo/back lint

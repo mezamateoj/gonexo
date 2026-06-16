@@ -5,13 +5,11 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
     "lint": "oxlint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm run cf-typegen && tsc --noEmit",
+    "typecheck:ci": "wrangler types --env-interface CloudflareBindings --check && tsc --noEmit",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
     "hono": "^4.12.25"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260615.1"
   }
 }

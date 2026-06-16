@@ -207,9 +207,6 @@ importers:
 
   .:
     devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^4.20260615.1
-        version: 4.20260615.1
       oxlint:
         specifier: ^1.70.0
         version: 1.70.0
@@ -225,10 +222,6 @@ importers:
       hono:
         specifier: ^4.12.25
         version: 4.12.25
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^4.20260615.1
-        version: 4.20260615.1
 
   apps/front:
     dependencies:
@@ -1892,7 +1885,8 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260611.1':
     optional: true
 
-  '@cloudflare/workers-types@4.20260615.1': {}
+  '@cloudflare/workers-types@4.20260615.1':
+    optional: true
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:

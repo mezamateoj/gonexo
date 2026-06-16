@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "pnpm run cf-typegen && tsc -b && vite build",
     "lint": "oxlint .",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "pnpm run cf-typegen && tsc -b --noEmit",
+    "typecheck:ci": "wrangler types --check && tsc -b --noEmit",
     "preview": "pnpm run build && vite preview",
     "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types"
