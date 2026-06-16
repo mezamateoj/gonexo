@@ -1,0 +1,33 @@
+{
+  "name": "gonexo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "check": "pnpm check:types && pnpm check:lint",
+    "check:types": "pnpm -r --if-present typecheck",
+    "check:lint": "pnpm -r --if-present lint",
+    "dev:back": "pnpm --filter @gonexo/back dev",
+    "dev:front": "pnpm --filter @gonexo/front dev",
+    "deploy:back": "pnpm --filter @gonexo/back deploy",
+    "deploy:front": "pnpm --filter @gonexo/front deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.7.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260615.1",
+    "oxlint": "^1.70.0",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.100.0"
+  }
+}
