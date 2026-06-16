@@ -1,0 +1,59 @@
+name: Deploy Front
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/front/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/deploy-front.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Front
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check generated Worker types
+        run: pnpm --dir apps/front exec wrangler types --check
+
+      - name: Typecheck front
+        run: pnpm --filter @gonexo/front typecheck
+
+      - name: Lint front
+        run: pnpm --filter @gonexo/front lint
+
+      - name: Build front
+        run: pnpm --filter @gonexo/front build
+
+      - name: Validate front deploy
+        run: pnpm --dir apps/front exec wrangler deploy --dry-run
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN_FRONT }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/front
+          command: deploy
+          packageManager: pnpm

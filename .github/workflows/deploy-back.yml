@@ -1,0 +1,56 @@
+name: Deploy Back
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/back/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/deploy-back.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Back
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check generated Worker types
+        run: pnpm --dir apps/back exec wrangler types --check
+
+      - name: Typecheck back
+        run: pnpm --filter @gonexo/back typecheck
+
+      - name: Lint back
+        run: pnpm --filter @gonexo/back lint
+
+      - name: Validate back deploy
+        run: pnpm --dir apps/back exec wrangler deploy --dry-run
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/back
+          command: deploy --minify
+          packageManager: pnpm
