@@ -23,7 +23,7 @@ dist
 sandbox
 
 # Cloudflare Workers
-worker
+/worker
 .wrangler
 
 # Logs
