@@ -6,9 +6,25 @@
     "deploy": "wrangler deploy --minify",
     "lint": "oxlint .",
     "generate-types": "wrangler types --env-interface CloudflareBindings",
-    "typecheck": "pnpm run generate-types && tsc --noEmit"
+    "typecheck": "pnpm run generate-types && tsc --noEmit",
+    "auth:generate": "pnpm dlx auth@latest generate --config src/lib/auth.ts --output src/db/schema.ts -y",
+    "generate": "pnpm drizzle-kit generate",
+    "db:local": "pnpm run generate && pnpm run db:migrate:local",
+    "db:migrate:local": "wrangler d1 migrations apply prod-gonexo --local",
+    "migrate": "pnpm drizzle-kit migrate"
   },
   "dependencies": {
-    "hono": "^4.12.25"
+    "@hono/zod-validator": "^0.8.0",
+    "better-auth": "^1.6.18",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.25",
+    "wrangler": "^4.100.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.22.4"
   }
 }

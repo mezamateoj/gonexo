@@ -2,37 +2,28 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "gonexo-back",
   "main": "src/index.ts",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "nodejs_compat_populate_process_env",
+  ],
   "compatibility_date": "2026-06-16",
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // },
-  // "observability": {
-  //   "enabled": true,
-  //   "head_sampling_rate": 1
-  // }
+  "vars": {
+    "BETTER_AUTH_URL": "https://gonexo-back.mezamateoj.workers.dev",
+  },
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "gonexo-uploads",
+      "preview_bucket_name": "gonexo-uploads-preview",
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "db",
+      "database_name": "prod-gonexo",
+      "database_id": "d012495e-451e-4fee-8f50-c234216845cb",
+      "preview_database_id": "local-gonexo",
+      "migrations_dir": "drizzle",
+    },
+  ],
 }
