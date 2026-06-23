@@ -23,11 +23,11 @@ function TopBar() {
   const { pathname } = useRouterState({ select: (s) => s.location })
 
   const crumbs: Record<string, string> = {
-    "/solicitudes": "Mis solicitudes",
-    "/solicitudes/nueva": "Nueva solicitud",
-    "/trabajos": "Mis trabajos",
-    "/disponibles": "Solicitudes disponibles",
-    "/estadisticas": "Estadísticas",
+    "/requests": "Mis solicitudes",
+    "/requests/new": "Nueva solicitud",
+    "/jobs": "Mis trabajos",
+    "/available": "Solicitudes disponibles",
+    "/stats": "Estadísticas",
   }
 
   const currentLabel = crumbs[pathname] ?? "Gonexo"
@@ -45,7 +45,6 @@ function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Search hint */}
         <button className="hidden md:flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary/80 transition-colors">
           Buscar...
           <kbd className="pointer-events-none rounded border border-border bg-background px-1 text-[10px]">
@@ -53,15 +52,13 @@ function TopBar() {
           </kbd>
         </button>
 
-        {/* Notifications */}
         <button className="relative flex size-8 items-center justify-center rounded-md bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors">
           <Bell className="size-4" />
           <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
         </button>
 
-        {/* Post button */}
         <Button size="sm" asChild>
-          <Link to="/solicitudes/nueva">
+          <Link to="/requests/new">
             <Plus className="size-4" />
             Publicar flete
           </Link>

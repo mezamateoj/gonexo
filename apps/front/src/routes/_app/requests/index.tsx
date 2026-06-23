@@ -7,11 +7,9 @@ import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import type { RequestSummary, RequestStatus } from "@/lib/types"
 
-export const Route = createFileRoute("/_app/solicitudes/")({
-  component: SolicitudesPage,
+export const Route = createFileRoute("/_app/requests/")({
+  component: RequestsPage,
 })
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<RequestStatus, string> = {
   open: "Abierto",
@@ -55,8 +53,6 @@ function formatDate(iso: string) {
   })
 }
 
-// ─── Request card ─────────────────────────────────────────────────────────────
-
 function RequestCard({ req }: { req: RequestSummary }) {
   const openQuotes = req.quotes.filter((q) => q.status === "pending")
   const bestPrice = req.quotes.length > 0
@@ -65,11 +61,10 @@ function RequestCard({ req }: { req: RequestSummary }) {
 
   return (
     <Link
-      to="/solicitudes/$id"
+      to="/requests/$id"
       params={{ id: req.id }}
       className="block rounded-[10px] border border-[#F0F0F0] bg-white p-[18px] shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)] transition-shadow"
     >
-      {/* Header: status + date */}
       <div className="flex items-center justify-between">
         <span
           className={cn(
@@ -82,7 +77,6 @@ function RequestCard({ req }: { req: RequestSummary }) {
         <span className="text-[13px] text-[#AAAAAA]">{formatDate(req.scheduledAt)}</span>
       </div>
 
-      {/* Route */}
       <div className="mt-[14px] flex flex-col gap-[8px]">
         <div className="flex items-center gap-[8px]">
           <span className="size-[7px] shrink-0 rounded-full bg-[#22C55E]" />
@@ -98,14 +92,12 @@ function RequestCard({ req }: { req: RequestSummary }) {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="mt-[14px] flex items-center justify-between border-t border-[#F5F5F5] pt-[12px]">
         <div className="flex items-center gap-[6px] text-[#888888]">
           <Package className="size-[12px]" />
           <span className="text-[12px]">{VOLUME_LABEL[req.volumeCategory]}</span>
         </div>
 
-        {/* Right side: quote count OR agreed price */}
         {req.status === "open" && openQuotes.length > 0 ? (
           <span className="rounded-[8px] bg-[#FFF4ED] px-[10px] py-[4px] text-[12px] font-medium text-[#F97316]">
             {openQuotes.length} {openQuotes.length === 1 ? "cotización" : "cotizaciones"}
@@ -119,8 +111,6 @@ function RequestCard({ req }: { req: RequestSummary }) {
     </Link>
   )
 }
-
-// ─── Empty state ─────────────────────────────────────────────────────────────
 
 function EmptyState({ filtered }: { filtered: boolean }) {
   return (
@@ -136,7 +126,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
       </p>
       {!filtered && (
         <Button className="mt-6" asChild>
-          <Link to="/solicitudes/nueva">
+          <Link to="/requests/new">
             <Plus className="size-4" />
             Publicar flete
           </Link>
@@ -146,8 +136,6 @@ function EmptyState({ filtered }: { filtered: boolean }) {
   )
 }
 
-// ─── Promo card ───────────────────────────────────────────────────────────────
-
 function PromoCard() {
   return (
     <div className="rounded-[10px] bg-[#1A1A1A] p-[18px]">
@@ -156,7 +144,7 @@ function PromoCard() {
         Publica gratis y recibe cotizaciones de conductores verificados en minutos.
       </p>
       <Button className="mt-[12px]" size="sm" asChild>
-        <Link to="/solicitudes/nueva">
+        <Link to="/requests/new">
           Publicar flete
         </Link>
       </Button>
@@ -164,9 +152,7 @@ function PromoCard() {
   )
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
-function SolicitudesPage() {
+function RequestsPage() {
   const [filter, setFilter] = useState<FilterTab>("all")
 
   const { data, isLoading, isError } = useQuery({
@@ -185,7 +171,6 @@ function SolicitudesPage() {
 
   return (
     <div className="p-8">
-      {/* Page header */}
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between">
           <div>
@@ -195,7 +180,6 @@ function SolicitudesPage() {
             </p>
           </div>
 
-          {/* Filter tabs */}
           <div className="flex items-center gap-[6px]">
             {FILTERS.map(({ key, label }) => (
               <button
@@ -214,7 +198,6 @@ function SolicitudesPage() {
           </div>
         </div>
 
-        {/* Status */}
         {isLoading && (
           <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((n) => (
@@ -234,7 +217,6 @@ function SolicitudesPage() {
 
         {!isLoading && !isError && (
           <div className="grid grid-cols-2 gap-4">
-            {/* Column 1 */}
             <div className="flex flex-col gap-[14px]">
               {col1.map((req) => (
                 <RequestCard key={req.id} req={req} />
@@ -244,12 +226,10 @@ function SolicitudesPage() {
               )}
             </div>
 
-            {/* Column 2 */}
             <div className="flex flex-col gap-[14px]">
               {col2.map((req) => (
                 <RequestCard key={req.id} req={req} />
               ))}
-              {/* Show promo card only when there's content and it's the "all" view */}
               {filter === "all" && data && data.length > 0 && (
                 <PromoCard />
               )}

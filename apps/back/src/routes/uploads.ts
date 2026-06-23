@@ -7,11 +7,7 @@ const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const uploads = new Hono<AppEnv>();
 
-// POST /api/uploads
-// Accepts multipart/form-data with a single "file" field.
-// Returns { key, url } where url points to GET /cdn/:key on this Worker.
 // Swap the url base for an R2 public bucket / custom domain later.
-
 uploads.post("/", requireAuth, async (c) => {
   const body = await c.req.parseBody();
   const file = body["file"];

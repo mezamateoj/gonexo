@@ -17,8 +17,6 @@ const allowedOrigins = [
 
 const app = new Hono<AppEnv>();
 
-// ─── Global middleware ─────────────────────────────────────────────────────────
-
 app.use("*", (c, next) =>
   cors({
     origin: (origin) => (allowedOrigins.includes(origin) ? origin : null),
@@ -33,20 +31,14 @@ app.onError((err, c) => {
   return c.json({ error: "Internal server error" }, 500);
 });
 
-// ─── DB middleware — one Drizzle instance per request ─────────────────────────
-
 app.use("*", dbMiddleware);
-
-// ─── Auth routes (Better Auth, public) ────────────────────────────────────────
 
 app.on(["GET", "POST"], "/api/auth/*", (c) =>
   createAuth(c.get("db")).handler(c.req.raw),
 );
 
-// ─── Session middleware ────────────────────────────────────────────────────────
 // Runs on every request. Sets user/session to null when unauthenticated.
 // requireAuth / requireDriver in middleware/auth.ts guard individual routes.
-
 app.use("*", async (c, next) => {
   const session = await createAuth(c.get("db")).api.getSession({
     headers: c.req.raw.headers,
@@ -56,8 +48,6 @@ app.use("*", async (c, next) => {
   c.set("driverProfile", null);
   await next();
 });
-
-// ─── API routes ───────────────────────────────────────────────────────────────
 
 const api = new Hono<AppEnv>()
   .route("/requests", requests)
@@ -69,9 +59,7 @@ const api = new Hono<AppEnv>()
 
 app.route("/api", api);
 
-// ─── CDN — serve R2 objects publicly ─────────────────────────────────────────
 // Switch to a proper R2 custom domain later; this is fine for MVP.
-
 app.get("/cdn/:key", async (c) => {
   const obj = await c.env.BUCKET.get(c.req.param("key"));
   if (!obj) return c.json({ error: "Not found" }, 404);
@@ -81,11 +69,8 @@ app.get("/cdn/:key", async (c) => {
   return new Response(obj.body, { headers });
 });
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
-
 app.get("/", (c) => c.json({ ok: true }));
 
-// Export for Hono RPC typed client on the frontend
 export type AppType = typeof api;
 
 export default app;

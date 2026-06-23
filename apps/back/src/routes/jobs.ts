@@ -15,9 +15,7 @@ const STATUS_TRANSITIONS: Record<string, string> = {
   arrived: "completed",
 };
 
-// ─── My jobs (user and driver) ────────────────────────────────────────────────
 // Must be before /:id.
-
 jobs.get("/my", requireAuth, async (c) => {
   const db = c.get("db");
   const userId = c.get("user")!.id;
@@ -50,8 +48,6 @@ jobs.get("/my", requireAuth, async (c) => {
   return c.json(results);
 });
 
-// ─── Job detail ───────────────────────────────────────────────────────────────
-
 jobs.get("/:id", requireAuth, async (c) => {
   const db = c.get("db");
   const j = await db.query.job.findFirst({
@@ -72,8 +68,6 @@ jobs.get("/:id", requireAuth, async (c) => {
 
   return c.json(j);
 });
-
-// ─── Driver advances job status ───────────────────────────────────────────────
 
 const updateStatusSchema = z.object({
   status: z.enum(["on_the_way", "arrived", "completed"]),
@@ -125,8 +119,6 @@ jobs.patch(
   }
 );
 
-// ─── User confirms job complete ────────────────────────────────────────────────
-
 jobs.post("/:id/confirm", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
@@ -153,8 +145,6 @@ jobs.post("/:id/confirm", requireAuth, async (c) => {
 
   return c.json({ ok: true });
 });
-
-// ─── Submit review (both parties) ─────────────────────────────────────────────
 
 const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),

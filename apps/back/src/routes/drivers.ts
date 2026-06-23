@@ -16,8 +16,6 @@ const upsertDriverSchema = z.object({
   bio: z.string().max(500).optional(),
 });
 
-// ─── My driver profile ────────────────────────────────────────────────────────
-
 drivers.get("/me", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
@@ -27,7 +25,6 @@ drivers.get("/me", requireAuth, async (c) => {
   return c.json(profile ?? null);
 });
 
-// Create or update driver profile (idempotent)
 drivers.post(
   "/me",
   requireAuth,
@@ -68,8 +65,6 @@ drivers.post(
     return c.json({ id }, 201);
   }
 );
-
-// ─── Public driver profile ────────────────────────────────────────────────────
 
 drivers.get("/:id", async (c) => {
   const db = c.get("db");

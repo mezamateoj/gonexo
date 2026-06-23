@@ -8,9 +8,7 @@ const PLATFORM_FEE_RATE = 0.12;
 
 const quotes = new Hono<AppEnv>();
 
-// ─── Accept quote → create job atomically ────────────────────────────────────
 // Rejects all other pending quotes on the same request in the same transaction.
-
 quotes.post("/:id/accept", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;

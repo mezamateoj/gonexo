@@ -8,8 +8,6 @@ import type { AppEnv } from "../lib/types";
 
 const requests = new Hono<AppEnv>();
 
-// ─── Create request ───────────────────────────────────────────────────────────
-
 const createRequestSchema = z.object({
   originAddress: z.string().min(1),
   originLat: z.number(),
@@ -77,9 +75,7 @@ requests.post(
   }
 );
 
-// ─── User's own requests ─────────────────────────────────────────────────────
 // Must be registered before /:id so "my" is not captured as a param.
-
 requests.get("/my", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
@@ -100,8 +96,6 @@ requests.get("/my", requireAuth, async (c) => {
 
   return c.json(results);
 });
-
-// ─── Driver feed (open requests) ──────────────────────────────────────────────
 
 requests.get("/", async (c) => {
   const db = c.get("db");
@@ -127,8 +121,6 @@ requests.get("/", async (c) => {
   return c.json({ data: results, page, limit });
 });
 
-// ─── Request detail ───────────────────────────────────────────────────────────
-
 requests.get("/:id", async (c) => {
   const db = c.get("db");
   const result = await db.query.request.findFirst({
@@ -151,8 +143,6 @@ requests.get("/:id", async (c) => {
   if (!result) return c.json({ error: "Not found" }, 404);
   return c.json(result);
 });
-
-// ─── Submit quote (driver) ────────────────────────────────────────────────────
 
 const createQuoteSchema = z.object({
   price: z.number().int().positive(),
@@ -189,8 +179,6 @@ requests.post(
     return c.json({ id }, 201);
   }
 );
-
-// ─── Cancel request ───────────────────────────────────────────────────────────
 
 requests.patch("/:id/cancel", requireAuth, async (c) => {
   const db = c.get("db");

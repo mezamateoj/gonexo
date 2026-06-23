@@ -8,13 +8,9 @@ import type { AppEnv } from "../lib/types";
 
 const users = new Hono<AppEnv>();
 
-// ─── Get current user ─────────────────────────────────────────────────────────
-
 users.get("/me", requireAuth, (c) => {
   return c.json(c.get("user"));
 });
-
-// ─── Update current user ──────────────────────────────────────────────────────
 
 const updateMeSchema = z.object({
   name: z.string().min(1).max(100).optional(),

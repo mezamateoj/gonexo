@@ -23,11 +23,9 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import type { VolumeCategory } from "@/lib/types"
 
-export const Route = createFileRoute("/_app/solicitudes/nueva")({
-  component: NuevaSolicitudPage,
+export const Route = createFileRoute("/_app/requests/new")({
+  component: NewRequestPage,
 })
-
-// ─── Zod schema (mirrors backend) ────────────────────────────────────────────
 
 const volumeCategories = ["small", "medium", "large", "full_move"] as const satisfies readonly VolumeCategory[]
 
@@ -52,8 +50,6 @@ const schema = z.object({
 
 type FormValues = z.input<typeof schema>
 
-// ─── Volume options ───────────────────────────────────────────────────────────
-
 const VOLUMES: {
   value: VolumeCategory
   label: string
@@ -65,14 +61,10 @@ const VOLUMES: {
   { value: "full_move", label: "Mudanza completa", Icon: Building2 },
 ]
 
-// ─── Reusable field wrapper ───────────────────────────────────────────────────
-
 function FieldError({ error }: { error?: string }) {
   if (!error) return null
   return <p className="text-[12px] text-destructive">{error}</p>
 }
-
-// ─── Section card ─────────────────────────────────────────────────────────────
 
 function Section({
   title,
@@ -88,8 +80,6 @@ function Section({
     </div>
   )
 }
-
-// ─── Photo uploader ───────────────────────────────────────────────────────────
 
 function PhotoUploader({
   urls,
@@ -120,7 +110,6 @@ function PhotoUploader({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Upload zone */}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -149,7 +138,6 @@ function PhotoUploader({
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      {/* Thumbnails */}
       {urls.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {urls.map((url, i) => (
@@ -174,9 +162,7 @@ function PhotoUploader({
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-function NuevaSolicitudPage() {
+function NewRequestPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [photoUrls, setPhotoUrls] = useState<string[]>([])
@@ -197,7 +183,7 @@ function NuevaSolicitudPage() {
     mutationFn: api.requests.create,
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: ["requests", "my"] })
-      navigate({ to: "/solicitudes/$id", params: { id } })
+      navigate({ to: "/requests/$id", params: { id } })
     },
   })
 
@@ -229,9 +215,7 @@ function NuevaSolicitudPage() {
         }}
       >
         <div className="flex gap-8 items-start">
-          {/* ── Left column ─────────────────────────────────────────── */}
           <div className="flex flex-1 flex-col gap-6">
-            {/* Page title */}
             <div>
               <h1 className="text-[24px] font-bold text-foreground">
                 Nueva solicitud de flete
@@ -241,7 +225,6 @@ function NuevaSolicitudPage() {
               </p>
             </div>
 
-            {/* ── Origen ───────────────────────────────────────────── */}
             <Section title="Origen">
               <form.Field
                 name="originAddress"
@@ -305,7 +288,6 @@ function NuevaSolicitudPage() {
               </div>
             </Section>
 
-            {/* ── Destino ───────────────────────────────────────────── */}
             <Section title="Destino">
               <form.Field
                 name="destAddress"
@@ -368,9 +350,7 @@ function NuevaSolicitudPage() {
               </div>
             </Section>
 
-            {/* ── Detalles ─────────────────────────────────────────── */}
             <Section title="Detalles del envío">
-              {/* Volume selector */}
               <form.Field
                 name="volumeCategory"
                 validators={{ onBlur: volumeCategorySchema }}
@@ -420,7 +400,6 @@ function NuevaSolicitudPage() {
                 )}
               </form.Field>
 
-              {/* Item description */}
               <form.Field
                 name="itemDescription"
                 validators={{
@@ -444,7 +423,6 @@ function NuevaSolicitudPage() {
                 )}
               </form.Field>
 
-              {/* Date & time */}
               <form.Field
                 name="scheduledAt"
                 validators={{ onBlur: z.string().min(1, "Selecciona fecha y hora") }}
@@ -459,7 +437,6 @@ function NuevaSolicitudPage() {
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => {
-                        // Convert local datetime to ISO string for backend
                         const iso = e.target.value
                           ? new Date(e.target.value).toISOString()
                           : ""
@@ -474,9 +451,7 @@ function NuevaSolicitudPage() {
             </Section>
           </div>
 
-          {/* ── Right column ────────────────────────────────────────── */}
           <div className="flex w-[300px] shrink-0 flex-col gap-5">
-            {/* Photos */}
             <div className="rounded-[12px] border border-[#F0F0F0] bg-white p-5 flex flex-col gap-3">
               <h2 className="text-[15px] font-semibold text-foreground">
                 Fotos <span className="text-[13px] font-normal text-muted-foreground">(opcional)</span>
@@ -487,7 +462,6 @@ function NuevaSolicitudPage() {
               <PhotoUploader urls={photoUrls} onChange={setPhotoUrls} />
             </div>
 
-            {/* Notes */}
             <form.Field name="notes">
               {(field) => (
                 <div className="rounded-[12px] border border-[#F0F0F0] bg-white p-5 flex flex-col gap-3">
@@ -506,7 +480,6 @@ function NuevaSolicitudPage() {
               )}
             </form.Field>
 
-            {/* Info box */}
             <div className="flex gap-2.5 rounded-[10px] bg-[#FFF4ED] p-4">
               <Info className="mt-px size-4 shrink-0 text-[#F97316]" />
               <p className="text-[13px] text-[#B45309] leading-snug">
@@ -514,7 +487,6 @@ function NuevaSolicitudPage() {
               </p>
             </div>
 
-            {/* Submit */}
             {mutation.error && (
               <p className="text-[13px] text-destructive">
                 {(mutation.error as Error).message}

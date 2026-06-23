@@ -13,13 +13,13 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppPerfilRouteImport } from './routes/_app/perfil'
-import { Route as AppEstadisticasRouteImport } from './routes/_app/estadisticas'
-import { Route as AppDisponiblesRouteImport } from './routes/_app/disponibles'
-import { Route as AppTrabajosIndexRouteImport } from './routes/_app/trabajos/index'
-import { Route as AppSolicitudesIndexRouteImport } from './routes/_app/solicitudes/index'
-import { Route as AppSolicitudesNuevaRouteImport } from './routes/_app/solicitudes/nueva'
-import { Route as AppSolicitudesIdRouteImport } from './routes/_app/solicitudes/$id'
+import { Route as AppStatsRouteImport } from './routes/_app/stats'
+import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as AppAvailableRouteImport } from './routes/_app/available'
+import { Route as AppRequestsIndexRouteImport } from './routes/_app/requests/index'
+import { Route as AppJobsIndexRouteImport } from './routes/_app/jobs/index'
+import { Route as AppRequestsNewRouteImport } from './routes/_app/requests/new'
+import { Route as AppRequestsIdRouteImport } from './routes/_app/requests/$id'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -40,39 +40,39 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppPerfilRoute = AppPerfilRouteImport.update({
-  id: '/perfil',
-  path: '/perfil',
+const AppStatsRoute = AppStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
   getParentRoute: () => AppRoute,
 } as any)
-const AppEstadisticasRoute = AppEstadisticasRouteImport.update({
-  id: '/estadisticas',
-  path: '/estadisticas',
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
-const AppDisponiblesRoute = AppDisponiblesRouteImport.update({
-  id: '/disponibles',
-  path: '/disponibles',
+const AppAvailableRoute = AppAvailableRouteImport.update({
+  id: '/available',
+  path: '/available',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTrabajosIndexRoute = AppTrabajosIndexRouteImport.update({
-  id: '/trabajos/',
-  path: '/trabajos/',
+const AppRequestsIndexRoute = AppRequestsIndexRouteImport.update({
+  id: '/requests/',
+  path: '/requests/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSolicitudesIndexRoute = AppSolicitudesIndexRouteImport.update({
-  id: '/solicitudes/',
-  path: '/solicitudes/',
+const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
+  id: '/jobs/',
+  path: '/jobs/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSolicitudesNuevaRoute = AppSolicitudesNuevaRouteImport.update({
-  id: '/solicitudes/nueva',
-  path: '/solicitudes/nueva',
+const AppRequestsNewRoute = AppRequestsNewRouteImport.update({
+  id: '/requests/new',
+  path: '/requests/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSolicitudesIdRoute = AppSolicitudesIdRouteImport.update({
-  id: '/solicitudes/$id',
-  path: '/solicitudes/$id',
+const AppRequestsIdRoute = AppRequestsIdRouteImport.update({
+  id: '/requests/$id',
+  path: '/requests/$id',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -80,25 +80,25 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/disponibles': typeof AppDisponiblesRoute
-  '/estadisticas': typeof AppEstadisticasRoute
-  '/perfil': typeof AppPerfilRoute
-  '/solicitudes/$id': typeof AppSolicitudesIdRoute
-  '/solicitudes/nueva': typeof AppSolicitudesNuevaRoute
-  '/solicitudes/': typeof AppSolicitudesIndexRoute
-  '/trabajos/': typeof AppTrabajosIndexRoute
+  '/available': typeof AppAvailableRoute
+  '/profile': typeof AppProfileRoute
+  '/stats': typeof AppStatsRoute
+  '/requests/$id': typeof AppRequestsIdRoute
+  '/requests/new': typeof AppRequestsNewRoute
+  '/jobs/': typeof AppJobsIndexRoute
+  '/requests/': typeof AppRequestsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/disponibles': typeof AppDisponiblesRoute
-  '/estadisticas': typeof AppEstadisticasRoute
-  '/perfil': typeof AppPerfilRoute
-  '/solicitudes/$id': typeof AppSolicitudesIdRoute
-  '/solicitudes/nueva': typeof AppSolicitudesNuevaRoute
-  '/solicitudes': typeof AppSolicitudesIndexRoute
-  '/trabajos': typeof AppTrabajosIndexRoute
+  '/available': typeof AppAvailableRoute
+  '/profile': typeof AppProfileRoute
+  '/stats': typeof AppStatsRoute
+  '/requests/$id': typeof AppRequestsIdRoute
+  '/requests/new': typeof AppRequestsNewRoute
+  '/jobs': typeof AppJobsIndexRoute
+  '/requests': typeof AppRequestsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,13 +106,13 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/_app/disponibles': typeof AppDisponiblesRoute
-  '/_app/estadisticas': typeof AppEstadisticasRoute
-  '/_app/perfil': typeof AppPerfilRoute
-  '/_app/solicitudes/$id': typeof AppSolicitudesIdRoute
-  '/_app/solicitudes/nueva': typeof AppSolicitudesNuevaRoute
-  '/_app/solicitudes/': typeof AppSolicitudesIndexRoute
-  '/_app/trabajos/': typeof AppTrabajosIndexRoute
+  '/_app/available': typeof AppAvailableRoute
+  '/_app/profile': typeof AppProfileRoute
+  '/_app/stats': typeof AppStatsRoute
+  '/_app/requests/$id': typeof AppRequestsIdRoute
+  '/_app/requests/new': typeof AppRequestsNewRoute
+  '/_app/jobs/': typeof AppJobsIndexRoute
+  '/_app/requests/': typeof AppRequestsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,38 +120,38 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/signup'
-    | '/disponibles'
-    | '/estadisticas'
-    | '/perfil'
-    | '/solicitudes/$id'
-    | '/solicitudes/nueva'
-    | '/solicitudes/'
-    | '/trabajos/'
+    | '/available'
+    | '/profile'
+    | '/stats'
+    | '/requests/$id'
+    | '/requests/new'
+    | '/jobs/'
+    | '/requests/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/signup'
-    | '/disponibles'
-    | '/estadisticas'
-    | '/perfil'
-    | '/solicitudes/$id'
-    | '/solicitudes/nueva'
-    | '/solicitudes'
-    | '/trabajos'
+    | '/available'
+    | '/profile'
+    | '/stats'
+    | '/requests/$id'
+    | '/requests/new'
+    | '/jobs'
+    | '/requests'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
     | '/signup'
-    | '/_app/disponibles'
-    | '/_app/estadisticas'
-    | '/_app/perfil'
-    | '/_app/solicitudes/$id'
-    | '/_app/solicitudes/nueva'
-    | '/_app/solicitudes/'
-    | '/_app/trabajos/'
+    | '/_app/available'
+    | '/_app/profile'
+    | '/_app/stats'
+    | '/_app/requests/$id'
+    | '/_app/requests/new'
+    | '/_app/jobs/'
+    | '/_app/requests/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -191,76 +191,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/perfil': {
-      id: '/_app/perfil'
-      path: '/perfil'
-      fullPath: '/perfil'
-      preLoaderRoute: typeof AppPerfilRouteImport
+    '/_app/stats': {
+      id: '/_app/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof AppStatsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/estadisticas': {
-      id: '/_app/estadisticas'
-      path: '/estadisticas'
-      fullPath: '/estadisticas'
-      preLoaderRoute: typeof AppEstadisticasRouteImport
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/disponibles': {
-      id: '/_app/disponibles'
-      path: '/disponibles'
-      fullPath: '/disponibles'
-      preLoaderRoute: typeof AppDisponiblesRouteImport
+    '/_app/available': {
+      id: '/_app/available'
+      path: '/available'
+      fullPath: '/available'
+      preLoaderRoute: typeof AppAvailableRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/trabajos/': {
-      id: '/_app/trabajos/'
-      path: '/trabajos'
-      fullPath: '/trabajos/'
-      preLoaderRoute: typeof AppTrabajosIndexRouteImport
+    '/_app/requests/': {
+      id: '/_app/requests/'
+      path: '/requests'
+      fullPath: '/requests/'
+      preLoaderRoute: typeof AppRequestsIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/solicitudes/': {
-      id: '/_app/solicitudes/'
-      path: '/solicitudes'
-      fullPath: '/solicitudes/'
-      preLoaderRoute: typeof AppSolicitudesIndexRouteImport
+    '/_app/jobs/': {
+      id: '/_app/jobs/'
+      path: '/jobs'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof AppJobsIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/solicitudes/nueva': {
-      id: '/_app/solicitudes/nueva'
-      path: '/solicitudes/nueva'
-      fullPath: '/solicitudes/nueva'
-      preLoaderRoute: typeof AppSolicitudesNuevaRouteImport
+    '/_app/requests/new': {
+      id: '/_app/requests/new'
+      path: '/requests/new'
+      fullPath: '/requests/new'
+      preLoaderRoute: typeof AppRequestsNewRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/solicitudes/$id': {
-      id: '/_app/solicitudes/$id'
-      path: '/solicitudes/$id'
-      fullPath: '/solicitudes/$id'
-      preLoaderRoute: typeof AppSolicitudesIdRouteImport
+    '/_app/requests/$id': {
+      id: '/_app/requests/$id'
+      path: '/requests/$id'
+      fullPath: '/requests/$id'
+      preLoaderRoute: typeof AppRequestsIdRouteImport
       parentRoute: typeof AppRoute
     }
   }
 }
 
 interface AppRouteChildren {
-  AppDisponiblesRoute: typeof AppDisponiblesRoute
-  AppEstadisticasRoute: typeof AppEstadisticasRoute
-  AppPerfilRoute: typeof AppPerfilRoute
-  AppSolicitudesIdRoute: typeof AppSolicitudesIdRoute
-  AppSolicitudesNuevaRoute: typeof AppSolicitudesNuevaRoute
-  AppSolicitudesIndexRoute: typeof AppSolicitudesIndexRoute
-  AppTrabajosIndexRoute: typeof AppTrabajosIndexRoute
+  AppAvailableRoute: typeof AppAvailableRoute
+  AppProfileRoute: typeof AppProfileRoute
+  AppStatsRoute: typeof AppStatsRoute
+  AppRequestsIdRoute: typeof AppRequestsIdRoute
+  AppRequestsNewRoute: typeof AppRequestsNewRoute
+  AppJobsIndexRoute: typeof AppJobsIndexRoute
+  AppRequestsIndexRoute: typeof AppRequestsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppDisponiblesRoute: AppDisponiblesRoute,
-  AppEstadisticasRoute: AppEstadisticasRoute,
-  AppPerfilRoute: AppPerfilRoute,
-  AppSolicitudesIdRoute: AppSolicitudesIdRoute,
-  AppSolicitudesNuevaRoute: AppSolicitudesNuevaRoute,
-  AppSolicitudesIndexRoute: AppSolicitudesIndexRoute,
-  AppTrabajosIndexRoute: AppTrabajosIndexRoute,
+  AppAvailableRoute: AppAvailableRoute,
+  AppProfileRoute: AppProfileRoute,
+  AppStatsRoute: AppStatsRoute,
+  AppRequestsIdRoute: AppRequestsIdRoute,
+  AppRequestsNewRoute: AppRequestsNewRoute,
+  AppJobsIndexRoute: AppJobsIndexRoute,
+  AppRequestsIndexRoute: AppRequestsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

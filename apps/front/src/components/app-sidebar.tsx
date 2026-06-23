@@ -37,14 +37,14 @@ import { signOut, useSession } from "@/lib/auth-client"
 import { useNavigate } from "@tanstack/react-router"
 
 const NAV_MAIN = [
-  { label: "Mis solicitudes", icon: LayoutList, to: "/solicitudes" },
-  { label: "Nueva solicitud", icon: CirclePlus, to: "/solicitudes/nueva" },
-  { label: "Mis trabajos", icon: Briefcase, to: "/trabajos", badge: "1" },
+  { label: "Mis solicitudes", icon: LayoutList, to: "/requests" },
+  { label: "Nueva solicitud", icon: CirclePlus, to: "/requests/new" },
+  { label: "Mis trabajos", icon: Briefcase, to: "/jobs", badge: "1" },
 ] as const
 
 const NAV_DRIVER = [
-  { label: "Solicitudes disponibles", icon: Truck, to: "/disponibles", badge: "14" },
-  { label: "Estadísticas", icon: ChartBar, to: "/estadisticas" },
+  { label: "Solicitudes disponibles", icon: Truck, to: "/available", badge: "14" },
+  { label: "Estadísticas", icon: ChartBar, to: "/stats" },
 ] as const
 
 function NavItem({
@@ -93,7 +93,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="h-14 border-b border-sidebar-border px-3">
         <div className="flex items-center justify-between">
-          <Link to="/solicitudes" className="flex items-center gap-2">
+          <Link to="/requests" className="flex items-center gap-2">
             <div className="flex size-6 shrink-0 items-center justify-center rounded-[5px] bg-primary">
               <span className="text-xs font-bold text-white">g</span>
             </div>
@@ -111,7 +111,6 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-1 py-2">
-        {/* Main group */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.08em] text-sidebar-foreground/60 px-2 mb-1">
             PRINCIPAL
@@ -125,7 +124,6 @@ export function AppSidebar() {
 
         <SidebarSeparator className="bg-sidebar-border" />
 
-        {/* Driver group */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.08em] text-sidebar-foreground/60 px-2 mb-1">
             CONDUCTOR
@@ -165,7 +163,7 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-52">
                 <DropdownMenuItem asChild>
-                  <Link to="/perfil">
+                  <Link to="/profile">
                     <Settings className="size-4" />
                     Configuración
                   </Link>

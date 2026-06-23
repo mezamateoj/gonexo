@@ -18,7 +18,7 @@ function LoginPage() {
 
   const mutation = useMutation({
     mutationFn: () => signIn.email({ email, password }),
-    onSuccess: () => navigate({ to: "/solicitudes" }),
+    onSuccess: () => navigate({ to: "/requests" }),
   })
 
   const errorMessage =
@@ -30,9 +30,7 @@ function LoginPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ── Left panel ── */}
       <div className="relative flex w-[660px] shrink-0 flex-col justify-between overflow-hidden bg-[#1A1A1A] p-12">
-        {/* Logo */}
         <div className="flex items-center gap-2 z-10">
           <div className="flex size-7 items-center justify-center rounded-md bg-primary">
             <span className="text-sm font-bold text-white">g</span>
@@ -40,7 +38,6 @@ function LoginPage() {
           <span className="text-base font-semibold text-white">gonexo</span>
         </div>
 
-        {/* Decorative pill */}
         <div
           className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary opacity-90"
           style={{
@@ -51,7 +48,6 @@ function LoginPage() {
           }}
         />
 
-        {/* Headline */}
         <div className="relative z-10 flex flex-col gap-3">
           <p className="text-4xl font-bold leading-tight text-white">
             Conecta.<br />Transporta.<br />Confía.
@@ -62,16 +58,13 @@ function LoginPage() {
         </div>
       </div>
 
-      {/* ── Right panel ── */}
       <div className="flex flex-1 items-center justify-center bg-[#FAFAFA]">
         <div className="flex w-[360px] flex-col gap-6">
-          {/* Heading */}
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-semibold text-foreground">Welcome back</h1>
             <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
           </div>
 
-          {/* Tab toggle */}
           <div className="flex gap-1 rounded-lg bg-secondary p-1">
             <span className="flex-1 rounded-md bg-background py-1.5 text-center text-sm font-medium text-foreground shadow-sm">
               Log in
@@ -84,7 +77,6 @@ function LoginPage() {
             </Link>
           </div>
 
-          {/* Form */}
           <form
             className="flex flex-col gap-4"
             onSubmit={(e) => {
@@ -132,14 +124,12 @@ function LoginPage() {
             </Button>
           </form>
 
-          {/* Social divider */}
           <div className="flex items-center gap-3">
             <Separator className="flex-1" />
             <span className="text-xs text-muted-foreground">or continue with</span>
             <Separator className="flex-1" />
           </div>
 
-          {/* Social buttons */}
           <div className="flex gap-3">
             <Button
               variant="outline"
@@ -180,7 +170,6 @@ function LoginPage() {
             </Button>
           </div>
 
-          {/* Footer */}
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link to="/signup" className="font-medium text-foreground underline underline-offset-4">

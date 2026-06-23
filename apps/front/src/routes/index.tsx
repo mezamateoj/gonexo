@@ -9,7 +9,6 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   return (
     <div className="flex flex-col">
-      {/* ── Navbar ── */}
       <header
         className="sticky top-0 z-50 flex h-[72px] shrink-0 items-center justify-between bg-white px-20"
         style={{ borderBottom: "1px solid #F0F0F0" }}
@@ -38,9 +37,7 @@ function LandingPage() {
         </div>
       </header>
 
-      {/* ── Hero ── */}
       <section className="relative flex h-[640px] w-full overflow-hidden bg-[#1A1A1A] px-20">
-        {/* Left content */}
         <div className="relative z-10 flex flex-col justify-center gap-8 py-20" style={{ maxWidth: 560 }}>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-primary">Conecta. Transporta. Confía.</span>
@@ -75,7 +72,6 @@ function LandingPage() {
           </div>
         </div>
 
-        {/* Decorative pills */}
         <div
           className="pointer-events-none absolute bg-primary opacity-80"
           style={{ width: 260, height: 420, borderRadius: "130px", top: "10%", right: "32%", transform: "rotate(25deg)" }}
@@ -85,7 +81,6 @@ function LandingPage() {
           style={{ width: 180, height: 320, borderRadius: "90px", top: "30%", right: "20%", transform: "rotate(25deg)" }}
         />
 
-        {/* Bid card widget */}
         <div className="absolute right-20 top-1/2 z-10 -translate-y-1/2">
           <div className="flex w-[260px] flex-col gap-3 rounded-2xl bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between">
@@ -107,7 +102,6 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* ── Stats Strip ── */}
       <section className="flex h-[120px] w-full items-center justify-between bg-[#1A1A1A] px-20">
         {[
           { value: "+12,000", label: "Publicaciones activas este mes" },
@@ -122,7 +116,6 @@ function LandingPage() {
         ))}
       </section>
 
-      {/* ── How It Works ── */}
       <section id="como-funciona" className="flex w-full flex-col gap-12 bg-white px-20 py-24">
         <div className="flex flex-col gap-4">
           <span className="text-xs font-semibold uppercase tracking-widest text-primary">Cómo funciona</span>
@@ -173,7 +166,6 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ── */}
       <section className="flex w-full flex-col gap-12 bg-[#F7F7F7] px-20 py-24">
         <div className="flex items-start justify-between">
           <div className="flex flex-col gap-4">
@@ -188,7 +180,6 @@ function LandingPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-5">
-          {/* Pago en escrow — orange */}
           <div className="flex flex-col gap-4 rounded-2xl bg-primary p-8">
             <div className="flex size-10 items-center justify-center rounded-xl bg-white/20">
               <ShieldCheck className="size-5 text-white" />
@@ -201,7 +192,6 @@ function LandingPage() {
             </div>
           </div>
 
-          {/* Calificaciones verificadas — light */}
           <div className="flex flex-col gap-4 rounded-2xl bg-white p-8">
             <div className="flex size-10 items-center justify-center rounded-xl bg-secondary">
               <Star className="size-5 text-primary" />
@@ -214,7 +204,6 @@ function LandingPage() {
             </div>
           </div>
 
-          {/* Seguimiento en vivo — light */}
           <div className="flex flex-col gap-4 rounded-2xl bg-white p-8">
             <div className="flex size-10 items-center justify-center rounded-xl bg-secondary">
               <MapPin className="size-5 text-primary" />
@@ -227,7 +216,6 @@ function LandingPage() {
             </div>
           </div>
 
-          {/* Respuesta inmediata — dark */}
           <div className="flex flex-col gap-4 rounded-2xl bg-[#1A1A1A] p-8">
             <div className="flex size-10 items-center justify-center rounded-xl bg-white/10">
               <Package className="size-5 text-white" />
@@ -242,9 +230,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
       <section className="relative flex h-[280px] w-full items-center overflow-hidden bg-[#1A1A1A] px-20">
-        {/* Decorative pill */}
         <div
           className="pointer-events-none absolute bg-primary opacity-70"
           style={{ width: 240, height: 380, borderRadius: "120px", right: "8%", top: "50%", transform: "translateY(-50%) rotate(25deg)" }}
@@ -269,7 +255,6 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ── */}
       <footer className="flex h-16 w-full items-center justify-between bg-[#111111] px-20">
         <p className="text-xs text-white/30">© 2025 gonexo. Todos los derechos reservados.</p>
         <div className="flex items-center gap-6">
