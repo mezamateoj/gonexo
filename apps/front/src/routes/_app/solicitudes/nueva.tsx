@@ -29,22 +29,28 @@ export const Route = createFileRoute("/_app/solicitudes/nueva")({
 
 // ─── Zod schema (mirrors backend) ────────────────────────────────────────────
 
+const volumeCategories = ["small", "medium", "large", "full_move"] as const satisfies readonly VolumeCategory[]
+
+const volumeCategorySchema = z
+  .union([z.enum(volumeCategories), z.literal("")])
+  .refine((value): value is VolumeCategory => value !== "", {
+    message: "Selecciona un volumen",
+  })
+
 const schema = z.object({
   originAddress: z.string().min(1, "Dirección requerida"),
-  originFloor: z.coerce.number().int().optional(),
+  originFloor: z.number().int().optional(),
   originHasElevator: z.boolean(),
   destAddress: z.string().min(1, "Dirección requerida"),
-  destFloor: z.coerce.number().int().optional(),
+  destFloor: z.number().int().optional(),
   destHasElevator: z.boolean(),
-  volumeCategory: z.enum(["small", "medium", "large", "full_move"], {
-    required_error: "Selecciona un volumen",
-  }),
+  volumeCategory: volumeCategorySchema,
   itemDescription: z.string().min(5, "Mínimo 5 caracteres"),
   scheduledAt: z.string().min(1, "Selecciona fecha y hora"),
   notes: z.string().optional(),
 })
 
-type FormValues = z.infer<typeof schema>
+type FormValues = z.input<typeof schema>
 
 // ─── Volume options ───────────────────────────────────────────────────────────
 
@@ -174,6 +180,18 @@ function NuevaSolicitudPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [photoUrls, setPhotoUrls] = useState<string[]>([])
+  const defaultValues: FormValues = {
+    originAddress: "",
+    originFloor: undefined,
+    originHasElevator: false,
+    destAddress: "",
+    destFloor: undefined,
+    destHasElevator: false,
+    volumeCategory: "",
+    itemDescription: "",
+    scheduledAt: "",
+    notes: "",
+  }
 
   const mutation = useMutation({
     mutationFn: api.requests.create,
@@ -184,18 +202,7 @@ function NuevaSolicitudPage() {
   })
 
   const form = useForm({
-    defaultValues: {
-      originAddress: "",
-      originFloor: undefined as number | undefined,
-      originHasElevator: false,
-      destAddress: "",
-      destFloor: undefined as number | undefined,
-      destHasElevator: false,
-      volumeCategory: "" as VolumeCategory | "",
-      itemDescription: "",
-      scheduledAt: "",
-      notes: "",
-    },
+    defaultValues,
     validators: {
       onSubmit: schema,
     },
@@ -364,7 +371,10 @@ function NuevaSolicitudPage() {
             {/* ── Detalles ─────────────────────────────────────────── */}
             <Section title="Detalles del envío">
               {/* Volume selector */}
-              <form.Field name="volumeCategory">
+              <form.Field
+                name="volumeCategory"
+                validators={{ onBlur: volumeCategorySchema }}
+              >
                 {(field) => (
                   <div className="flex flex-col gap-2">
                     <Label className="text-[13px] font-medium text-[#444444]">
