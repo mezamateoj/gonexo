@@ -6,6 +6,9 @@
     "nodejs_compat",
     "nodejs_compat_populate_process_env",
   ],
+  "observability": {
+    "enabled": true,
+  },
   "compatibility_date": "2026-06-16",
   "vars": {
     "BETTER_AUTH_URL": "https://gonexo-back.mezamateoj.workers.dev",
