@@ -1,5 +1,15 @@
 # AGENTS.md
 
+## Working Style
+
+- **Phase by phase.** Never start a new phase until the previous one is reviewed and signed off by the user.
+- **Backend before frontend.** Within each phase, implement and verify the backend (schema, routes, types) first. The user reviews and tests before any frontend work begins.
+- **Frontend with user direction.** Once the backend is approved, frontend is built collaboratively — the user steers UX details. Do not race ahead.
+- **No bundling.** One phase = one coherent backend change set + one frontend change set, reviewed independently. Do not sneak in unrelated changes.
+- **Ask before expanding scope.** If something adjacent looks broken or incomplete, flag it — don't fix it silently.
+
+---
+
 ## Package Manager
 
 - Use pnpm only. Never use npm or yarn.
@@ -35,6 +45,7 @@
 - TanStack Query: https://raw.githubusercontent.com/tanstack/query/main/docs/framework/react/overview.md
 - TanStack Form: https://raw.githubusercontent.com/tanstack/form/main/docs/overview.md
 - Better Auth: https://better-auth.com/docs
+- Vercel AI SDk: https://ai-sdk.dev/docs/introduction
 
 ## Commands
 
