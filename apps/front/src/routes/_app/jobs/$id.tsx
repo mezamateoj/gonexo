@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "@/lib/auth-client"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import type { JobStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -58,19 +59,25 @@ function JobDetailPage() {
   const qc = useQueryClient()
 
   const { data: job, isLoading, error } = useQuery({
-    queryKey: ["job", id],
+    queryKey: queryKeys.jobs.detail(id),
     queryFn: () => api.jobs.get(id),
   })
 
   const advanceStatus = useMutation({
     mutationFn: (status: "on_the_way" | "arrived" | "completed") =>
       api.jobs.updateStatus(id, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["job", id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.jobs.detail(id) })
+      qc.invalidateQueries({ queryKey: queryKeys.jobs.my })
+    },
   })
 
   const confirmJob = useMutation({
     mutationFn: () => api.jobs.confirm(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["job", id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.jobs.detail(id) })
+      qc.invalidateQueries({ queryKey: queryKeys.jobs.my })
+    },
   })
 
   if (isLoading) {

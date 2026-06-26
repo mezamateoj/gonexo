@@ -4,6 +4,7 @@ import { useState, useRef, useMemo } from "react"
 import { Package, Boxes, Truck, Building2, ArrowRight, ArrowLeft, Loader2, Users, AlertTriangle, Wrench, Box, ParkingCircle, MoveRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -128,7 +129,7 @@ function NewRequestPage() {
       })
     },
     onSuccess: async ({ id }) => {
-      await queryClient.invalidateQueries({ queryKey: ["requests", "my"] })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
       navigate({ to: "/requests/$id", params: { id } })
     },
   })

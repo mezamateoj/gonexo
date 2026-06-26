@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import type { MyQuote, VolumeCategory } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { MessageSquare, MapPin } from "lucide-react"
@@ -99,7 +100,7 @@ function QuoteRow({ q }: { q: MyQuote }) {
 
 function QuotesPage() {
   const { data: quotes, isLoading } = useQuery({
-    queryKey: ["quotes", "my"],
+    queryKey: queryKeys.quotes.my,
     queryFn: api.quotes.my,
   })
 

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { useSession } from "@/lib/auth-client"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import type { JobStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { useAppMode } from "@/lib/app-mode"
@@ -51,7 +52,7 @@ function JobsPage() {
   const userId = session?.user?.id
 
   const { data: jobs, isLoading } = useQuery({
-    queryKey: ["jobs", "my"],
+    queryKey: queryKeys.jobs.my,
     queryFn: api.jobs.my,
     enabled: !!userId,
   })
