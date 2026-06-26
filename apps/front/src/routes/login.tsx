@@ -1,180 +1,137 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useMutation } from "@tanstack/react-query"
-import { useState } from "react"
-import { signIn } from "@/lib/auth-client"
+import { useForm } from "@tanstack/react-form"
+import { useEffect } from "react"
+import { z } from "zod"
+import { signIn, useSession } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
 })
 
+const schema = z.object({
+  email: z.string().email("Ingresa un correo válido"),
+  password: z.string().min(1, "La contraseña es requerida"),
+})
+
 function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const { data: session } = useSession()
 
-  const mutation = useMutation({
-    mutationFn: () => signIn.email({ email, password }),
-    onSuccess: () => navigate({ to: "/requests" }),
+  useEffect(() => {
+    if (session) navigate({ to: "/requests" })
+  }, [session, navigate])
+
+  const form = useForm({
+    defaultValues: { email: "", password: "" },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      await signIn.email({ email: value.email, password: value.password })
+      navigate({ to: "/requests" })
+    },
   })
-
-  const errorMessage =
-    mutation.error instanceof Error
-      ? mutation.error.message
-      : mutation.error
-        ? "Sign in failed. Please try again."
-        : null
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="relative flex w-[660px] shrink-0 flex-col justify-between overflow-hidden bg-[#1A1A1A] p-12">
-        <div className="flex items-center gap-2 z-10">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary">
-            <span className="text-sm font-bold text-white">g</span>
+      <div className="relative flex w-[500px] shrink-0 flex-col justify-between overflow-hidden bg-[#121715] p-10">
+        <Link to="/requests" className="relative z-10 flex items-center gap-2">
+          <div className="flex size-[26px] items-center justify-center rounded-[7px] bg-primary">
+            <span className="text-[13px] font-bold text-white">g</span>
           </div>
-          <span className="text-base font-semibold text-white">gonexo</span>
-        </div>
-
+          <span className="text-[15px] font-semibold text-white">gonexo</span>
+        </Link>
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary opacity-90"
-          style={{
-            width: 320,
-            height: 480,
-            borderRadius: "160px",
-            transform: "translate(-50%, -50%) rotate(30deg)",
-          }}
+          className="pointer-events-none absolute bg-primary"
+          style={{ width: 340, height: 520, borderRadius: 170, top: "50%", left: "50%", transform: "translate(-50%,-50%) rotate(30deg)", opacity: 0.85 }}
         />
-
-        <div className="relative z-10 flex flex-col gap-3">
-          <p className="text-4xl font-bold leading-tight text-white">
-            Conecta.<br />Transporta.<br />Confía.
-          </p>
-          <p className="text-sm text-white/50">
-            Todo lo que necesitas para mover lo que importa.
-          </p>
+        <div className="relative z-10">
+          <p className="text-[38px] font-bold leading-[1.15] tracking-tight text-white">Conecta.<br />Transporta.<br />Confía.</p>
+          <p className="mt-3 text-[13px] leading-relaxed text-white/45">Todo lo que necesitas para mover lo que importa.</p>
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center bg-[#FAFAFA]">
-        <div className="flex w-[360px] flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold text-foreground">Welcome back</h1>
-            <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
+      <div className="flex flex-1 items-center justify-center bg-[#FAFAF8]">
+        <div className="flex w-[340px] flex-col gap-6">
+          <div>
+            <h1 className="text-[22px] font-semibold text-[#121715]">Bienvenido de vuelta</h1>
+            <p className="mt-1 text-[14px] text-[#969e9b]">Inicia sesión para continuar</p>
           </div>
 
-          <div className="flex gap-1 rounded-lg bg-secondary p-1">
-            <span className="flex-1 rounded-md bg-background py-1.5 text-center text-sm font-medium text-foreground shadow-sm">
-              Log in
-            </span>
-            <Link
-              to="/signup"
-              className="flex-1 rounded-md py-1.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Sign up
-            </Link>
+          <div className="flex gap-[2px] rounded-[9px] bg-[#F0EEE9] p-[3px]">
+            <span className="flex-1 rounded-[7px] bg-white py-2 text-center text-[13px] font-semibold text-[#121715] shadow-sm">Iniciar sesión</span>
+            <Link to="/signup" className="flex-1 rounded-[7px] py-2 text-center text-[13px] font-medium text-[#969e9b]">Crear cuenta</Link>
           </div>
 
           <form
+            onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}
             className="flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              mutation.mutate()
-            }}
           >
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@company.com"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+            <FieldGroup>
+              <form.Field name="email">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Correo electrónico</FieldLabel>
+                      <Input
+                        id={field.name}
+                        type="email"
+                        placeholder="juan@empresa.cl"
+                        autoComplete="email"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
 
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <a href="#" className="text-xs text-muted-foreground hover:text-foreground">
-                  Forgot password?
-                </a>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+              <form.Field name="password">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Contraseña</FieldLabel>
+                      <Input
+                        id={field.name}
+                        type="password"
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+            </FieldGroup>
 
-            {errorMessage && (
-              <p className="text-sm text-destructive">{errorMessage}</p>
-            )}
+            <form.Subscribe selector={(s) => s.errors}>
+              {(errors) => errors.length > 0 && (
+                <p className="text-sm text-destructive">{String(errors[0])}</p>
+              )}
+            </form.Subscribe>
 
-            <Button type="submit" className="w-full" disabled={mutation.isPending}>
-              {mutation.isPending ? "Signing in…" : "Sign in"}
-            </Button>
+            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+              {([canSubmit, isSubmitting]) => (
+                <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
+                  {isSubmitting ? "Ingresando…" : "Iniciar sesión"}
+                </Button>
+              )}
+            </form.Subscribe>
           </form>
 
-          <div className="flex items-center gap-3">
-            <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground">or continue with</span>
-            <Separator className="flex-1" />
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="flex-1"
-              type="button"
-              onClick={() => signIn.social({ provider: "google" })}
-            >
-              <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-              </svg>
-              Google
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              type="button"
-              onClick={() => signIn.social({ provider: "github" })}
-            >
-              <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z" />
-              </svg>
-              GitHub
-            </Button>
-          </div>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link to="/signup" className="font-medium text-foreground underline underline-offset-4">
-              Sign up
-            </Link>
+          <p className="text-center text-sm text-[#969e9b]">
+            ¿No tienes cuenta?{" "}
+            <Link to="/signup" className="font-medium text-primary underline underline-offset-4">Regístrate</Link>
           </p>
         </div>
       </div>

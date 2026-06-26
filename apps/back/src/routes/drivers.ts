@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { driverProfile, review } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
+import { enrichVehicle } from "../ai/vehicle-enrichment";
 
 const drivers = new Hono<AppEnv>();
 
@@ -14,6 +15,16 @@ const upsertDriverSchema = z.object({
   vehiclePlate: z.string().min(4).max(10).toUpperCase(),
   vehicleYear: z.number().int().min(1990).max(2030).optional(),
   bio: z.string().max(500).optional(),
+  licenseUrl: z.string().url().optional(),
+  vehiclePhotos: z.array(z.string().url()).optional(),
+  papersUrl: z.string().url().optional(),
+  vehicleDescription: z.string().max(500).optional(),
+  vehicleCapacity: z.string().max(200).optional(),
+});
+
+const enrichSchema = z.object({
+  photoUrls: z.array(z.string().url()).min(1),
+  papersUrl: z.string().url().optional(),
 });
 
 drivers.get("/me", requireAuth, async (c) => {
@@ -38,6 +49,10 @@ drivers.post(
       where: eq(driverProfile.userId, user.id),
     });
 
+    const hasDocuments = !!(body.licenseUrl || body.vehiclePhotos?.length || body.papersUrl);
+    const documentsStatus = hasDocuments ? "submitted" : "pending";
+    const vehiclePhotosJson = body.vehiclePhotos ? JSON.stringify(body.vehiclePhotos) : null;
+
     if (existing) {
       await db
         .update(driverProfile)
@@ -47,6 +62,12 @@ drivers.post(
           vehiclePlate: body.vehiclePlate,
           vehicleYear: body.vehicleYear ?? null,
           bio: body.bio ?? null,
+          licenseUrl: body.licenseUrl ?? null,
+          vehiclePhotos: vehiclePhotosJson,
+          papersUrl: body.papersUrl ?? null,
+          vehicleDescription: body.vehicleDescription ?? null,
+          vehicleCapacity: body.vehicleCapacity ?? null,
+          documentsStatus,
         })
         .where(eq(driverProfile.userId, user.id));
       return c.json({ id: existing.id });
@@ -61,8 +82,26 @@ drivers.post(
       vehiclePlate: body.vehiclePlate,
       vehicleYear: body.vehicleYear ?? null,
       bio: body.bio ?? null,
+      licenseUrl: body.licenseUrl ?? null,
+      vehiclePhotos: vehiclePhotosJson,
+      papersUrl: body.papersUrl ?? null,
+      vehicleDescription: body.vehicleDescription ?? null,
+      vehicleCapacity: body.vehicleCapacity ?? null,
+      documentsStatus,
     });
     return c.json({ id }, 201);
+  }
+);
+
+drivers.post(
+  "/enrich",
+  requireAuth,
+  zValidator("json", enrichSchema),
+  async (c) => {
+    const { photoUrls, papersUrl } = c.req.valid("json");
+    const apiKey = c.env.ANTHROPIC_API_KEY;
+    const result = await enrichVehicle(photoUrls, papersUrl ?? null, apiKey);
+    return c.json(result);
   }
 );
 

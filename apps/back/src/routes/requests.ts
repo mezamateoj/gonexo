@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, asc, desc } from "drizzle-orm";
+import { eq, and, ne, asc, desc } from "drizzle-orm";
 import { request, requestPhoto, quote } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
@@ -20,10 +20,18 @@ const createRequestSchema = z.object({
   destFloor: z.number().int().optional(),
   destHasElevator: z.boolean().default(false),
   scheduledAt: z.string().datetime(),
+  flexibleDate: z.boolean().default(false),
   volumeCategory: z.enum(["small", "medium", "large", "full_move"]),
   itemDescription: z.string().min(1),
   notes: z.string().optional(),
   photoUrls: z.array(z.string().url()).max(8).default([]),
+  budgetMax: z.number().int().positive().optional(),
+  helpersNeeded: z.number().int().min(0).max(3).default(0),
+  hasFragileItems: z.boolean().default(false),
+  assemblyRequired: z.boolean().default(false),
+  packingIncluded: z.boolean().default(false),
+  parkingType: z.enum(["street", "garage", "loading_dock"]).default("street"),
+  longCarry: z.boolean().default(false),
 });
 
 requests.post(
@@ -50,9 +58,17 @@ requests.post(
       destFloor: body.destFloor ?? null,
       destHasElevator: body.destHasElevator,
       scheduledAt: new Date(body.scheduledAt),
+      flexibleDate: body.flexibleDate,
       volumeCategory: body.volumeCategory,
       itemDescription: body.itemDescription,
       notes: body.notes ?? null,
+      budgetMax: body.budgetMax ?? null,
+      helpersNeeded: body.helpersNeeded,
+      hasFragileItems: body.hasFragileItems,
+      assemblyRequired: body.assemblyRequired,
+      packingIncluded: body.packingIncluded,
+      parkingType: body.parkingType,
+      longCarry: body.longCarry,
     });
 
     if (body.photoUrls.length > 0) {
@@ -97,14 +113,15 @@ requests.get("/my", requireAuth, async (c) => {
   return c.json(results);
 });
 
-requests.get("/", async (c) => {
+requests.get("/", requireAuth, async (c) => {
   const db = c.get("db");
+  const user = c.get("user")!;
   const page = Math.max(1, parseInt(c.req.query("page") ?? "1"));
   const limit = Math.min(50, parseInt(c.req.query("limit") ?? "20"));
   const offset = (page - 1) * limit;
 
   const results = await db.query.request.findMany({
-    where: eq(request.status, "open"),
+    where: and(eq(request.status, "open"), ne(request.userId, user.id)),
     orderBy: [asc(request.scheduledAt)],
     limit,
     offset,
@@ -115,14 +132,16 @@ requests.get("/", async (c) => {
         columns: { url: true },
       },
       user: { columns: { name: true, image: true } },
+      quotes: { columns: { id: true } },
     },
   });
 
   return c.json({ data: results, page, limit });
 });
 
-requests.get("/:id", async (c) => {
+requests.get("/:id", requireAuth, async (c) => {
   const db = c.get("db");
+  const user = c.get("user")!;
   const result = await db.query.request.findFirst({
     where: eq(request.id, c.req.param("id")),
     with: {
@@ -141,7 +160,19 @@ requests.get("/:id", async (c) => {
   });
 
   if (!result) return c.json({ error: "Not found" }, 404);
-  return c.json(result);
+
+  const isOwner = result.userId === user.id;
+  const matchedQuote = result.quotes.find(
+    (q) => q.status === "accepted" && q.driverId === user.id,
+  );
+  const canSeeContact = isOwner || !!matchedQuote;
+  return c.json({
+    ...result,
+    user: {
+      ...result.user,
+      phone: canSeeContact ? result.user.phone : null,
+    },
+  });
 });
 
 const createQuoteSchema = z.object({

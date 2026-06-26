@@ -9,6 +9,8 @@ import jobs from "./routes/jobs";
 import drivers from "./routes/drivers";
 import users from "./routes/users";
 import uploads from "./routes/uploads";
+import geo from "./routes/geo";
+import seed from "./routes/seed";
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -55,7 +57,9 @@ const api = new Hono<AppEnv>()
   .route("/jobs", jobs)
   .route("/drivers", drivers)
   .route("/users", users)
-  .route("/uploads", uploads);
+  .route("/uploads", uploads)
+  .route("/geo", geo)
+  .route("/__seed", seed);
 
 app.route("/api", api);
 

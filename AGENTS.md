@@ -17,6 +17,8 @@
 
 ## Default Coding Style
 
+- Extra defensive checks or try/catch blocks that are abnormal for that area of the codebase (especially if called by trusted / validated codepaths) are not permitted
+- Casts to any to get around type issues
 - Reuse existing helpers, types, components, and route patterns before adding new ones.
 - Do not create test files unless explicitly requested.
 - Avoid speculative abstractions, factories, scaffolding, and config for values that do not vary.
@@ -70,6 +72,8 @@
 - Protected app pages belong under the `_app` route layout, which performs the session check in `beforeLoad`.
 - API/auth clients default to `http://localhost:8787` and read `VITE_API_URL`. If origins change, update frontend env/config plus backend CORS and Better Auth origin settings together.
 - Prefer existing shadcn components in `apps/front/src/components/ui` and `cn` from `apps/front/src/lib/utils.ts` before custom UI markup.
+- **Always check shadcn docs before building any UI component or form pattern.** If a shadcn component covers the need, use it — do not hand-roll equivalents. Install missing components with `pnpm dlx shadcn@canary add <name>` before writing custom markup. Docs: https://ui.shadcn.com/docs
+- **Forms must use TanStack Form + Field components.** All forms use `useForm` from `@tanstack/react-form` with a Zod `schema`, and the `Field` / `FieldLabel` / `FieldError` / `FieldDescription` components from `@/components/ui/field`. Never manage form state with raw `useState`. Validation runs `onBlur` per field; errors render inline under each input via `<FieldError errors={field.state.meta.errors} />`. Docs: https://raw.githubusercontent.com/tanstack/form/main/docs/overview.md
 
 ## Linting
 

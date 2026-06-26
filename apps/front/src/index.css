@@ -1,13 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'Inter Variable', Inter, sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,50 +49,51 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.168 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.168 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.168 0 0);
-    --primary: oklch(0.648 0.228 44.4);
-    --primary-foreground: oklch(1 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.168 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.50 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.168 0 0);
+    /* Gonexo design tokens — Mintlify green brand */
+    --background: #FAFAF8;
+    --foreground: #121715;
+    --card: #ffffff;
+    --card-foreground: #121715;
+    --popover: #ffffff;
+    --popover-foreground: #121715;
+    --primary: #0c8c5e;
+    --primary-foreground: #ffffff;
+    --secondary: #F5F4F0;
+    --secondary-foreground: #121715;
+    --muted: #F5F4F0;
+    --muted-foreground: #969e9b;
+    --accent: #E7F4EE;
+    --accent-foreground: #0c8c5e;
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.648 0.228 44.4);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
+    --border: #E9E7E3;
+    --input: #E9E7E3;
+    --ring: #0c8c5e;
+    --chart-1: #0c8c5e;
+    --chart-2: #1fa77a;
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    /* gonexo: always dark sidebar regardless of light/dark mode */
-    --sidebar: oklch(0.12 0 0);
-    --sidebar-foreground: oklch(0.67 0 0);
-    --sidebar-primary: oklch(0.648 0.228 44.4);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.18 0 0);
-    --sidebar-accent-foreground: oklch(1 0 0);
-    --sidebar-border: oklch(0.165 0 0);
-    --sidebar-ring: oklch(0.648 0.228 44.4);
+    --radius: 0.5rem;
+    /* Sidebar — light warm panel */
+    --sidebar: #F7F5F1;
+    --sidebar-foreground: #485450;
+    --sidebar-primary: #0c8c5e;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #E7F4EE;
+    --sidebar-accent-foreground: #0c8c5e;
+    --sidebar-border: #EDEAE6;
+    --sidebar-ring: #0c8c5e;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.648 0.228 44.4);
-    --primary-foreground: oklch(1 0 0);
+    --background: #121715;
+    --foreground: #FAFAF8;
+    --card: #1a1f1d;
+    --card-foreground: #FAFAF8;
+    --popover: #1a1f1d;
+    --popover-foreground: #FAFAF8;
+    --primary: #0c8c5e;
+    --primary-foreground: #ffffff;
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
@@ -102,20 +103,15 @@
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.648 0.228 44.4);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.12 0 0);
-    --sidebar-foreground: oklch(0.67 0 0);
-    --sidebar-primary: oklch(0.648 0.228 44.4);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.18 0 0);
-    --sidebar-accent-foreground: oklch(1 0 0);
-    --sidebar-border: oklch(0.165 0 0);
-    --sidebar-ring: oklch(0.648 0.228 44.4);
+    --ring: #0c8c5e;
+    --sidebar: #F7F5F1;
+    --sidebar-foreground: #485450;
+    --sidebar-primary: #0c8c5e;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #E7F4EE;
+    --sidebar-accent-foreground: #0c8c5e;
+    --sidebar-border: #EDEAE6;
+    --sidebar-ring: #0c8c5e;
 }
 
 @layer base {

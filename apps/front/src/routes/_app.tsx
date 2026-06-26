@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Bell, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAppMode } from "@/lib/app-mode"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
@@ -19,18 +20,22 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 })
 
+const CRUMBS: Record<string, string> = {
+  "/requests": "Mis solicitudes",
+  "/requests/new": "Publicar flete",
+  "/jobs": "Mis trabajos",
+  "/available": "Solicitudes disponibles",
+  "/quotes": "Mis cotizaciones",
+  "/vehicle": "Mi vehículo",
+  "/stats": "Estadísticas",
+  "/profile": "Perfil",
+}
+
 function TopBar() {
   const { pathname } = useRouterState({ select: (s) => s.location })
+  const { mode } = useAppMode()
 
-  const crumbs: Record<string, string> = {
-    "/requests": "Mis solicitudes",
-    "/requests/new": "Nueva solicitud",
-    "/jobs": "Mis trabajos",
-    "/available": "Solicitudes disponibles",
-    "/stats": "Estadísticas",
-  }
-
-  const currentLabel = crumbs[pathname] ?? "Gonexo"
+  const currentLabel = CRUMBS[pathname] ?? "Gonexo"
 
   return (
     <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-[#EEEEEE] bg-white px-6">
@@ -45,24 +50,26 @@ function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <button className="hidden md:flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary/80 transition-colors">
+        <button type="button" className="hidden md:flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary/80 transition-colors">
           Buscar...
           <kbd className="pointer-events-none rounded border border-border bg-background px-1 text-[10px]">
             ⌘K
           </kbd>
         </button>
 
-        <button className="relative flex size-8 items-center justify-center rounded-md bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors">
+        <button type="button" className="relative flex size-8 items-center justify-center rounded-md bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors">
           <Bell className="size-4" />
           <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
         </button>
 
-        <Button size="sm" asChild>
-          <Link to="/requests/new">
-            <Plus className="size-4" />
-            Publicar flete
-          </Link>
-        </Button>
+        {mode === "client" && (
+          <Button size="sm" asChild>
+            <Link to="/requests/new">
+              <Plus className="size-4" />
+              Publicar flete
+            </Link>
+          </Button>
+        )}
       </div>
     </header>
   )

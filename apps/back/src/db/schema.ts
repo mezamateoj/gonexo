@@ -130,6 +130,15 @@ export const driverProfile = sqliteTable("driver_profile", {
   isAvailable: integer("is_available", { mode: "boolean" }).default(true).notNull(),
   avgRating: real("avg_rating"),         // cached, updated after every review
   totalJobs: integer("total_jobs").default(0).notNull(),
+
+  // Verification docs + LLM-enriched vehicle profile
+  licenseUrl: text("license_url"),
+  vehiclePhotos: text("vehicle_photos"),       // JSON array of R2 URLs
+  papersUrl: text("papers_url"),
+  vehicleDescription: text("vehicle_description"), // LLM-generated, editable
+  vehicleCapacity: text("vehicle_capacity"),       // LLM-generated, editable
+  documentsStatus: text("documents_status").notNull().default("pending"),
+  // 'pending' | 'submitted' | 'verified'
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),
@@ -180,10 +189,23 @@ export const request = sqliteTable(
       .notNull(),
 
     scheduledAt: integer("scheduled_at", { mode: "timestamp_ms" }).notNull(),
+    flexibleDate: integer("flexible_date", { mode: "boolean" }).default(false).notNull(),
+
     volumeCategory: text("volume_category").notNull(),
     // 'small' | 'medium' | 'large' | 'full_move'
     itemDescription: text("item_description").notNull(),
     notes: text("notes"),
+
+    // Operational details — help drivers price accurately
+    budgetMax: integer("budget_max"),                  // CLP, optional client max
+    helpersNeeded: integer("helpers_needed").default(0).notNull(), // 0=driver only, 1-3
+    hasFragileItems: integer("has_fragile_items", { mode: "boolean" }).default(false).notNull(),
+    assemblyRequired: integer("assembly_required", { mode: "boolean" }).default(false).notNull(),
+    packingIncluded: integer("packing_included", { mode: "boolean" }).default(false).notNull(),
+    parkingType: text("parking_type").default("street").notNull(),
+    // 'street' | 'garage' | 'loading_dock'
+    longCarry: integer("long_carry", { mode: "boolean" }).default(false).notNull(),
+    // true = >20m between truck and door
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -247,7 +269,9 @@ export const quote = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
 
-    price: integer("price").notNull(),  // CLP — no decimals needed
+    price: integer("price").notNull(),  // CLP — representative/agreed value; set on accept
+    priceMin: integer("price_min"),     // range lower bound submitted by driver
+    priceMax: integer("price_max"),     // range upper bound submitted by driver
     message: text("message"),
     status: text("status").notNull().default("pending"),
     // 'pending' | 'accepted' | 'rejected' | 'expired'
@@ -315,8 +339,12 @@ export const job = sqliteTable(
     onTheWayAt: integer("on_the_way_at", { mode: "timestamp_ms" }),
     arrivedAt: integer("arrived_at", { mode: "timestamp_ms" }),
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
-    autoConfirmAt: integer("auto_confirm_at", { mode: "timestamp_ms" }), // QStash fires at this time
+    autoConfirmAt: integer("auto_confirm_at", { mode: "timestamp_ms" }), // cron sweeps jobs past this
     confirmedAt: integer("confirmed_at", { mode: "timestamp_ms" }),
+
+    // Rappi-style handoff code — client shows it, driver enters it to complete
+    confirmCode: text("confirm_code"),
+    confirmCodeUsedAt: integer("confirm_code_used_at", { mode: "timestamp_ms" }),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

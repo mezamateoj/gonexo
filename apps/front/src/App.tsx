@@ -34,6 +34,7 @@ function App() {
         >
           <li>
             <button
+              type="button"
               className="counter"
               onClick={() => setCount((count) => count + 1)}
             >
@@ -42,6 +43,7 @@ function App() {
           </li>
           <li>
             <button
+              type="button"
               className="counter"
               onClick={() => {
                 fetch("/api/")

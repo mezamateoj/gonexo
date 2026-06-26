@@ -1,519 +1,457 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useForm } from "@tanstack/react-form"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState, useRef } from "react"
-import { z } from "zod"
-import {
-  Package,
-  Boxes,
-  Truck,
-  Building2,
-  Camera,
-  Info,
-  ArrowRight,
-  X,
-  Loader2,
-} from "lucide-react"
+import { Package, Boxes, Truck, Building2, ArrowRight, ArrowLeft, Loader2, Users, AlertTriangle, Wrench, Box, ParkingCircle, MoveRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { api, uploadFile } from "@/lib/api"
+import { api } from "@/lib/api"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { AddressStep } from "@/components/requests/new/address-step"
+import { PhotoUploader } from "@/components/requests/new/photo-uploader"
+import { ReviewRow } from "@/components/requests/new/review-row"
+import { StepBar } from "@/components/requests/new/step-bar"
+import type { Draft, Step } from "@/components/requests/new/types"
 import type { VolumeCategory } from "@/lib/types"
 
 export const Route = createFileRoute("/_app/requests/new")({
   component: NewRequestPage,
 })
 
-const volumeCategories = ["small", "medium", "large", "full_move"] as const satisfies readonly VolumeCategory[]
-
-const volumeCategorySchema = z
-  .union([z.enum(volumeCategories), z.literal("")])
-  .refine((value): value is VolumeCategory => value !== "", {
-    message: "Selecciona un volumen",
-  })
-
-const schema = z.object({
-  originAddress: z.string().min(1, "Dirección requerida"),
-  originFloor: z.number().int().optional(),
-  originHasElevator: z.boolean(),
-  destAddress: z.string().min(1, "Dirección requerida"),
-  destFloor: z.number().int().optional(),
-  destHasElevator: z.boolean(),
-  volumeCategory: volumeCategorySchema,
-  itemDescription: z.string().min(5, "Mínimo 5 caracteres"),
-  scheduledAt: z.string().min(1, "Selecciona fecha y hora"),
-  notes: z.string().optional(),
-})
-
-type FormValues = z.input<typeof schema>
-
-const VOLUMES: {
-  value: VolumeCategory
-  label: string
-  Icon: React.ComponentType<{ className?: string }>
-}[] = [
-  { value: "small", label: "Pequeño", Icon: Package },
-  { value: "medium", label: "Mediano", Icon: Boxes },
-  { value: "large", label: "Grande", Icon: Truck },
-  { value: "full_move", label: "Mudanza completa", Icon: Building2 },
+const VOLUMES: { value: VolumeCategory; label: string; sub: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: "small", label: "Pequeño", sub: "Cajas, muebles sueltos", Icon: Package },
+  { value: "medium", label: "Mediano", sub: "Pieza amoblada", Icon: Boxes },
+  { value: "large", label: "Grande", sub: "Departamento", Icon: Truck },
+  { value: "full_move", label: "Mudanza completa", sub: "Casa o más", Icon: Building2 },
 ]
 
-function FieldError({ error }: { error?: string }) {
-  if (!error) return null
-  return <p className="text-[12px] text-destructive">{error}</p>
-}
+const PARKING_OPTIONS: { value: Draft["parkingType"]; label: string; sub: string }[] = [
+  { value: "street", label: "Calle", sub: "Estacionamiento en la vía pública" },
+  { value: "garage", label: "Garage / Estacionamiento", sub: "Acceso cubierto disponible" },
+  { value: "loading_dock", label: "Andén de carga", sub: "Zona de carga y descarga" },
+]
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function Toggle({ value, onChange, children }: { value: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
-    <div className="rounded-[12px] border border-[#F0F0F0] bg-white p-5 flex flex-col gap-4">
-      <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>
-      {children}
-    </div>
-  )
-}
-
-function PhotoUploader({
-  urls,
-  onChange,
-}: {
-  urls: string[]
-  onChange: (urls: string[]) => void
-}) {
-  const [uploading, setUploading] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return
-    setUploading(true)
-    try {
-      const uploaded = await Promise.all(
-        Array.from(files)
-          .slice(0, 8 - urls.length)
-          .map(uploadFile)
-      )
-      onChange([...urls, ...uploaded])
-    } catch {
-      // TODO: surface upload error
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading || urls.length >= 8}
-        className="flex flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#E5E5E5] bg-[#FAFAFA] py-6 text-center transition-colors hover:border-[#CCCCCC] disabled:opacity-50"
-      >
-        {uploading ? (
-          <Loader2 className="size-7 animate-spin text-[#CCCCCC]" />
-        ) : (
-          <Camera className="size-7 text-[#CCCCCC]" />
-        )}
-        <span className="text-[13px] text-[#AAAAAA]">
-          {uploading ? "Subiendo..." : "Arrastra o haz clic para subir"}
-        </span>
-        <span className="text-[12px] text-[#CCCCCC]">
-          JPEG, PNG o WebP · Máx 10 MB
-        </span>
-      </button>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        multiple
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
-
-      {urls.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {urls.map((url, i) => (
-            <div key={i} className="relative size-16 shrink-0">
-              <img
-                src={url}
-                alt=""
-                className="size-16 rounded-[8px] object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => onChange(urls.filter((_, j) => j !== i))}
-                className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-foreground text-background"
-              >
-                <X className="size-2.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-[10px] border p-3 text-left transition-colors",
+        value ? "border-2 border-primary bg-[#E7F4EE]" : "border-[1.5px] border-[#E9E7E3] bg-white"
       )}
-    </div>
+    >
+      <div className={cn(
+        "flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+        value ? "border-primary bg-primary" : "border-[#C4C0BA] bg-white"
+      )}>
+        {value && <div className="size-2 rounded-full bg-white" />}
+      </div>
+      <div className="flex-1">{children}</div>
+    </button>
   )
 }
 
 function NewRequestPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [photoUrls, setPhotoUrls] = useState<string[]>([])
-  const defaultValues: FormValues = {
-    originAddress: "",
-    originFloor: undefined,
+  const sessionToken = useRef(crypto.randomUUID()).current
+
+  const [step, setStep] = useState<Step>(1)
+  const [attempted, setAttempted] = useState(false)
+  const [draft, setDraft] = useState<Draft>({
+    origin: null,
+    originFloor: "",
     originHasElevator: false,
-    destAddress: "",
-    destFloor: undefined,
+    dest: null,
+    destFloor: "",
     destHasElevator: false,
+    scheduledDate: "",
+    scheduledTime: "",
+    flexibleDate: false,
     volumeCategory: "",
     itemDescription: "",
-    scheduledAt: "",
     notes: "",
+    photoUrls: [],
+    budgetMax: "",
+    helpersNeeded: 0,
+    hasFragileItems: false,
+    assemblyRequired: false,
+    packingIncluded: false,
+    parkingType: "street",
+    longCarry: false,
+  })
+
+  function set<K extends keyof Draft>(key: K, val: Draft[K]) {
+    setDraft((d) => ({ ...d, [key]: val }))
+  }
+
+  function canNext(): boolean {
+    if (step === 1) return !!draft.origin
+    if (step === 2) return !!draft.dest
+    if (step === 3) return !!draft.scheduledDate && !!draft.scheduledTime
+    if (step === 4) return !!draft.volumeCategory && draft.itemDescription.length >= 5
+    return true
   }
 
   const mutation = useMutation({
-    mutationFn: api.requests.create,
+    mutationFn: () => {
+      const scheduledAt = new Date(`${draft.scheduledDate}T${draft.scheduledTime}`).toISOString()
+      if (!draft.volumeCategory) throw new Error("Selecciona un volumen")
+      return api.requests.create({
+        originAddress: draft.origin!.address,
+        originLat: draft.origin!.lat,
+        originLng: draft.origin!.lng,
+        originFloor: draft.originFloor ? parseInt(draft.originFloor) : undefined,
+        originHasElevator: draft.originHasElevator,
+        destAddress: draft.dest!.address,
+        destLat: draft.dest!.lat,
+        destLng: draft.dest!.lng,
+        destFloor: draft.destFloor ? parseInt(draft.destFloor) : undefined,
+        destHasElevator: draft.destHasElevator,
+        scheduledAt,
+        flexibleDate: draft.flexibleDate,
+        volumeCategory: draft.volumeCategory,
+        itemDescription: draft.itemDescription,
+        notes: draft.notes || undefined,
+        photoUrls: draft.photoUrls,
+        budgetMax: draft.budgetMax ? parseInt(draft.budgetMax.replace(/\D/g, "")) : undefined,
+        helpersNeeded: draft.helpersNeeded,
+        hasFragileItems: draft.hasFragileItems,
+        assemblyRequired: draft.assemblyRequired,
+        packingIncluded: draft.packingIncluded,
+        parkingType: draft.parkingType,
+        longCarry: draft.longCarry,
+      })
+    },
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: ["requests", "my"] })
       navigate({ to: "/requests/$id", params: { id } })
     },
   })
 
-  const form = useForm({
-    defaultValues,
-    validators: {
-      onSubmit: schema,
-    },
-    onSubmit: async ({ value }) => {
-      const parsed = schema.parse(value)
-      await mutation.mutateAsync({
-        ...parsed,
-        // Coordinates: placeholder 0,0 — replace with Mapbox geocoder later
-        originLat: 0,
-        originLng: 0,
-        destLat: 0,
-        destLng: 0,
-        photoUrls,
-      })
-    },
-  })
+  const volumeLabel = VOLUMES.find((v) => v.value === draft.volumeCategory)?.label ?? ""
+  const parkingLabel = PARKING_OPTIONS.find((p) => p.value === draft.parkingType)?.label ?? ""
 
   return (
-    <div className="p-8">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          form.handleSubmit()
-        }}
-      >
-        <div className="flex gap-8 items-start">
-          <div className="flex flex-1 flex-col gap-6">
-            <div>
-              <h1 className="text-[24px] font-bold text-foreground">
-                Nueva solicitud de flete
-              </h1>
-              <p className="mt-1 text-[14px] text-muted-foreground">
-                Completa los detalles y recibe cotizaciones en minutos
-              </p>
-            </div>
-
-            <Section title="Origen">
-              <form.Field
-                name="originAddress"
-                validators={{ onBlur: z.string().min(1, "Dirección requerida") }}
-              >
-                {(field) => (
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="originAddress" className="text-[13px] font-medium text-[#444444]">
-                      Dirección de origen
-                    </Label>
-                    <Input
-                      id="originAddress"
-                      placeholder="Ej: Av. Providencia 1234, Providencia"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      className="h-10"
-                    />
-                    <FieldError error={field.state.meta.errors[0]?.toString()} />
-                  </div>
-                )}
-              </form.Field>
-
-              <div className="flex gap-3">
-                <form.Field name="originFloor">
-                  {(field) => (
-                    <div className="flex flex-col gap-1.5 w-28">
-                      <Label className="text-[13px] font-medium text-[#444444]">Piso</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={field.state.value ?? ""}
-                        onBlur={field.handleBlur}
-                        onChange={(e) =>
-                          field.handleChange(
-                            e.target.value === "" ? undefined : Number(e.target.value)
-                          )
-                        }
-                        className="h-10"
-                      />
-                    </div>
-                  )}
-                </form.Field>
-
-                <form.Field name="originHasElevator">
-                  {(field) => (
-                    <div className="flex flex-1 flex-col gap-1.5">
-                      <Label className="text-[13px] font-medium text-[#444444]">Ascensor</Label>
-                      <div className="flex h-10 items-center justify-between rounded-[8px] border border-[#E5E5E5] bg-white px-3">
-                        <span className="text-[14px] text-foreground">
-                          {field.state.value ? "Sí" : "No"}
-                        </span>
-                        <Switch
-                          checked={field.state.value}
-                          onCheckedChange={field.handleChange}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </form.Field>
-              </div>
-            </Section>
-
-            <Section title="Destino">
-              <form.Field
-                name="destAddress"
-                validators={{ onBlur: z.string().min(1, "Dirección requerida") }}
-              >
-                {(field) => (
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[13px] font-medium text-[#444444]">
-                      Dirección de destino
-                    </Label>
-                    <Input
-                      placeholder="Ej: Las Condes 2345"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      className="h-10"
-                    />
-                    <FieldError error={field.state.meta.errors[0]?.toString()} />
-                  </div>
-                )}
-              </form.Field>
-
-              <div className="flex gap-3">
-                <form.Field name="destFloor">
-                  {(field) => (
-                    <div className="flex flex-col gap-1.5 w-28">
-                      <Label className="text-[13px] font-medium text-[#444444]">Piso</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={field.state.value ?? ""}
-                        onBlur={field.handleBlur}
-                        onChange={(e) =>
-                          field.handleChange(
-                            e.target.value === "" ? undefined : Number(e.target.value)
-                          )
-                        }
-                        className="h-10"
-                      />
-                    </div>
-                  )}
-                </form.Field>
-
-                <form.Field name="destHasElevator">
-                  {(field) => (
-                    <div className="flex flex-1 flex-col gap-1.5">
-                      <Label className="text-[13px] font-medium text-[#444444]">Ascensor</Label>
-                      <div className="flex h-10 items-center justify-between rounded-[8px] border border-[#E5E5E5] bg-white px-3">
-                        <span className="text-[14px] text-foreground">
-                          {field.state.value ? "Sí" : "No"}
-                        </span>
-                        <Switch
-                          checked={field.state.value}
-                          onCheckedChange={field.handleChange}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </form.Field>
-              </div>
-            </Section>
-
-            <Section title="Detalles del envío">
-              <form.Field
-                name="volumeCategory"
-                validators={{ onBlur: volumeCategorySchema }}
-              >
-                {(field) => (
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-[13px] font-medium text-[#444444]">
-                      Volumen estimado
-                    </Label>
-                    <div className="grid grid-cols-4 gap-[10px]">
-                      {VOLUMES.map(({ value, label, Icon }) => {
-                        const active = field.state.value === value
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => field.handleChange(value)}
-                            className={cn(
-                              "flex flex-col items-center gap-2 rounded-[10px] border p-[14px] transition-all",
-                              active
-                                ? "border-[2px] border-[#F97316] bg-[#FFF4ED]"
-                                : "border border-[#E5E5E5] bg-[#FAFAFA] hover:border-[#CCCCCC]"
-                            )}
-                          >
-                            <Icon
-                              className={cn(
-                                "size-5",
-                                active ? "text-[#F97316]" : "text-[#888888]"
-                              )}
-                            />
-                            <span
-                              className={cn(
-                                "text-center text-[12px] leading-tight",
-                                active
-                                  ? "font-semibold text-[#F97316]"
-                                  : "text-[#666666]"
-                              )}
-                            >
-                              {label}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <FieldError error={field.state.meta.errors[0]?.toString()} />
-                  </div>
-                )}
-              </form.Field>
-
-              <form.Field
-                name="itemDescription"
-                validators={{
-                  onBlur: z.string().min(5, "Mínimo 5 caracteres"),
-                }}
-              >
-                {(field) => (
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[13px] font-medium text-[#444444]">
-                      Descripción de artículos
-                    </Label>
-                    <Input
-                      placeholder="Ej: 2 camas, 1 sofá, cajas de ropa..."
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      className="h-10"
-                    />
-                    <FieldError error={field.state.meta.errors[0]?.toString()} />
-                  </div>
-                )}
-              </form.Field>
-
-              <form.Field
-                name="scheduledAt"
-                validators={{ onBlur: z.string().min(1, "Selecciona fecha y hora") }}
-              >
-                {(field) => (
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-[13px] font-medium text-[#444444]">
-                      Fecha y hora preferida
-                    </Label>
-                    <input
-                      type="datetime-local"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => {
-                        const iso = e.target.value
-                          ? new Date(e.target.value).toISOString()
-                          : ""
-                        field.handleChange(iso)
-                      }}
-                      className="flex h-10 w-full rounded-[8px] border border-[#E5E5E5] bg-white px-3 py-2 text-[14px] text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                    />
-                    <FieldError error={field.state.meta.errors[0]?.toString()} />
-                  </div>
-                )}
-              </form.Field>
-            </Section>
-          </div>
-
-          <div className="flex w-[300px] shrink-0 flex-col gap-5">
-            <div className="rounded-[12px] border border-[#F0F0F0] bg-white p-5 flex flex-col gap-3">
-              <h2 className="text-[15px] font-semibold text-foreground">
-                Fotos <span className="text-[13px] font-normal text-muted-foreground">(opcional)</span>
-              </h2>
-              <p className="text-[13px] text-muted-foreground">
-                Ayuda a los conductores a entender el tamaño del envío
-              </p>
-              <PhotoUploader urls={photoUrls} onChange={setPhotoUrls} />
-            </div>
-
-            <form.Field name="notes">
-              {(field) => (
-                <div className="rounded-[12px] border border-[#F0F0F0] bg-white p-5 flex flex-col gap-3">
-                  <h2 className="text-[15px] font-semibold text-foreground">
-                    Notas adicionales
-                  </h2>
-                  <Textarea
-                    placeholder="Ej: Frágil, requiere embalaje especial..."
-                    rows={3}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    className="resize-none text-[14px]"
-                  />
-                </div>
-              )}
-            </form.Field>
-
-            <div className="flex gap-2.5 rounded-[10px] bg-[#FFF4ED] p-4">
-              <Info className="mt-px size-4 shrink-0 text-[#F97316]" />
-              <p className="text-[13px] text-[#B45309] leading-snug">
-                Las cotizaciones expiran en 48 horas. Puedes cancelar antes de aceptar una.
-              </p>
-            </div>
-
-            {mutation.error && (
-              <p className="text-[13px] text-destructive">
-                {(mutation.error as Error).message}
-              </p>
-            )}
-
-            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting]}>
-              {([canSubmit, isSubmitting]) => (
-                <Button
-                  type="submit"
-                  disabled={!canSubmit || isSubmitting || mutation.isPending}
-                  className="h-[48px] w-full rounded-[10px] text-[15px] font-semibold"
-                >
-                  {isSubmitting || mutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <>
-                      Publicar solicitud
-                      <ArrowRight className="size-4" />
-                    </>
-                  )}
-                </Button>
-              )}
-            </form.Subscribe>
+    <div className="min-h-full p-8">
+      <div className="mx-auto max-w-[540px]">
+        <div className="mb-8">
+          <h1 className="text-[22px] font-semibold text-[#121715]">Nueva solicitud</h1>
+          <div className="mt-4">
+            <StepBar step={step} />
           </div>
         </div>
-      </form>
+
+        <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-6">
+          {step === 1 && (
+            <AddressStep
+              value={draft.origin}
+              onChange={(r) => set("origin", r)}
+              floor={draft.originFloor}
+              onFloor={(v) => set("originFloor", v)}
+              elevator={draft.originHasElevator}
+              onElevator={(v) => set("originHasElevator", v)}
+              sessionToken={sessionToken}
+              attempted={attempted}
+            />
+          )}
+
+          {step === 2 && (
+            <AddressStep
+              value={draft.dest}
+              onChange={(r) => set("dest", r)}
+              floor={draft.destFloor}
+              onFloor={(v) => set("destFloor", v)}
+              elevator={draft.destHasElevator}
+              onElevator={(v) => set("destHasElevator", v)}
+              sessionToken={sessionToken}
+              attempted={attempted}
+            />
+          )}
+
+          {step === 3 && (
+            <FieldGroup>
+              <Field data-invalid={attempted && !draft.scheduledDate}>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">Fecha</FieldLabel>
+                <input
+                  type="date"
+                  className="flex h-10 w-full rounded-[8px] border border-[#E9E7E3] bg-white px-3 text-[14px] text-[#121715] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 aria-invalid:border-destructive"
+                  aria-invalid={attempted && !draft.scheduledDate}
+                  value={draft.scheduledDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => set("scheduledDate", e.target.value)}
+                />
+                {attempted && !draft.scheduledDate && <FieldError>Selecciona una fecha</FieldError>}
+              </Field>
+              <Field data-invalid={attempted && !draft.scheduledTime}>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">Hora preferida</FieldLabel>
+                <input
+                  type="time"
+                  className="flex h-10 w-full rounded-[8px] border border-[#E9E7E3] bg-white px-3 text-[14px] text-[#121715] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 aria-invalid:border-destructive"
+                  aria-invalid={attempted && !draft.scheduledTime}
+                  value={draft.scheduledTime}
+                  onChange={(e) => set("scheduledTime", e.target.value)}
+                />
+                {attempted && !draft.scheduledTime && <FieldError>Selecciona una hora</FieldError>}
+              </Field>
+              <Toggle value={draft.flexibleDate} onChange={(v) => set("flexibleDate", v)}>
+                <span className="text-[13px] font-medium text-[#121715]">Fecha flexible</span>
+                <p className="text-[11px] text-[#969e9b]">El transportista puede sugerir otro horario</p>
+              </Toggle>
+            </FieldGroup>
+          )}
+
+          {step === 4 && (
+            <FieldGroup>
+              <Field data-invalid={attempted && !draft.volumeCategory}>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">Volumen estimado</FieldLabel>
+                <div className="grid grid-cols-2 gap-2">
+                  {VOLUMES.map(({ value, label, sub, Icon }) => {
+                    const active = draft.volumeCategory === value
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => set("volumeCategory", value)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-[10px] border p-3 text-left transition-colors",
+                          active ? "border-2 border-primary bg-[#E7F4EE]" : "border-[1.5px] border-[#E9E7E3] bg-white"
+                        )}
+                      >
+                        <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-[8px]", active ? "bg-primary/10" : "bg-[#F5F4F0]")}>
+                          <Icon className={cn("size-5", active ? "text-primary" : "text-[#969e9b]")} />
+                        </div>
+                        <div>
+                          <div className={cn("text-[13px] font-semibold", active ? "text-primary" : "text-[#121715]")}>{label}</div>
+                          <div className="text-[11px] text-[#969e9b]">{sub}</div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                {attempted && !draft.volumeCategory && <FieldError>Selecciona un volumen</FieldError>}
+              </Field>
+
+              <Field data-invalid={attempted && draft.itemDescription.length < 5}>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">¿Qué vas a mover?</FieldLabel>
+                <Input
+                  placeholder="Ej: 2 camas, 1 sofá, cajas de ropa…"
+                  value={draft.itemDescription}
+                  aria-invalid={attempted && draft.itemDescription.length < 5}
+                  onChange={(e) => set("itemDescription", e.target.value)}
+                />
+                {attempted && draft.itemDescription.length < 5 && (
+                  <FieldError>Describe qué vas a mover (mínimo 5 caracteres)</FieldError>
+                )}
+              </Field>
+
+              <Field>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">Notas adicionales <span className="text-[#B0ABA5]">(opcional)</span></FieldLabel>
+                <textarea
+                  className="w-full resize-none rounded-[8px] border border-[#E9E7E3] bg-white px-3 py-2.5 text-[14px] text-[#121715] placeholder:text-[#B0ABA5] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                  rows={2}
+                  placeholder="Frágil, requiere embalaje especial…"
+                  value={draft.notes}
+                  onChange={(e) => set("notes", e.target.value)}
+                />
+              </Field>
+
+              <PhotoUploader urls={draft.photoUrls} onChange={(u) => set("photoUrls", u)} />
+            </FieldGroup>
+          )}
+
+          {step === 5 && (
+            <FieldGroup>
+              <p className="text-[13px] text-[#969e9b]">
+                Estos datos ayudan a los transportistas a cotizar con más precisión. Todos son opcionales.
+              </p>
+
+              {/* Budget */}
+              <Field>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">
+                  Presupuesto máximo <span className="text-[#B0ABA5]">(opcional)</span>
+                </FieldLabel>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#969e9b]">$</span>
+                  <Input
+                    className="pl-6"
+                    placeholder="Ej: 50.000"
+                    value={draft.budgetMax}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "")
+                      set("budgetMax", raw ? parseInt(raw).toLocaleString("es-CL") : "")
+                    }}
+                  />
+                </div>
+                <p className="text-[11px] text-[#969e9b]">Los transportistas ven este monto y ajustan su oferta.</p>
+              </Field>
+
+              {/* Helpers */}
+              <Field>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">¿Cuántos ayudantes necesitas?</FieldLabel>
+                <div className="flex gap-2">
+                  {[0, 1, 2, 3].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => set("helpersNeeded", n)}
+                      className={cn(
+                        "flex flex-1 flex-col items-center gap-1 rounded-[10px] border py-3 transition-colors",
+                        draft.helpersNeeded === n
+                          ? "border-2 border-primary bg-[#E7F4EE]"
+                          : "border-[1.5px] border-[#E9E7E3] bg-white"
+                      )}
+                    >
+                      <Users className={cn("size-4", draft.helpersNeeded === n ? "text-primary" : "text-[#969e9b]")} />
+                      <span className={cn("text-[12px] font-semibold", draft.helpersNeeded === n ? "text-primary" : "text-[#121715]")}>
+                        {n === 0 ? "Solo" : `+${n}`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#969e9b]">Además del transportista.</p>
+              </Field>
+
+              {/* Flags */}
+              <div className="flex flex-col gap-2">
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">Características especiales</FieldLabel>
+                <Toggle value={draft.hasFragileItems} onChange={(v) => set("hasFragileItems", v)}>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-3.5 text-amber-500" />
+                    <div>
+                      <span className="text-[13px] font-medium text-[#121715]">Artículos frágiles</span>
+                      <p className="text-[11px] text-[#969e9b]">Vidrios, electrónicos, obras de arte</p>
+                    </div>
+                  </div>
+                </Toggle>
+                <Toggle value={draft.assemblyRequired} onChange={(v) => set("assemblyRequired", v)}>
+                  <div className="flex items-center gap-2">
+                    <Wrench className="size-3.5 text-[#969e9b]" />
+                    <div>
+                      <span className="text-[13px] font-medium text-[#121715]">Requiere desarme / armado</span>
+                      <p className="text-[11px] text-[#969e9b]">Muebles que deben desmontarse</p>
+                    </div>
+                  </div>
+                </Toggle>
+                <Toggle value={draft.packingIncluded} onChange={(v) => set("packingIncluded", v)}>
+                  <div className="flex items-center gap-2">
+                    <Box className="size-3.5 text-[#969e9b]" />
+                    <div>
+                      <span className="text-[13px] font-medium text-[#121715]">Incluir embalaje</span>
+                      <p className="text-[11px] text-[#969e9b]">El transportista lleva materiales y empaca</p>
+                    </div>
+                  </div>
+                </Toggle>
+                <Toggle value={draft.longCarry} onChange={(v) => set("longCarry", v)}>
+                  <div className="flex items-center gap-2">
+                    <MoveRight className="size-3.5 text-[#969e9b]" />
+                    <div>
+                      <span className="text-[13px] font-medium text-[#121715]">Acarreo largo</span>
+                      <p className="text-[11px] text-[#969e9b]">Más de 20 m entre la puerta y el camión</p>
+                    </div>
+                  </div>
+                </Toggle>
+              </div>
+
+              {/* Parking */}
+              <Field>
+                <FieldLabel className="text-[12px] font-medium text-[#485450]">
+                  <ParkingCircle className="mr-1 inline size-3.5" />
+                  Tipo de estacionamiento en origen
+                </FieldLabel>
+                <div className="flex flex-col gap-1.5">
+                  {PARKING_OPTIONS.map(({ value, label, sub }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => set("parkingType", value)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-[8px] border p-2.5 text-left transition-colors",
+                        draft.parkingType === value
+                          ? "border-primary bg-[#E7F4EE]"
+                          : "border-[#E9E7E3] bg-white"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
+                        draft.parkingType === value ? "border-primary bg-primary" : "border-[#C4C0BA]"
+                      )}>
+                        {draft.parkingType === value && <div className="size-1.5 rounded-full bg-white" />}
+                      </div>
+                      <div>
+                        <span className="text-[12px] font-medium text-[#121715]">{label}</span>
+                        <p className="text-[11px] text-[#969e9b]">{sub}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </FieldGroup>
+          )}
+
+          {step === 6 && (
+            <div className="flex flex-col gap-1">
+              <p className="mb-3 text-[13px] font-semibold text-[#121715]">Revisa tu solicitud</p>
+              <ReviewRow label="Origen" value={draft.origin?.address ?? ""} />
+              {draft.originFloor && <ReviewRow label="Piso origen" value={draft.originFloor} />}
+              <ReviewRow label="Ascensor en origen" value={draft.originHasElevator ? "Sí" : "No"} />
+              <ReviewRow label="Destino" value={draft.dest?.address ?? ""} />
+              {draft.destFloor && <ReviewRow label="Piso destino" value={draft.destFloor} />}
+              <ReviewRow label="Ascensor en destino" value={draft.destHasElevator ? "Sí" : "No"} />
+              <ReviewRow
+                label="Fecha y hora"
+                value={`${new Date(`${draft.scheduledDate}T${draft.scheduledTime}`).toLocaleString("es-CL", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`}
+              />
+              {draft.flexibleDate && <ReviewRow label="Fecha flexible" value="Sí" />}
+              <ReviewRow label="Volumen" value={volumeLabel} />
+              <ReviewRow label="Descripción" value={draft.itemDescription} />
+              {draft.notes && <ReviewRow label="Notas" value={draft.notes} />}
+              {draft.photoUrls.length > 0 && <ReviewRow label="Fotos" value={`${draft.photoUrls.length} foto${draft.photoUrls.length > 1 ? "s" : ""}`} />}
+              {draft.budgetMax && <ReviewRow label="Presupuesto máximo" value={`$${draft.budgetMax}`} />}
+              <ReviewRow label="Ayudantes" value={draft.helpersNeeded === 0 ? "Solo transportista" : `+${draft.helpersNeeded} ayudante${draft.helpersNeeded > 1 ? "s" : ""}`} />
+              {draft.hasFragileItems && <ReviewRow label="Artículos frágiles" value="Sí" />}
+              {draft.assemblyRequired && <ReviewRow label="Desarme/armado" value="Sí" />}
+              {draft.packingIncluded && <ReviewRow label="Embalaje incluido" value="Sí" />}
+              {draft.longCarry && <ReviewRow label="Acarreo largo" value="Sí" />}
+              <ReviewRow label="Estacionamiento" value={parkingLabel} />
+
+              {mutation.error && (
+                <p className="mt-3 text-sm text-destructive">
+                  {(mutation.error as Error).message}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          {step > 1 ? (
+            <Button variant="ghost" onClick={() => setStep((s) => (s - 1) as Step)} className="gap-1.5 text-[#485450]">
+              <ArrowLeft className="size-4" /> Atrás
+            </Button>
+          ) : (
+            <div />
+          )}
+
+          {step < 6 ? (
+            <Button
+              onClick={() => {
+                if (!canNext()) { setAttempted(true); return }
+                setAttempted(false)
+                setStep((s) => (s + 1) as Step)
+              }}
+              className="gap-2"
+            >
+              {step === 5 ? "Revisar" : "Siguiente"} <ArrowRight className="size-4" />
+            </Button>
+          ) : (
+            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="gap-2">
+              {mutation.isPending ? <><Loader2 className="size-4 animate-spin" /> Publicando…</> : <>Publicar solicitud <ArrowRight className="size-4" /></>}
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

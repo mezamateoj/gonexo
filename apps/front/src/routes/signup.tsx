@@ -1,172 +1,237 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useMutation } from "@tanstack/react-query"
-import { useState } from "react"
-import { signUp } from "@/lib/auth-client"
+import { useForm } from "@tanstack/react-form"
+import { useEffect, useState } from "react"
+import { z } from "zod"
+import { signUp, useSession } from "@/lib/auth-client"
+import { useAppMode, type AppMode } from "@/lib/app-mode"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { cn } from "@/lib/utils"
+import { Truck, User } from "lucide-react"
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
 })
 
+const schema = z.object({
+  firstName: z.string().min(1, "Requerido"),
+  lastName: z.string().min(1, "Requerido"),
+  email: z.string().email("Ingresa un correo válido"),
+  password: z.string().min(8, "Mínimo 8 caracteres"),
+})
+
+const INTENTS: { key: AppMode; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: "client", label: "Necesito un flete", sub: "Publica solicitudes y contrata transportistas", icon: User },
+  { key: "driver", label: "Quiero transportar", sub: "Recibe solicitudes y cotiza fletes", icon: Truck },
+]
+
+function DarkPanel() {
+  return (
+    <div className="relative flex w-[500px] shrink-0 flex-col justify-between overflow-hidden bg-[#121715] p-10">
+      <Link to="/requests" className="relative z-10 flex items-center gap-2">
+        <div className="flex size-[26px] items-center justify-center rounded-[7px] bg-primary">
+          <span className="text-[13px] font-bold text-white">g</span>
+        </div>
+        <span className="text-[15px] font-semibold text-white">gonexo</span>
+      </Link>
+      <div
+        className="pointer-events-none absolute bg-primary"
+        style={{ width: 340, height: 520, borderRadius: 170, top: "50%", left: "50%", transform: "translate(-50%,-50%) rotate(30deg)", opacity: 0.85 }}
+      />
+      <div className="relative z-10">
+        <p className="text-[38px] font-bold leading-[1.15] tracking-tight text-white">Conecta.<br />Transporta.<br />Confía.</p>
+        <p className="mt-3 text-[13px] leading-relaxed text-white/45">Todo lo que necesitas para mover lo que importa.</p>
+      </div>
+    </div>
+  )
+}
+
 function SignupPage() {
   const navigate = useNavigate()
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const { data: session } = useSession()
+  const { setMode } = useAppMode()
+  const [intent, setIntent] = useState<AppMode>("client")
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      signUp.email({
-        name: `${firstName} ${lastName}`.trim(),
-        email,
-        password,
-      }),
-    onSuccess: () => navigate({ to: "/" }),
+  useEffect(() => {
+    if (session) navigate({ to: "/requests" })
+  }, [session, navigate])
+
+  const form = useForm({
+    defaultValues: { firstName: "", lastName: "", email: "", password: "" },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null)
+      try {
+        await signUp.email({
+          name: `${value.firstName} ${value.lastName}`.trim(),
+          email: value.email,
+          password: value.password,
+        })
+        if (intent === "driver") {
+          navigate({ to: "/driver-onboarding" })
+          return
+        }
+        setMode("client")
+        navigate({ to: "/requests" })
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Error al crear la cuenta. Intenta de nuevo.")
+      }
+    },
   })
-
-  const errorMessage =
-    mutation.error instanceof Error
-      ? mutation.error.message
-      : mutation.error
-        ? "Sign up failed. Please try again."
-        : null
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <div className="relative flex w-[660px] shrink-0 flex-col justify-between overflow-hidden bg-[#1A1A1A] p-12">
-        <div className="relative z-10 flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-md bg-primary">
-            <span className="text-sm font-bold text-white">g</span>
-          </div>
-          <span className="text-base font-semibold text-white">gonexo</span>
-        </div>
-
-        <div
-          className="pointer-events-none absolute bg-primary opacity-90"
-          style={{
-            width: 320,
-            height: 480,
-            borderRadius: "160px",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%) rotate(30deg)",
-          }}
-        />
-
-        <div className="relative z-10 flex flex-col gap-3">
-          <p className="text-4xl font-bold leading-tight text-white">
-            Empieza tu viaje<br />hoy mismo.
-          </p>
-          <p className="text-sm text-white/50">
-            Miles ya están listo/empezando con gonexo.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-1 items-center justify-center bg-[#FAFAFA]">
-        <div className="flex w-[360px] flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-semibold text-foreground">Create your account</h1>
-            <p className="text-sm text-muted-foreground">Get started free. No credit card required.</p>
+      <DarkPanel />
+      <div className="flex flex-1 items-center justify-center overflow-y-auto bg-[#FAFAF8]">
+        <div className="flex w-[340px] flex-col gap-6 py-10">
+          <div>
+            <h1 className="text-[22px] font-semibold text-[#121715]">Crea tu cuenta</h1>
+            <p className="mt-1 text-[14px] text-[#969e9b]">Empieza gratis. Sin tarjeta requerida.</p>
           </div>
 
-          <div className="flex gap-1 rounded-lg bg-secondary p-1">
-            <Link
-              to="/login"
-              className="flex-1 rounded-md py-1.5 text-center text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Log in
-            </Link>
-            <span className="flex-1 rounded-md bg-background py-1.5 text-center text-sm font-medium text-foreground shadow-sm">
-              Sign up
-            </span>
+          <div className="flex gap-[2px] rounded-[9px] bg-[#F0EEE9] p-[3px]">
+            <Link to="/login" className="flex-1 rounded-[7px] py-2 text-center text-[13px] font-medium text-[#969e9b]">Iniciar sesión</Link>
+            <span className="flex-1 rounded-[7px] bg-white py-2 text-center text-[13px] font-semibold text-[#121715] shadow-sm">Crear cuenta</span>
+          </div>
+
+          {/* Intent selection */}
+          <div>
+            <p className="mb-2 text-[12px] font-medium text-[#485450]">¿Qué quieres hacer?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {INTENTS.map(({ key, label, sub, icon: Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setIntent(key)}
+                  className={cn(
+                    "flex flex-col items-start gap-1 rounded-[10px] border p-3 text-left transition-colors",
+                    intent === key
+                      ? "border-2 border-primary bg-white"
+                      : "border-[1.5px] border-[#E9E7E3] bg-white hover:border-[#C4C0BA]"
+                  )}
+                >
+                  <Icon className={cn("size-4", intent === key ? "text-primary" : "text-[#969e9b]")} />
+                  <span className={cn("text-[12px] font-semibold leading-tight", intent === key ? "text-primary" : "text-[#121715]")}>
+                    {label}
+                  </span>
+                  <span className="text-[11px] leading-tight text-[#969e9b]">{sub}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <form
+            onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}
             className="flex flex-col gap-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              mutation.mutate()
-            }}
           >
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="firstName">First name</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  placeholder="Jane"
-                  autoComplete="given-name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
+            <FieldGroup>
+              <div className="grid grid-cols-2 gap-3">
+                <form.Field name="firstName">
+                  {(field) => {
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                    return (
+                      <Field data-invalid={isInvalid || undefined}>
+                        <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Nombre</FieldLabel>
+                        <Input
+                          id={field.name}
+                          placeholder="Juan"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          aria-invalid={isInvalid}
+                        />
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      </Field>
+                    )
+                  }}
+                </form.Field>
+
+                <form.Field name="lastName">
+                  {(field) => {
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                    return (
+                      <Field data-invalid={isInvalid || undefined}>
+                        <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Apellido</FieldLabel>
+                        <Input
+                          id={field.name}
+                          placeholder="Díaz"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          aria-invalid={isInvalid}
+                        />
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      </Field>
+                    )
+                  }}
+                </form.Field>
               </div>
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Label htmlFor="lastName">Last name</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  placeholder="Smith"
-                  autoComplete="family-name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@company.com"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+              <form.Field name="email">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid || undefined}>
+                      <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Correo electrónico</FieldLabel>
+                      <Input
+                        id={field.name}
+                        type="email"
+                        placeholder="juan@empresa.cl"
+                        autoComplete="email"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="At least 8 characters"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={8}
-                required
-              />
-            </div>
+              <form.Field name="password">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  return (
+                    <Field data-invalid={isInvalid || undefined}>
+                      <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Contraseña</FieldLabel>
+                      <Input
+                        id={field.name}
+                        type="password"
+                        placeholder="Mínimo 8 caracteres"
+                        autoComplete="new-password"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+            </FieldGroup>
 
-            {errorMessage && (
-              <p className="text-sm text-destructive">{errorMessage}</p>
+            {submitError && (
+              <p className="rounded-[8px] bg-red-50 px-3 py-2.5 text-[13px] text-red-600">
+                {submitError}
+              </p>
             )}
 
-            <Button type="submit" className="w-full" disabled={mutation.isPending}>
-              {mutation.isPending ? "Creating account…" : "Create account"}
-            </Button>
+            <form.Subscribe selector={(s) => s.isSubmitting}>
+              {(isSubmitting) => (
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Creando cuenta…" : "Crear cuenta"}
+                </Button>
+              )}
+            </form.Subscribe>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
-            By creating an account you agree to our{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-foreground">Terms of Service</a>
-            {" "}and{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-foreground">Privacy Policy</a>.
-          </p>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
-              Log in
-            </Link>
+          <p className="text-center text-sm text-[#969e9b]">
+            ¿Ya tienes cuenta?{" "}
+            <Link to="/login" className="font-medium text-primary underline underline-offset-4">Inicia sesión</Link>
           </p>
         </div>
       </div>

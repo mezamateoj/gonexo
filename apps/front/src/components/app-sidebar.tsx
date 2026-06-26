@@ -1,4 +1,6 @@
-import { Link, useRouterState } from "@tanstack/react-router"
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query"
+import { useEffect } from "react"
 import {
   Sidebar,
   SidebarContent,
@@ -7,11 +9,9 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
@@ -27,39 +27,44 @@ import {
   CirclePlus,
   Briefcase,
   Truck,
-  ChartBar,
+  MessageSquare,
+  Car,
   Settings,
   LogOut,
   ChevronsUpDown,
   PanelLeftClose,
+  Check,
+  User,
 } from "lucide-react"
 import { signOut, useSession } from "@/lib/auth-client"
-import { useNavigate } from "@tanstack/react-router"
+import { useAppMode, type AppMode } from "@/lib/app-mode"
+import { cn } from "@/lib/utils"
+import { api } from "@/lib/api"
 
-const NAV_MAIN = [
+const CLIENT_NAV = [
   { label: "Mis solicitudes", icon: LayoutList, to: "/requests" },
-  { label: "Nueva solicitud", icon: CirclePlus, to: "/requests/new" },
-  { label: "Mis trabajos", icon: Briefcase, to: "/jobs", badge: "1" },
+  { label: "Publicar flete", icon: CirclePlus, to: "/requests/new" },
+  { label: "Mis trabajos", icon: Briefcase, to: "/jobs" },
 ] as const
 
-const NAV_DRIVER = [
-  { label: "Solicitudes disponibles", icon: Truck, to: "/available", badge: "14" },
-  { label: "Estadísticas", icon: ChartBar, to: "/stats" },
+const DRIVER_NAV = [
+  { label: "Disponibles", icon: Truck, to: "/available" },
+  { label: "Mis cotizaciones", icon: MessageSquare, to: "/quotes" },
+  { label: "Mis trabajos", icon: Briefcase, to: "/jobs" },
+  { label: "Mi vehículo", icon: Car, to: "/vehicle" },
 ] as const
 
 function NavItem({
   label,
   icon: Icon,
   to,
-  badge,
 }: {
   label: string
   icon: React.ComponentType<{ className?: string }>
   to: string
-  badge?: string
 }) {
   const { pathname } = useRouterState({ select: (s) => s.location })
-  const isActive = pathname === to || pathname.startsWith(to + "/")
+  const isActive = pathname === to || (to !== "/" && pathname.startsWith(to + "/"))
 
   return (
     <SidebarMenuItem>
@@ -69,8 +74,75 @@ function NavItem({
           <span>{label}</span>
         </Link>
       </SidebarMenuButton>
-      {badge && <SidebarMenuBadge>{badge}</SidebarMenuBadge>}
     </SidebarMenuItem>
+  )
+}
+
+function ModeSwitcher({
+  mode,
+  setMode,
+  hasDriverProfile,
+}: {
+  mode: AppMode
+  setMode: (m: AppMode) => void
+  hasDriverProfile: boolean
+}) {
+  const navigate = useNavigate()
+
+  function switchTo(next: AppMode) {
+    if (next === "driver" && !hasDriverProfile) {
+      navigate({ to: "/driver-onboarding" })
+      return
+    }
+    setMode(next)
+    navigate({ to: next === "driver" ? "/available" : "/requests" })
+  }
+
+  const isDriver = mode === "driver"
+
+  return (
+    <div className="px-2 pt-1 pb-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className={cn(
+            "flex w-full items-center gap-2 rounded-[8px] px-2.5 py-1.5 text-left transition-colors",
+            "hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center"
+          )}>
+            <div className={cn(
+              "flex size-5 shrink-0 items-center justify-center rounded-[5px]",
+              isDriver ? "bg-primary/15" : "bg-[#E9E7E3]"
+            )}>
+              {isDriver
+                ? <Truck className="size-3 text-primary" />
+                : <User className="size-3 text-[#485450]" />
+              }
+            </div>
+            <span className="flex-1 text-[13px] font-semibold text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden">
+              {isDriver ? "Transportista" : "Cliente"}
+            </span>
+            <ChevronsUpDown className="size-3 shrink-0 text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" sideOffset={4} className="w-52">
+          <DropdownMenuItem
+            onClick={() => switchTo("client")}
+            className={cn(!isDriver && "bg-accent")}
+          >
+            <User className="size-4" />
+            Cliente
+            {!isDriver && <Check className="ml-auto size-3.5" />}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => switchTo("driver")}
+            className={cn(isDriver && "bg-accent")}
+          >
+            <Truck className="size-4" />
+            Transportista
+            {isDriver && <Check className="ml-auto size-3.5" />}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
@@ -78,6 +150,17 @@ export function AppSidebar() {
   const { data: session } = useSession()
   const navigate = useNavigate()
   const { toggleSidebar } = useSidebar()
+  const { mode, setMode } = useAppMode()
+  const { data: driverProfile, isFetched: driverProfileFetched } = useQuery({
+    queryKey: ["drivers", "me"],
+    queryFn: api.drivers.me,
+  })
+
+  useEffect(() => {
+    if (driverProfileFetched && mode === "driver" && !driverProfile) {
+      setMode("client")
+    }
+  }, [driverProfile, driverProfileFetched, mode, setMode])
 
   const user = session?.user
   const initials = user?.name
@@ -88,6 +171,10 @@ export function AppSidebar() {
     await signOut()
     navigate({ to: "/login" })
   }
+
+  const isDriver = mode === "driver"
+  const nav = isDriver ? DRIVER_NAV : CLIENT_NAV
+  const groupLabel = isDriver ? "TRANSPORTISTA" : "CLIENTE"
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -102,6 +189,7 @@ export function AppSidebar() {
             </span>
           </Link>
           <button
+            type="button"
             onClick={toggleSidebar}
             className="group-data-[collapsible=icon]:hidden flex size-7 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
           >
@@ -111,25 +199,14 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-1 py-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.08em] text-sidebar-foreground/60 px-2 mb-1">
-            PRINCIPAL
-          </SidebarGroupLabel>
-          <SidebarMenu>
-            {NAV_MAIN.map((item) => (
-              <NavItem key={item.to} {...item} />
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarSeparator className="bg-sidebar-border" />
+        <ModeSwitcher mode={mode} setMode={setMode} hasDriverProfile={!!driverProfile} />
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] font-semibold tracking-[0.08em] text-sidebar-foreground/60 px-2 mb-1">
-            CONDUCTOR
+            {groupLabel}
           </SidebarGroupLabel>
           <SidebarMenu>
-            {NAV_DRIVER.map((item) => (
+            {nav.map((item) => (
               <NavItem key={item.to} {...item} />
             ))}
           </SidebarMenu>
@@ -155,7 +232,7 @@ export function AppSidebar() {
                       {user?.name ?? "Usuario"}
                     </span>
                     <span className="text-[11px] text-sidebar-foreground leading-none">
-                      Cliente
+                      {isDriver ? "Transportista" : "Cliente"}
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-3.5 text-sidebar-foreground group-data-[collapsible=icon]:hidden" />

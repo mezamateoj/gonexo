@@ -6,9 +6,9 @@ import type { Db } from "../db";
 export const createAuth = (db?: Db) =>
   betterAuth({
     database: drizzleAdapter(db ?? {}, { provider: "sqlite", schema }),
-    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5173",
+    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:8787",
     secret: process.env.BETTER_AUTH_SECRET,
-    trustedOrigins: ["https://gonexo-front.mezamateoj.workers.dev"],
+    trustedOrigins: ["http://localhost:5173", "https://gonexo-front.mezamateoj.workers.dev"],
     emailAndPassword: {
       enabled: true,
     },

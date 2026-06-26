@@ -1,4 +1,4 @@
-import type { RequestSummary, VolumeCategory } from "./types"
+import type { RequestSummary, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, OpenRequest, JobDetail, JobSummary, MyQuote } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -27,10 +27,18 @@ export interface CreateRequestInput {
   destFloor?: number
   destHasElevator: boolean
   scheduledAt: string
+  flexibleDate: boolean
   volumeCategory: VolumeCategory
   itemDescription: string
   notes?: string
   photoUrls: string[]
+  budgetMax?: number
+  helpersNeeded: number
+  hasFragileItems: boolean
+  assemblyRequired: boolean
+  packingIncluded: boolean
+  parkingType: "street" | "garage" | "loading_dock"
+  longCarry: boolean
 }
 
 export async function uploadFile(file: File): Promise<string> {
@@ -49,8 +57,62 @@ export async function uploadFile(file: File): Promise<string> {
 export const api = {
   requests: {
     my: () => apiFetch<RequestSummary[]>("/api/requests/my"),
+    list: (page = 1) =>
+      apiFetch<{ data: OpenRequest[]; page: number; limit: number }>(`/api/requests?page=${page}`),
+    get: (id: string) => apiFetch<RequestDetail>(`/api/requests/${id}`),
     create: (body: CreateRequestInput) =>
       apiFetch<{ id: string }>("/api/requests", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    submitQuote: (requestId: string, body: { price: number; message?: string }) =>
+      apiFetch<{ id: string }>(`/api/requests/${requestId}/quotes`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    cancel: (id: string) =>
+      apiFetch<{ ok: boolean }>(`/api/requests/${id}/cancel`, { method: "PATCH" }),
+  },
+  quotes: {
+    my: () => apiFetch<MyQuote[]>("/api/quotes/my"),
+    accept: (quoteId: string) =>
+      apiFetch<{ jobId: string }>(`/api/quotes/${quoteId}/accept`, { method: "POST" }),
+  },
+  jobs: {
+    my: () => apiFetch<JobSummary[]>("/api/jobs/my"),
+    get: (id: string) => apiFetch<JobDetail>(`/api/jobs/${id}`),
+    updateStatus: (id: string, status: "on_the_way" | "arrived" | "completed") =>
+      apiFetch<{ status: string }>(`/api/jobs/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    confirm: (id: string) =>
+      apiFetch<{ ok: boolean }>(`/api/jobs/${id}/confirm`, { method: "POST" }),
+    review: (id: string, body: { rating: number; comment?: string }) =>
+      apiFetch<{ ok: boolean }>(`/api/jobs/${id}/reviews`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  },
+  geo: {
+    suggest: (q: string, session: string) =>
+      apiFetch<{ suggestions: { mapbox_id: string; name: string; place_formatted: string }[] }>(
+        `/api/geo/suggest?q=${encodeURIComponent(q)}&session=${session}`
+      ),
+    retrieve: (id: string, session: string) =>
+      apiFetch<{ features: { geometry: { coordinates: [number, number] }; properties: { full_address: string } }[] }>(
+        `/api/geo/retrieve?id=${encodeURIComponent(id)}&session=${session}`
+      ),
+  },
+  drivers: {
+    me: () => apiFetch<DriverProfile | null>("/api/drivers/me"),
+    upsertMe: (body: UpsertDriverInput) =>
+      apiFetch<{ id: string }>("/api/drivers/me", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    enrich: (body: { photoUrls: string[]; papersUrl?: string }) =>
+      apiFetch<EnrichVehicleResult>("/api/drivers/enrich", {
         method: "POST",
         body: JSON.stringify(body),
       }),
