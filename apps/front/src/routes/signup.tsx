@@ -23,7 +23,7 @@ export const Route = createFileRoute("/signup")({
 const firstNameSchema = z.string().min(1, "Requerido");
 const lastNameSchema = z.string().min(1, "Requerido");
 const emailSchema = z.email({ message: "Ingresa un correo válido" });
-const phoneSchema = z.string().optional();
+const phoneSchema = z.string();
 const passwordSchema = z.string().min(8, "Mínimo 8 caracteres");
 
 const formSchema = z.object({
