@@ -127,7 +127,7 @@ function SectionHeader({ step }: { step: Step }) {
   )
 }
 
-function VolumeCard({ value, label, sub, Icon, active, onSelect }: {
+function VolumeCard({ label, sub, Icon, active, onSelect }: {
   value: VolumeCategory; label: string; sub: string
   Icon: React.ComponentType<{ className?: string }>
   active: boolean; onSelect: () => void
