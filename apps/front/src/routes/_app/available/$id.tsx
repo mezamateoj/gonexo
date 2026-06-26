@@ -6,6 +6,7 @@ import { z } from "zod"
 import { MapPin, ChevronLeft, Package, Calendar, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import { useSession } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -145,7 +146,7 @@ function DriverOpportunityPage() {
   const { data: session } = useSession()
 
   const { data: req, isLoading, isError } = useQuery({
-    queryKey: ["requests", id],
+    queryKey: queryKeys.requests.detail(id),
     queryFn: () => api.requests.get(id),
   })
 
@@ -364,7 +365,10 @@ function DriverOpportunityPage() {
           {isOpen && !myQuote && (
             <SubmitQuoteForm
               requestId={id}
-              onSuccess={() => qc.invalidateQueries({ queryKey: ["requests", id] })}
+              onSuccess={() => {
+                qc.invalidateQueries({ queryKey: queryKeys.requests.detail(id) })
+                qc.invalidateQueries({ queryKey: queryKeys.quotes.my })
+              }}
             />
           )}
 

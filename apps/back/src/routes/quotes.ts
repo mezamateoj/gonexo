@@ -2,7 +2,9 @@ import { Hono } from "hono";
 import { eq, and, ne, desc } from "drizzle-orm";
 import { quote, request, job } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
+import { conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
+import { logger } from "../lib/logger";
 
 const PLATFORM_FEE_RATE = 0.12;
 
@@ -43,7 +45,7 @@ quotes.get("/my", requireAuth, async (c) => {
 quotes.post("/:id/accept", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
-  
+
   const quoteId = c.req.param("id");
 
   const q = await db.query.quote.findFirst({
@@ -51,10 +53,9 @@ quotes.post("/:id/accept", requireAuth, async (c) => {
     with: { request: true },
   });
 
-  if (!q) return c.json({ error: "Quote not found or not pending" }, 404);
-  if (q.request.userId !== user.id) return c.json({ error: "Forbidden" }, 403);
-  if (q.request.status !== "open")
-    return c.json({ error: "Request no longer open" }, 409);
+  if (!q) throw notFound("Quote not found or not pending");
+  if (q.request.userId !== user.id) throw forbidden();
+  if (q.request.status !== "open") throw conflict("Request no longer open");
 
   const agreedPrice = q.price;
   const platformFee = Math.round(agreedPrice * PLATFORM_FEE_RATE);
@@ -62,10 +63,7 @@ quotes.post("/:id/accept", requireAuth, async (c) => {
   const jobId = crypto.randomUUID();
 
   await db.batch([
-    db
-      .update(quote)
-      .set({ status: "accepted" })
-      .where(eq(quote.id, quoteId)),
+    db.update(quote).set({ status: "accepted" }).where(eq(quote.id, quoteId)),
 
     db
       .update(quote)
@@ -89,6 +87,16 @@ quotes.post("/:id/accept", requireAuth, async (c) => {
     }),
   ]);
 
+  logger.info("Quote accepted → job created: {jobId} (quote {quoteId}, request {requestId})", {
+    jobId,
+    quoteId,
+    requestId: q.requestId,
+    driverId: q.driverId,
+    clientId: user.id,
+    agreedPrice,
+    platformFee,
+    driverPayout,
+  });
   return c.json({ jobId }, 201);
 });
 

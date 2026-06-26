@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { useForm } from "@tanstack/react-form"
 import { useState } from "react"
 import { z } from "zod"
@@ -8,6 +9,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { useAppMode } from "@/lib/app-mode"
+import { queryKeys } from "@/lib/query-keys"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 
@@ -30,6 +32,7 @@ const plateSchema = z.string().min(4, "Ingresa una patente válida").max(10, "Pa
 
 function DriverOnboardingPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { setMode } = useAppMode()
   const [vehicleType, setVehicleType] = useState<VehicleType>("van")
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -44,6 +47,8 @@ function DriverOnboardingPage() {
           vehicleType,
           vehiclePlate: value.plate.toUpperCase(),
         })
+        const profile = await api.drivers.me()
+        queryClient.setQueryData(queryKeys.drivers.me, profile)
         setMode("driver")
         navigate({ to: "/available" })
       } catch (err) {

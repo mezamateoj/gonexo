@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import { EmptyState } from "@/components/requests/empty-state"
 import { PromoCard } from "@/components/requests/promo-card"
 import { RequestCard } from "@/components/requests/request-card"
@@ -25,7 +26,7 @@ function RequestsPage() {
   const [filter, setFilter] = useState<FilterTab>("all")
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["requests", "my"],
+    queryKey: queryKeys.requests.my,
     queryFn: api.requests.my,
   })
 

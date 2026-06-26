@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import { Car } from "lucide-react"
 
 export const Route = createFileRoute("/_app/vehicle")({
@@ -16,7 +17,7 @@ const VEHICLE_LABELS: Record<string, { label: string; emoji: string }> = {
 
 function VehiclePage() {
   const { data: profile, isLoading } = useQuery({
-    queryKey: ["driver", "me"],
+    queryKey: queryKeys.drivers.me,
     queryFn: api.drivers.me,
   })
 

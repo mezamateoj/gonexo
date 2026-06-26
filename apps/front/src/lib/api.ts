@@ -2,6 +2,12 @@ import type { RequestSummary, VolumeCategory, DriverProfile, UpsertDriverInput, 
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
+type ApiErrorResponse = {
+  error?: string | {
+    message?: string
+  }
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
@@ -9,8 +15,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }))
-    throw new Error((err as { error?: string }).error ?? "Request failed")
+    const err = await res.json().catch(() => ({ error: "Request failed" })) as ApiErrorResponse
+    throw new Error(typeof err.error === "string" ? err.error : err.error?.message ?? "Request failed")
   }
   return res.json() as Promise<T>
 }

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { badRequest, upstreamError } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 
 const MAPBOX_SUGGEST_URL = "https://api.mapbox.com/search/searchbox/v1/suggest";
@@ -13,7 +14,7 @@ geo.get("/suggest", async (c) => {
   const session = c.req.query("session");
 
   if (!q || !session) {
-    return c.json({ error: "q and session are required" }, 400);
+    throw badRequest("q and session are required");
   }
 
   const url = new URL(MAPBOX_SUGGEST_URL);
@@ -26,7 +27,7 @@ geo.get("/suggest", async (c) => {
   const res = await fetch(url.toString());
   console.log("res geo", res);
   if (!res.ok) {
-    return c.json({ error: "Geocoding service error" }, 502);
+    throw upstreamError("Geocoding service error");
   }
 
   const data = await res.json();
@@ -39,7 +40,7 @@ geo.get("/retrieve", async (c) => {
   const session = c.req.query("session");
 
   if (!id || !session) {
-    return c.json({ error: "id and session are required" }, 400);
+    throw badRequest("id and session are required");
   }
 
   const url = new URL(`${MAPBOX_RETRIEVE_URL}/${encodeURIComponent(id)}`);
@@ -48,7 +49,7 @@ geo.get("/retrieve", async (c) => {
 
   const res = await fetch(url.toString());
   if (!res.ok) {
-    return c.json({ error: "Geocoding service error" }, 502);
+    throw upstreamError("Geocoding service error");
   }
 
   const data = await res.json();

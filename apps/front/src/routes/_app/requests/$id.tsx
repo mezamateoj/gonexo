@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { MapPin, ChevronLeft, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DetailRow } from "@/components/requests/detail-row"
 import { QuoteCard } from "@/components/requests/quote-card"
@@ -51,15 +52,16 @@ function RequestDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: req, isLoading, isError } = useQuery({
-    queryKey: ["requests", id],
+    queryKey: queryKeys.requests.detail(id),
     queryFn: () => api.requests.get(id),
   })
 
   const acceptMutation = useMutation({
     mutationFn: (quoteId: string) => api.quotes.accept(quoteId),
     onSuccess: ({ jobId }) => {
-      queryClient.invalidateQueries({ queryKey: ["requests", id] })
-      queryClient.invalidateQueries({ queryKey: ["requests", "my"] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.my })
       navigate({ to: "/jobs/$id", params: { id: jobId } })
     },
   })
@@ -67,8 +69,9 @@ function RequestDetailPage() {
   const cancelMutation = useMutation({
     mutationFn: () => api.requests.cancel(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["requests", id] })
-      queryClient.invalidateQueries({ queryKey: ["requests", "my"] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(id) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.available(1) })
     },
   })
 

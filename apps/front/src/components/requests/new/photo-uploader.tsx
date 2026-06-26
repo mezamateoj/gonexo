@@ -32,7 +32,7 @@ export function PhotoUploader({ urls, onChange }: { urls: string[]; onChange: (u
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
       {urls.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {urls.map((url) => (
+          {urls.map((url, i) => (
             <div key={url} className="relative size-16 shrink-0">
               <img src={url} alt="" className="size-16 rounded-[8px] object-cover" />
               <button

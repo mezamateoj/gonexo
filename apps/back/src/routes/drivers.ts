@@ -4,8 +4,10 @@ import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { driverProfile, review } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
+import { notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { enrichVehicle } from "../ai/vehicle-enrichment";
+import { logger } from "../lib/logger";
 
 const drivers = new Hono<AppEnv>();
 
@@ -49,9 +51,15 @@ drivers.post(
       where: eq(driverProfile.userId, user.id),
     });
 
-    const hasDocuments = !!(body.licenseUrl || body.vehiclePhotos?.length || body.papersUrl);
+    const hasDocuments = !!(
+      body.licenseUrl ||
+      body.vehiclePhotos?.length ||
+      body.papersUrl
+    );
     const documentsStatus = hasDocuments ? "submitted" : "pending";
-    const vehiclePhotosJson = body.vehiclePhotos ? JSON.stringify(body.vehiclePhotos) : null;
+    const vehiclePhotosJson = body.vehiclePhotos
+      ? JSON.stringify(body.vehiclePhotos)
+      : null;
 
     if (existing) {
       await db
@@ -70,6 +78,12 @@ drivers.post(
           documentsStatus,
         })
         .where(eq(driverProfile.userId, user.id));
+      logger.info("Driver profile updated: {userId} ({vehicleType} {vehiclePlate}, docs: {documentsStatus})", {
+        userId: user.id,
+        vehicleType: body.vehicleType,
+        vehiclePlate: body.vehiclePlate,
+        documentsStatus,
+      });
       return c.json({ id: existing.id });
     }
 
@@ -89,8 +103,15 @@ drivers.post(
       vehicleCapacity: body.vehicleCapacity ?? null,
       documentsStatus,
     });
+    logger.info("Driver profile created: {id} for user {userId} ({vehicleType} {vehiclePlate})", {
+      id,
+      userId: user.id,
+      vehicleType: body.vehicleType,
+      vehiclePlate: body.vehiclePlate,
+      documentsStatus,
+    });
     return c.json({ id }, 201);
-  }
+  },
 );
 
 drivers.post(
@@ -98,11 +119,22 @@ drivers.post(
   requireAuth,
   zValidator("json", enrichSchema),
   async (c) => {
+    const user = c.get("user")!;
     const { photoUrls, papersUrl } = c.req.valid("json");
     const apiKey = c.env.ANTHROPIC_API_KEY;
+    logger.debug("Vehicle enrichment started for user {userId} ({photoCount} photos)", {
+      userId: user.id,
+      photoCount: photoUrls.length,
+      hasPapers: !!papersUrl,
+    });
     const result = await enrichVehicle(photoUrls, papersUrl ?? null, apiKey);
+    logger.info("Vehicle enrichment complete for user {userId} ({attributes} attributes)", {
+      userId: user.id,
+      attributes: result.attributes.length,
+      vehicleCapacity: result.vehicleCapacity,
+    });
     return c.json(result);
-  }
+  },
 );
 
 drivers.get("/:id", async (c) => {
@@ -113,7 +145,7 @@ drivers.get("/:id", async (c) => {
       user: { columns: { id: true, name: true, image: true } },
     },
   });
-  if (!profile) return c.json({ error: "Not found" }, 404);
+  if (!profile) throw notFound();
 
   const recentReviews = await db.query.review.findMany({
     where: eq(review.revieweeId, profile.userId),

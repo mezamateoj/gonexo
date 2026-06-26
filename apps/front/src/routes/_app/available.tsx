@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { queryKeys } from "@/lib/query-keys"
 import type { OpenRequest, VolumeCategory } from "@/lib/types"
 
 export const Route = createFileRoute("/_app/available")({
@@ -315,12 +316,12 @@ function AvailablePage() {
   const navigate = useNavigate()
 
   const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: ["drivers", "me"],
+    queryKey: queryKeys.drivers.me,
     queryFn: api.drivers.me,
   })
 
   const { data, isLoading: requestsLoading, isError } = useQuery({
-    queryKey: ["requests", "available"],
+    queryKey: queryKeys.requests.available(1),
     queryFn: () => api.requests.list(),
     enabled: !!profile,
   })

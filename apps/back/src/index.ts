@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { configureSync, getConsoleSink, resetSync } from "@logtape/logtape";
+import { honoLogger } from "@logtape/hono";
 import { createAuth } from "./lib/auth";
+import { AppError, notFound } from "./lib/errors";
+import { logger } from "./lib/logger";
 import type { AppEnv } from "./lib/types";
 import { dbMiddleware } from "./middleware/db";
 import requests from "./routes/requests";
@@ -11,6 +15,15 @@ import users from "./routes/users";
 import uploads from "./routes/uploads";
 import geo from "./routes/geo";
 import seed from "./routes/seed";
+
+resetSync();
+configureSync({
+  sinks: { console: getConsoleSink() },
+  loggers: [
+    { category: ["gonexo"], sinks: ["console"], lowestLevel: "debug" },
+    { category: ["logtape", "meta"], sinks: ["console"], lowestLevel: "warning" },
+  ],
+});
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -29,9 +42,34 @@ app.use("*", (c, next) =>
 );
 
 app.onError((err, c) => {
-  console.error(err);
-  return c.json({ error: "Internal server error" }, 500);
+  if (err instanceof AppError) {
+    return c.json(
+      { error: { code: err.code, message: err.message } },
+      err.status,
+    );
+  }
+
+  logger.error("Unhandled error on {method} {path}: {error}", {
+    method: c.req.method,
+    path: c.req.path,
+    error: err,
+  });
+  return c.json(
+    {
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Internal server error",
+      },
+    },
+    500,
+  );
 });
+
+app.use("*", honoLogger({
+  category: ["gonexo", "http"],
+  format: "structured-combined",
+  skip: (c) => c.req.path === "/",
+}));
 
 app.use("*", dbMiddleware);
 
@@ -66,7 +104,7 @@ app.route("/api", api);
 // Switch to a proper R2 custom domain later; this is fine for MVP.
 app.get("/cdn/:key", async (c) => {
   const obj = await c.env.BUCKET.get(c.req.param("key"));
-  if (!obj) return c.json({ error: "Not found" }, 404);
+  if (!obj) throw notFound();
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
   headers.set("cache-control", "public, max-age=31536000, immutable");
