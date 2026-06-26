@@ -11,6 +11,14 @@ import {
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
+import {
+  canAdvanceRequestStep,
+  defaultRequestDraft,
+  formatDraftDate,
+  formatDraftDateTime,
+  getDraftVolumeLabel,
+  toCreateRequestInput,
+} from "@/lib/request-draft"
 import { Input } from "@/components/ui/input"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Calendar as CalendarUI } from "@/components/ui/calendar"
@@ -197,39 +205,14 @@ function NewRequestPage() {
   const [step, setStep] = useState<Step>(1)
   const [attempted, setAttempted] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const [draft, setDraft] = useState<Draft>({
-    origin: null,
-    originFloor: "",
-    originHasElevator: false,
-    dest: null,
-    destFloor: "",
-    destHasElevator: false,
-    scheduledDate: "",
-    scheduledTime: "",
-    flexibleDate: false,
-    volumeCategory: "",
-    itemDescription: "",
-    notes: "",
-    photoUrls: [],
-    budgetMax: "",
-    helpersNeeded: 0,
-    hasFragileItems: false,
-    assemblyRequired: false,
-    packingIncluded: false,
-    parkingType: "street",
-    longCarry: false,
-  })
+  const [draft, setDraft] = useState<Draft>(defaultRequestDraft)
 
   function set<K extends keyof Draft>(key: K, val: Draft[K]) {
     setDraft((d) => ({ ...d, [key]: val }))
   }
 
   function canNext(): boolean {
-    if (step === 1) return !!draft.origin
-    if (step === 2) return !!draft.dest
-    if (step === 3) return !!draft.scheduledDate && !!draft.scheduledTime
-    if (step === 4) return !!draft.volumeCategory && draft.itemDescription.length >= 5
-    return true
+    return canAdvanceRequestStep(draft, step)
   }
 
   function goBack() {
@@ -243,54 +226,16 @@ function NewRequestPage() {
   }
 
   const mutation = useMutation({
-    mutationFn: () => {
-      const scheduledAt = new Date(`${draft.scheduledDate}T${draft.scheduledTime}`).toISOString()
-      if (!draft.volumeCategory) throw new Error("Selecciona un volumen")
-      return api.requests.create({
-        originAddress: draft.origin!.address,
-        originLat: draft.origin!.lat,
-        originLng: draft.origin!.lng,
-        originFloor: draft.originFloor ? parseInt(draft.originFloor) : undefined,
-        originHasElevator: draft.originHasElevator,
-        destAddress: draft.dest!.address,
-        destLat: draft.dest!.lat,
-        destLng: draft.dest!.lng,
-        destFloor: draft.destFloor ? parseInt(draft.destFloor) : undefined,
-        destHasElevator: draft.destHasElevator,
-        scheduledAt,
-        flexibleDate: draft.flexibleDate,
-        volumeCategory: draft.volumeCategory,
-        itemDescription: draft.itemDescription,
-        notes: draft.notes || undefined,
-        photoUrls: draft.photoUrls,
-        budgetMax: draft.budgetMax ? parseInt(draft.budgetMax.replace(/\D/g, "")) : undefined,
-        helpersNeeded: draft.helpersNeeded,
-        hasFragileItems: draft.hasFragileItems,
-        assemblyRequired: draft.assemblyRequired,
-        packingIncluded: draft.packingIncluded,
-        parkingType: draft.parkingType,
-        longCarry: draft.longCarry,
-      })
-    },
+    mutationFn: () => api.requests.create(toCreateRequestInput(draft)),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
       navigate({ to: "/requests/$id", params: { id } })
     },
   })
 
-  const volumeLabel = VOLUMES.find((v) => v.value === draft.volumeCategory)?.label ?? ""
-
-  const dateDisplay = draft.scheduledDate
-    ? new Date(draft.scheduledDate + "T00:00:00").toLocaleDateString("es-CL", {
-        weekday: "short", day: "numeric", month: "long", year: "numeric",
-      })
-    : "Selecciona una fecha"
-
-  const dateTimeDisplay = draft.scheduledDate && draft.scheduledTime
-    ? new Date(`${draft.scheduledDate}T${draft.scheduledTime}`).toLocaleString("es-CL", {
-        weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
-      })
-    : "—"
+  const volumeLabel = getDraftVolumeLabel(draft)
+  const dateDisplay = formatDraftDate(draft)
+  const dateTimeDisplay = formatDraftDateTime(draft)
 
   return (
     <div className="flex min-h-full">

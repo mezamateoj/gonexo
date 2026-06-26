@@ -12,6 +12,11 @@ export const createAuth = (db?: Db) =>
     emailAndPassword: {
       enabled: true,
     },
+    session: {
+      // Validate the session from a signed cookie instead of hitting D1 on
+      // every navigation (_app beforeLoad calls getSession on each route change).
+      cookieCache: { enabled: true, maxAge: 5 * 60 },
+    },
     user: {
       additionalFields: {
         phone: {

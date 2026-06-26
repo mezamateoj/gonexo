@@ -1,5 +1,4 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
 import { useEffect } from "react"
 import {
   Sidebar,
@@ -40,8 +39,7 @@ import {
 import { signOut, useSession } from "@/lib/auth-client"
 import { useAppMode, type AppMode } from "@/lib/app-mode"
 import { cn } from "@/lib/utils"
-import { api } from "@/lib/api"
-import { queryKeys } from "@/lib/query-keys"
+import { useDriverProfile } from "@/hooks/use-driver-profile-gate"
 
 const CLIENT_NAV = [
   { label: "Mis solicitudes", icon: LayoutList, to: "/requests" },
@@ -154,10 +152,7 @@ export function AppSidebar() {
   const { toggleSidebar } = useSidebar()
   const { mode, setMode } = useAppMode()
   const { pathname } = useRouterState({ select: (s) => s.location })
-  const { data: driverProfile, isFetched: driverProfileFetched } = useQuery({
-    queryKey: queryKeys.drivers.me,
-    queryFn: api.drivers.me,
-  })
+  const { data: driverProfile, isFetched: driverProfileFetched } = useDriverProfile()
 
   useEffect(() => {
     // Don't reset mode while the user is completing driver onboarding — profile doesn't exist yet

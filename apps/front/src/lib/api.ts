@@ -3,8 +3,25 @@ import type { RequestSummary, VolumeCategory, DriverProfile, UpsertDriverInput, 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
 type ApiErrorResponse = {
-  error?: string | {
-    message?: string
+  error?: {
+    code: string
+    message: string
+  }
+}
+
+async function readErrorMessage(res: Response, fallback: string) {
+  const err = await res.json().catch(() => ({ error: { code: "unknown", message: fallback } })) as ApiErrorResponse
+  return err.error?.message ?? fallback
+}
+
+// Carries the HTTP status so global handlers can distinguish a dead session
+// (401) from ordinary failures (e.g. a 403 role check) without reparsing.
+export class ApiError extends Error {
+  readonly status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "ApiError"
+    this.status = status
   }
 }
 
@@ -15,8 +32,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" })) as ApiErrorResponse
-    throw new Error(typeof err.error === "string" ? err.error : err.error?.message ?? "Request failed")
+    throw new ApiError(await readErrorMessage(res, "Request failed"), res.status)
   }
   return res.json() as Promise<T>
 }
@@ -55,7 +71,7 @@ export async function uploadFile(file: File): Promise<string> {
     credentials: "include",
     body: form,
   })
-  if (!res.ok) throw new Error("Upload failed")
+  if (!res.ok) throw new ApiError(await readErrorMessage(res, "Upload failed"), res.status)
   const data = (await res.json()) as { url: string }
   return data.url
 }

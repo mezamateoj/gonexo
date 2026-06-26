@@ -18,18 +18,13 @@ interface Props {
 
 export function AddressAutocomplete({ value, onChange, placeholder = "Busca una dirección…", sessionToken }: Props) {
   const id = useId()
-  const [query, setQuery] = useState(value?.address ?? "")
+  const [typedQuery, setTypedQuery] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<{ mapbox_id: string; name: string; place_formatted: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  // Track prev prop to sync query when parent externally changes the value (update during render, not in effect)
-  const prevAddressRef = useRef(value?.address)
-  if (prevAddressRef.current !== value?.address) {
-    prevAddressRef.current = value?.address
-    setQuery(value?.address ?? "")
-  }
+  const query = typedQuery ?? value?.address ?? ""
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -42,7 +37,7 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
   }, [])
 
   function handleInput(q: string) {
-    setQuery(q)
+    setTypedQuery(q)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (q.length < 3) { setSuggestions([]); setOpen(false); return }
 
@@ -69,7 +64,7 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
       if (!feature) return
       const [lng, lat] = feature.geometry.coordinates
       const address = feature.properties.full_address || suggestion.place_formatted
-      setQuery(address)
+      setTypedQuery(null)
       onChange({ address, lat, lng })
     } catch {
       setOpen(true)

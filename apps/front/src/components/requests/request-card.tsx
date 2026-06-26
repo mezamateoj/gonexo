@@ -1,40 +1,8 @@
 import { Link } from "@tanstack/react-router"
 import { Package } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { RequestStatus, RequestSummary } from "@/lib/types"
-
-const STATUS_LABEL: Record<RequestStatus, string> = {
-  open: "Abierto",
-  accepted: "Aceptado",
-  in_progress: "En camino",
-  completed: "Completado",
-  cancelled: "Cancelado",
-}
-
-const STATUS_CLASS: Record<RequestStatus, string> = {
-  open: "bg-[#E7F4EE] text-[#0c8c5e]",
-  accepted: "bg-[#E7F4EE] text-[#0c8c5e]",
-  in_progress: "bg-[#E7F4EE] text-[#0c8c5e]",
-  completed: "bg-[#F5F4F0] text-[#969e9b]",
-  cancelled: "bg-[#FEF2F2] text-[#EF4444]",
-}
-
-const VOLUME_LABEL: Record<string, string> = {
-  small: "Mudanza pequeña",
-  medium: "Mudanza mediana",
-  large: "Mudanza grande",
-  full_move: "Mudanza completa",
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("es-CL", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
+import { formatCLP, formatCompactDateTime, requestStatusClasses, requestStatusLabels, volumeLabels } from "@/lib/display"
+import type { RequestSummary } from "@/lib/types"
 
 export function RequestCard({ req }: { req: RequestSummary }) {
   const openQuotes = req.quotes.filter((q) => q.status === "pending")
@@ -52,12 +20,12 @@ export function RequestCard({ req }: { req: RequestSummary }) {
         <span
           className={cn(
             "inline-flex items-center rounded-full px-[10px] py-[3px] text-[11px] font-semibold",
-            STATUS_CLASS[req.status]
+            requestStatusClasses[req.status]
           )}
         >
-          {STATUS_LABEL[req.status]}
+          {requestStatusLabels[req.status]}
         </span>
-        <span className="text-[13px] text-[#AAAAAA]">{formatDate(req.scheduledAt)}</span>
+        <span className="text-[13px] text-[#AAAAAA]">{formatCompactDateTime(req.scheduledAt)}</span>
       </div>
 
       <div className="mt-[14px] flex flex-col gap-[8px]">
@@ -78,7 +46,7 @@ export function RequestCard({ req }: { req: RequestSummary }) {
       <div className="mt-[14px] flex items-center justify-between border-t border-[#F5F5F5] pt-[12px]">
         <div className="flex items-center gap-[6px] text-[#888888]">
           <Package className="size-[12px]" />
-          <span className="text-[12px]">{VOLUME_LABEL[req.volumeCategory]}</span>
+          <span className="text-[12px]">{volumeLabels[req.volumeCategory]}</span>
         </div>
 
         {req.status === "open" && openQuotes.length > 0 ? (
@@ -87,7 +55,7 @@ export function RequestCard({ req }: { req: RequestSummary }) {
           </span>
         ) : bestPrice != null ? (
           <span className="text-[15px] font-bold text-foreground">
-            {bestPrice.toLocaleString("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 })}
+            {formatCLP(bestPrice)}
           </span>
         ) : null}
       </div>

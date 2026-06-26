@@ -1,18 +1,8 @@
 import { Check, MessageSquare, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { formatCLP, vehicleLabels } from "@/lib/display"
 import type { QuoteWithDriver } from "@/lib/types"
-
-const VEHICLE_LABEL: Record<string, string> = {
-  van: "Furgón",
-  pickup: "Camioneta",
-  truck_small: "Camión chico",
-  truck_large: "Camión grande",
-}
-
-function formatCLP(n: number) {
-  return n.toLocaleString("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 })
-}
 
 export function QuoteCard({
   quote,
@@ -48,7 +38,7 @@ export function QuoteCard({
                     <span>·</span>
                   </>
                 )}
-                <span>{VEHICLE_LABEL[profile.vehicleType] ?? profile.vehicleType}</span>
+                <span>{vehicleLabels[profile.vehicleType] ?? profile.vehicleType}</span>
                 <span>·</span>
                 <span className="font-mono uppercase tracking-wider">{profile.vehiclePlate}</span>
               </div>

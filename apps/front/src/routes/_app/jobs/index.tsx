@@ -3,48 +3,13 @@ import { useQuery } from "@tanstack/react-query"
 import { useSession } from "@/lib/auth-client"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
-import type { JobStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { useAppMode } from "@/lib/app-mode"
+import { formatPrice, formatShortDate, jobStatusClasses, jobStatusLabels, volumeLabels } from "@/lib/display"
 
 export const Route = createFileRoute("/_app/jobs/")({
   component: JobsPage,
 })
-
-const STATUS_LABELS: Record<JobStatus, string> = {
-  scheduled: "Agendado",
-  on_the_way: "En camino",
-  arrived: "En destino",
-  completed: "Completado",
-  cancelled: "Cancelado",
-}
-
-const STATUS_COLORS: Record<JobStatus, string> = {
-  scheduled: "bg-blue-50 text-blue-600",
-  on_the_way: "bg-amber-50 text-amber-700",
-  arrived: "bg-orange-50 text-orange-700",
-  completed: "bg-green-50 text-green-700",
-  cancelled: "bg-red-50 text-red-600",
-}
-
-const VOLUME_LABELS: Record<string, string> = {
-  small: "Pequeño",
-  medium: "Mediano",
-  large: "Grande",
-  full_move: "Mudanza completa",
-}
-
-function formatDate(s: string) {
-  return new Date(s).toLocaleDateString("es-CL", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function formatPrice(n: number) {
-  return `$${n.toLocaleString("es-CL")}`
-}
 
 function JobsPage() {
   const { data: session } = useSession()
@@ -116,11 +81,11 @@ function JobsPage() {
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          STATUS_COLORS[job.status]
+                          jobStatusClasses[job.status]
                         )}>
-                          {STATUS_LABELS[job.status]}
+                          {jobStatusLabels[job.status]}
                         </span>
-                        <span className="text-[11px] text-[#969e9b]">{formatDate(job.request.scheduledAt)}</span>
+                        <span className="text-[11px] text-[#969e9b]">{formatShortDate(job.request.scheduledAt)}</span>
                       </div>
                       <p className="mt-2 truncate text-[13px] font-medium text-[#121715]">
                         {job.request.originAddress}
@@ -128,7 +93,7 @@ function JobsPage() {
                       <p className="truncate text-[12px] text-[#969e9b]">→ {job.request.destAddress}</p>
                       <div className="mt-2 flex items-center gap-3">
                         <span className="text-[13px] font-semibold text-primary">{formatPrice(job.agreedPrice)}</span>
-                        <span className="text-[11px] text-[#969e9b]">{VOLUME_LABELS[job.request.volumeCategory] ?? job.request.volumeCategory}</span>
+                        <span className="text-[11px] text-[#969e9b]">{volumeLabels[job.request.volumeCategory]}</span>
                         {!isClient && (
                           <span className="rounded-full bg-[#F0EDE9] px-2 py-0.5 text-[10px] font-medium text-[#485450]">Cliente: {otherParty.name}</span>
                         )}
@@ -173,11 +138,11 @@ function JobsPage() {
                       <div className="flex items-center gap-2">
                         <span className={cn(
                           "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          STATUS_COLORS[job.status]
+                          jobStatusClasses[job.status]
                         )}>
-                          {STATUS_LABELS[job.status]}
+                          {jobStatusLabels[job.status]}
                         </span>
-                        <span className="text-[11px] text-[#969e9b]">{formatDate(job.request.scheduledAt)}</span>
+                        <span className="text-[11px] text-[#969e9b]">{formatShortDate(job.request.scheduledAt)}</span>
                         {!hasReviewed && job.status === "completed" && (
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                             Pendiente reseña
@@ -190,7 +155,7 @@ function JobsPage() {
                       <p className="truncate text-[12px] text-[#969e9b]">→ {job.request.destAddress}</p>
                       <div className="mt-2 flex items-center gap-3">
                         <span className="text-[13px] font-semibold text-[#485450]">{formatPrice(job.agreedPrice)}</span>
-                        <span className="text-[11px] text-[#969e9b]">{VOLUME_LABELS[job.request.volumeCategory] ?? job.request.volumeCategory}</span>
+                        <span className="text-[11px] text-[#969e9b]">{volumeLabels[job.request.volumeCategory]}</span>
                         <span className="rounded-full bg-[#F0EDE9] px-2 py-0.5 text-[10px] font-medium text-[#485450]">{otherParty.name}</span>
                       </div>
                     </div>

@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, MapPin, Info, Image, Users, AlertTriangle, Wrench, Box, MoveRight } from "lucide-react"
 import { api } from "@/lib/api"
@@ -9,64 +9,13 @@ import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { queryKeys } from "@/lib/query-keys"
-import type { OpenRequest, VolumeCategory } from "@/lib/types"
+import { distanceKm, floorLine, relativeDate, shortAddress, volumeColors, volumeLabels } from "@/lib/display"
+import { useDriverProfileGate } from "@/hooks/use-driver-profile-gate"
+import type { OpenRequest } from "@/lib/types"
 
 export const Route = createFileRoute("/_app/available")({
   component: AvailablePage,
 })
-
-const VOLUME_LABEL: Record<VolumeCategory, string> = {
-  small: "Pequeño",
-  medium: "Mediano",
-  large: "Grande",
-  full_move: "Mudanza completa",
-}
-
-const VOLUME_COLOR: Record<VolumeCategory, string> = {
-  small: "bg-blue-50 text-blue-700",
-  medium: "bg-amber-50 text-amber-700",
-  large: "bg-orange-50 text-orange-700",
-  full_move: "bg-red-50 text-red-700",
-}
-
-function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const R = 6371
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLng = ((lng2 - lng1) * Math.PI) / 180
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-// Extract commune/district from a Chilean address (last comma-separated segment before city)
-function shortAddress(address: string) {
-  const parts = address.split(",").map((p) => p.trim())
-  return parts.length >= 2 ? parts[parts.length - 2] : parts[0]
-}
-
-function relativeDate(iso: string) {
-  const now = new Date()
-  const d = new Date(iso)
-  const diffDays = Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  const time = d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })
-  if (diffDays < 0) return { label: "Vencida", urgent: true }
-  if (diffDays === 0) return { label: `Hoy ${time}`, urgent: true }
-  if (diffDays === 1) return { label: `Mañana ${time}`, urgent: true }
-  if (diffDays < 7) return { label: `En ${diffDays} días`, urgent: false }
-  return {
-    label: d.toLocaleDateString("es-CL", { day: "numeric", month: "short" }) + ` ${time}`,
-    urgent: false,
-  }
-}
-
-function floorLine(floor: number | null, hasElevator: boolean) {
-  const f = floor != null ? `Piso ${floor}` : "Piso 1"
-  const e = hasElevator ? "con ascensor" : "sin ascensor"
-  return `${f} · ${e}`
-}
 
 function DetailPopover({ req }: { req: OpenRequest }) {
   const [open, setOpen] = useState(false)
@@ -236,8 +185,8 @@ const columns: ColumnDef<OpenRequest>[] = [
     accessorKey: "volumeCategory",
     header: "Carga",
     cell: ({ row }) => (
-      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${VOLUME_COLOR[row.original.volumeCategory]}`}>
-        {VOLUME_LABEL[row.original.volumeCategory]}
+      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${volumeColors[row.original.volumeCategory]}`}>
+        {volumeLabels[row.original.volumeCategory]}
       </span>
     ),
   },
@@ -313,24 +262,13 @@ function TableSkeleton() {
 }
 
 function AvailablePage() {
-  const navigate = useNavigate()
-
-  const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: queryKeys.drivers.me,
-    queryFn: api.drivers.me,
-  })
+  const { data: profile, isLoading: profileLoading } = useDriverProfileGate()
 
   const { data, isLoading: requestsLoading, isError } = useQuery({
     queryKey: queryKeys.requests.available(1),
     queryFn: () => api.requests.list(),
     enabled: !!profile,
   })
-
-  useEffect(() => {
-    if (!profileLoading && !profile) {
-      navigate({ to: "/driver-onboarding" })
-    }
-  }, [profileLoading, profile, navigate])
 
   if (profileLoading) return <div className="p-8"><TableSkeleton /></div>
   if (!profile) return null
