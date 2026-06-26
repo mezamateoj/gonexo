@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState, useRef, useMemo } from "react"
-import { Package, Boxes, Truck, Building2, ArrowRight, ArrowLeft, Loader2, Users, AlertTriangle, Wrench, Box, ParkingCircle, MoveRight } from "lucide-react"
+import { Package, Boxes, Truck, Building2, ArrowRight, ArrowLeft, Loader2, Users, AlertTriangle, Wrench, Box, ParkingCircle, MoveRight, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { AddressStep } from "@/components/requests/new/address-step"
 import { PhotoUploader } from "@/components/requests/new/photo-uploader"
 import { ReviewRow } from "@/components/requests/new/review-row"
@@ -63,6 +65,7 @@ function NewRequestPage() {
 
   const [step, setStep] = useState<Step>(1)
   const [attempted, setAttempted] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [draft, setDraft] = useState<Draft>({
     origin: null,
     originFloor: "",
@@ -178,14 +181,38 @@ function NewRequestPage() {
             <FieldGroup>
               <Field data-invalid={attempted && !draft.scheduledDate}>
                 <FieldLabel className="text-[12px] font-medium text-[#485450]">Fecha</FieldLabel>
-                <input
-                  type="date"
-                  className="flex h-10 w-full rounded-[8px] border border-[#E9E7E3] bg-white px-3 text-[14px] text-[#121715] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 aria-invalid:border-destructive"
-                  aria-invalid={attempted && !draft.scheduledDate}
-                  value={draft.scheduledDate}
-                  min={today}
-                  onChange={(e) => set("scheduledDate", e.target.value)}
-                />
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-invalid={attempted && !draft.scheduledDate}
+                      className={cn(
+                        "flex h-10 w-full items-center gap-2 rounded-[8px] border border-[#E9E7E3] bg-white px-3 text-left text-[14px] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 aria-invalid:border-destructive",
+                        draft.scheduledDate ? "text-[#121715]" : "text-[#969e9b]"
+                      )}
+                    >
+                      <CalendarDays className="size-4 shrink-0 text-[#969e9b]" />
+                      {draft.scheduledDate
+                        ? new Date(draft.scheduledDate + "T00:00:00").toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "long", year: "numeric" })
+                        : "Selecciona una fecha"
+                      }
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={draft.scheduledDate ? new Date(draft.scheduledDate + "T00:00:00") : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          set("scheduledDate", date.toLocaleDateString("sv"))
+                          setCalendarOpen(false)
+                        }
+                      }}
+                      disabled={(date) => date < new Date(today + "T00:00:00")}
+                      autoFocus
+                    />
+                  </PopoverContent>
+                </Popover>
                 {attempted && !draft.scheduledDate && <FieldError>Selecciona una fecha</FieldError>}
               </Field>
               <Field data-invalid={attempted && !draft.scheduledTime}>
