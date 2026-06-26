@@ -3,6 +3,7 @@ import type { AppEnv } from "../lib/types"
 import { createAuth } from "../lib/auth"
 import { driverProfile, request, quote, job } from "../db/schema"
 import { eq } from "drizzle-orm"
+import { notFound } from "../lib/errors"
 
 const seed = new Hono<AppEnv>()
 
@@ -145,6 +146,9 @@ function buildAddress(commune: typeof COMMUNES[0], num: number): string {
 // ─── Route ───────────────────────────────────────────────────────────────────
 
 seed.post("/", async (c) => {
+  const hostname = new URL(c.req.url).hostname
+  if (hostname !== "localhost" && hostname !== "127.0.0.1") throw notFound()
+
   const db = c.get("db")
   const auth = createAuth(db)
 

@@ -113,6 +113,18 @@ app.get("/cdn/:key", async (c) => {
 
 app.get("/", (c) => c.json({ ok: true }));
 
+app.notFound((c) =>
+  c.json(
+    {
+      error: {
+        code: "NOT_FOUND",
+        message: "Not found",
+      },
+    },
+    404,
+  ),
+);
+
 export type AppType = typeof api;
 
 export default app;

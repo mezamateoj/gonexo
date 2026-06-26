@@ -60,12 +60,17 @@
 ## Backend: Cloudflare Workers, Hono, D1
 
 - Hono apps, routers, and middleware should use `AppEnv` from `apps/back/src/lib/types.ts`: `new Hono<AppEnv>()` and `createMiddleware<AppEnv>()`.
+- Keep route files as Hono route modules, not controller layers. Define handlers inline at the route so Hono path params, middleware, validation, and type inference stay local.
+- Put business workflows behind route handlers as plain functions under `apps/back/src/workflows` when a route starts coordinating multiple domain rules or tables. Example shape: route reads `c`, calls `acceptQuote(db, userId, quoteId)`, then returns `c.json(...)`.
+- Do not add generic repository layers while there is only one DB adapter. Use Drizzle directly inside route modules or workflow functions.
 - Backend domain errors should use the Hono-native `AppError` helpers from `apps/back/src/lib/errors.ts` (`badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, etc.). `AppError` extends Hono's `HTTPException`; do not add parallel error classes or per-route `{ error: ... }` response shapes.
 - Keep `zValidator("json", schema)` directly in routes for request body validation. Do not wrap it in custom validator abstractions unless the user explicitly approves changing the validation error contract.
 - `app.onError` in `apps/back/src/index.ts` owns the JSON error response shape for thrown app errors and unknown 500s. Keep the response shape stable: `{ error: { code, message } }`.
+- `app.notFound` in `apps/back/src/index.ts` owns the JSON response for unmatched routes. Keep it aligned with the backend error contract.
 - LogTape is configured in `apps/back/src/index.ts`. Do not enable `honoLogger({ context: true })` unless context-local storage is configured; it causes LogTape startup warnings. Keep the `["logtape", "meta"]` logger above `info` to avoid meta logger noise.
 - When `apps/back/wrangler.jsonc` bindings, compatibility dates, or compatibility flags change, run `pnpm run generate-types` in `apps/back`. Wrangler regenerates `worker-configuration.d.ts` from the Worker config; keep `apps/back/src/binding.ts` in sync for bindings app code reads from `c.env`.
 - Use `requireAuth` and `requireDriver` from `apps/back/src/middleware/auth.ts` on protected routes. Public Better Auth routes already live under `/api/auth/*` in `apps/back/src/index.ts`.
+- Never expose seed/dev-only routes in production. Gate them to localhost/local env or leave them unmounted from the production route tree.
 - Frontend origins are hardcoded in two backend places: `allowedOrigins` in `apps/back/src/index.ts` for CORS and `trustedOrigins` in `apps/back/src/lib/auth.ts` for Better Auth. Update both when adding or changing frontend origins.
 - `BETTER_AUTH_URL` in `apps/back/wrangler.jsonc` must match the backend's public origin; update it when the backend URL changes.
 - Do not run `pnpm run auth:generate` in `apps/back`. It writes directly to `src/db/schema.ts` and can clobber domain tables. Better Auth tables are already committed; edit schema changes manually.
