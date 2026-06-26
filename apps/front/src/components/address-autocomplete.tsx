@@ -24,12 +24,12 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
   const [open, setOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (value?.address && value.address !== query) {
-      setQuery(value.address)
-    }
-  }, [value?.address])
+  // Track prev prop to sync query when parent externally changes the value (update during render, not in effect)
+  const prevAddressRef = useRef(value?.address)
+  if (prevAddressRef.current !== value?.address) {
+    prevAddressRef.current = value?.address
+    setQuery(value?.address ?? "")
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

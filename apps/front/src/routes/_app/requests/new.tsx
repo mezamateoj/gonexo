@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState, useRef } from "react"
+import { useState, useRef, useMemo } from "react"
 import { Package, Boxes, Truck, Building2, ArrowRight, ArrowLeft, Loader2, Users, AlertTriangle, Wrench, Box, ParkingCircle, MoveRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
@@ -55,7 +55,10 @@ function Toggle({ value, onChange, children }: { value: boolean; onChange: (v: b
 function NewRequestPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const sessionToken = useRef(crypto.randomUUID()).current
+  const sessionTokenRef = useRef<string | null>(null)
+  if (sessionTokenRef.current === null) sessionTokenRef.current = crypto.randomUUID()
+  const sessionToken = sessionTokenRef.current
+  const today = useMemo(() => new Date().toISOString().split("T")[0], [])
 
   const [step, setStep] = useState<Step>(1)
   const [attempted, setAttempted] = useState(false)
@@ -179,7 +182,7 @@ function NewRequestPage() {
                   className="flex h-10 w-full rounded-[8px] border border-[#E9E7E3] bg-white px-3 text-[14px] text-[#121715] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 aria-invalid:border-destructive"
                   aria-invalid={attempted && !draft.scheduledDate}
                   value={draft.scheduledDate}
-                  min={new Date().toISOString().split("T")[0]}
+                  min={today}
                   onChange={(e) => set("scheduledDate", e.target.value)}
                 />
                 {attempted && !draft.scheduledDate && <FieldError>Selecciona una fecha</FieldError>}

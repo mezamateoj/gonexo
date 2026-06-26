@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import type { ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
@@ -181,15 +181,10 @@ function FieldError({
 }: React.ComponentProps<"div"> & {
   errors?: FieldErrorItem[];
 }) {
-  const content = useMemo(() => {
-    if (children) {
-      return children;
-    }
+  let content: ReactNode = children ?? null;
 
-    if (!errors?.length) {
-      return null;
-    }
-
+  if (!content) {
+    if (!errors?.length) return null;
     const messages = [
       ...new Set(
         errors
@@ -197,21 +192,17 @@ function FieldError({
           .filter((value): value is string => !!value),
       ),
     ];
-
     if (!messages.length) return null;
-    if (messages.length === 1) return messages[0];
-
-    return (
-      <ul className="ml-4 flex list-disc flex-col gap-1">
-        {messages.map((msg) => (
-          <li key={msg}>{msg}</li>
-        ))}
-      </ul>
-    );
-  }, [children, errors]);
-
-  if (!content) {
-    return null;
+    content =
+      messages.length === 1 ? (
+        messages[0]
+      ) : (
+        <ul className="ml-4 flex list-disc flex-col gap-1">
+          {messages.map((msg) => (
+            <li key={msg}>{msg}</li>
+          ))}
+        </ul>
+      );
   }
 
   return (

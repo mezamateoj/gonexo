@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from "react"
+import { createContext, useContext, useState, useCallback, useMemo } from "react"
 import type { ReactNode } from "react"
 
 export type AppMode = "client" | "driver"
@@ -23,8 +23,10 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
     setModeState(m)
   }, [])
 
+  const contextValue = useMemo(() => ({ mode, setMode }), [mode, setMode])
+
   return (
-    <AppModeContext.Provider value={{ mode, setMode }}>
+    <AppModeContext.Provider value={contextValue}>
       {children}
     </AppModeContext.Provider>
   )
