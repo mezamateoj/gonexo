@@ -71,13 +71,12 @@ function DriverOnboardingPage() {
               <div className="grid grid-cols-2 gap-3">
                 <form.Field
                   name="phone"
-                  validators={{ onChange: phoneSchema, onBlur: phoneSchema }}
-                >
-                  {(field) => {
-                    const attempted = form.state.submissionAttempts > 0
-                    const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
-                    return (
-                      <Field data-invalid={isInvalid || undefined}>
+                validators={{ onChange: phoneSchema, onBlur: phoneSchema }}
+              >
+                {(field) => {
+                  const isInvalid = field.state.meta.errors.length > 0 && (field.state.meta.isTouched || form.state.submissionAttempts > 0)
+                  return (
+                    <Field data-invalid={isInvalid || undefined}>
                         <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
                           Teléfono
                         </FieldLabel>
@@ -98,11 +97,10 @@ function DriverOnboardingPage() {
 
                 <form.Field
                   name="plate"
-                  validators={{ onChange: plateSchema, onBlur: plateSchema }}
-                >
-                  {(field) => {
-                    const attempted = form.state.submissionAttempts > 0
-                    const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
+                validators={{ onChange: plateSchema, onBlur: plateSchema }}
+              >
+                {(field) => {
+                    const isInvalid = field.state.meta.errors.length > 0 && (field.state.meta.isTouched || form.state.submissionAttempts > 0)
                     return (
                       <Field data-invalid={isInvalid || undefined}>
                         <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
