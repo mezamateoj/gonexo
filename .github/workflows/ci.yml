@@ -32,6 +32,7 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - .github/workflows/ci.yml
+              - .github/workflows/migrate-back-d1.yml
             front:
               - apps/front/**
               - package.json
@@ -67,15 +68,6 @@ jobs:
 
       - name: Validate back deploy
         run: pnpm --dir apps/back exec wrangler deploy --dry-run
-
-  deploy-back:
-    name: Deploy Back
-    needs:
-      - changes
-      - check-back
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.back == 'true'
-    uses: ./.github/workflows/deploy-back.yml
-    secrets: inherit
 
   check-front:
     name: Check Front
