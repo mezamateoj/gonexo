@@ -151,16 +151,18 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const { toggleSidebar } = useSidebar()
   const { mode, setMode } = useAppMode()
+  const { pathname } = useRouterState({ select: (s) => s.location })
   const { data: driverProfile, isFetched: driverProfileFetched } = useQuery({
     queryKey: ["drivers", "me"],
     queryFn: api.drivers.me,
   })
 
   useEffect(() => {
-    if (driverProfileFetched && mode === "driver" && !driverProfile) {
+    // Don't reset mode while the user is completing driver onboarding — profile doesn't exist yet
+    if (driverProfileFetched && mode === "driver" && !driverProfile && pathname !== "/driver-onboarding") {
       setMode("client")
     }
-  }, [driverProfile, driverProfileFetched, mode, setMode])
+  }, [driverProfile, driverProfileFetched, mode, setMode, pathname])
 
   const user = session?.user
   const initials = user?.name
