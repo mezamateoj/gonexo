@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq, and, sql, or, desc } from "drizzle-orm";
 import { job, review, driverProfile } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
+import { conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 
 const jobs = new Hono<AppEnv>();
@@ -60,11 +61,11 @@ jobs.get("/:id", requireAuth, async (c) => {
       reviews: true,
     },
   });
-  if (!j) return c.json({ error: "Not found" }, 404);
+  if (!j) throw notFound();
 
   const userId = c.get("user")!.id;
   if (j.userId !== userId && j.driverId !== userId)
-    return c.json({ error: "Forbidden" }, 403);
+    throw forbidden();
 
   return c.json(j);
 });
@@ -85,13 +86,10 @@ jobs.patch(
     const j = await db.query.job.findFirst({
       where: and(eq(job.id, c.req.param("id")), eq(job.driverId, driver.id)),
     });
-    if (!j) return c.json({ error: "Job not found" }, 404);
+    if (!j) throw notFound("Job not found");
 
     if (STATUS_TRANSITIONS[j.status] !== nextStatus) {
-      return c.json(
-        { error: `Cannot transition from '${j.status}' to '${nextStatus}'` },
-        409
-      );
+      throw conflict(`Cannot transition from '${j.status}' to '${nextStatus}'`);
     }
 
     const now = new Date();
@@ -126,10 +124,10 @@ jobs.post("/:id/confirm", requireAuth, async (c) => {
   const j = await db.query.job.findFirst({
     where: and(eq(job.id, c.req.param("id")), eq(job.userId, user.id)),
   });
-  if (!j) return c.json({ error: "Job not found" }, 404);
+  if (!j) throw notFound("Job not found");
   if (j.status !== "completed")
-    return c.json({ error: "Job not completed yet" }, 409);
-  if (j.confirmedAt) return c.json({ error: "Already confirmed" }, 409);
+    throw conflict("Job not completed yet");
+  if (j.confirmedAt) throw conflict("Already confirmed");
 
   await db.batch([
     db
@@ -163,13 +161,13 @@ jobs.post(
     const j = await db.query.job.findFirst({
       where: eq(job.id, c.req.param("id")),
     });
-    if (!j) return c.json({ error: "Job not found" }, 404);
+    if (!j) throw notFound("Job not found");
     if (j.status !== "completed" || !j.confirmedAt)
-      return c.json({ error: "Job not yet confirmed" }, 409);
+      throw conflict("Job not yet confirmed");
 
     const isUser = reviewer.id === j.userId;
     const isDriver = reviewer.id === j.driverId;
-    if (!isUser && !isDriver) return c.json({ error: "Forbidden" }, 403);
+    if (!isUser && !isDriver) throw forbidden();
 
     const revieweeId = isUser ? j.driverId : j.userId;
     const reviewerRole = isUser ? "user" : "driver";

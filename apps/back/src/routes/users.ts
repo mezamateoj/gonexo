@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { user } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
+import { badRequest } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 
 const users = new Hono<AppEnv>();
@@ -27,7 +28,7 @@ users.patch(
     const body = c.req.valid("json");
 
     if (!body.name && !body.phone)
-      return c.json({ error: "Nothing to update" }, 400);
+      throw badRequest("Nothing to update");
 
     await db
       .update(user)

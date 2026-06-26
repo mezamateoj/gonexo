@@ -4,7 +4,9 @@ import { z } from "zod";
 import { eq, and, ne, asc, desc } from "drizzle-orm";
 import { request, requestPhoto, quote } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
+import { badRequest, conflict, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
+import { logger } from "../lib/logger";
 
 const requests = new Hono<AppEnv>();
 
@@ -87,6 +89,13 @@ requests.post(
       await insertRequest;
     }
 
+    logger.info("Request created: {id} by user {userId} ({volume}, scheduled {scheduledAt})", {
+      id,
+      userId: user.id,
+      volume: body.volumeCategory,
+      scheduledAt: body.scheduledAt,
+      photos: body.photoUrls.length,
+    });
     return c.json({ id }, 201);
   }
 );
@@ -159,7 +168,7 @@ requests.get("/:id", requireAuth, async (c) => {
     },
   });
 
-  if (!result) return c.json({ error: "Not found" }, 404);
+  if (!result) throw notFound();
 
   const isOwner = result.userId === user.id;
   const matchedQuote = result.quotes.find(
@@ -193,9 +202,9 @@ requests.post(
     const req = await db.query.request.findFirst({
       where: and(eq(request.id, requestId), eq(request.status, "open")),
     });
-    if (!req) return c.json({ error: "Request not found or not open" }, 404);
+    if (!req) throw notFound("Request not found or not open");
     if (req.userId === driver.id)
-      return c.json({ error: "Cannot quote your own request" }, 400);
+      throw badRequest("Cannot quote your own request");
 
     const id = crypto.randomUUID();
     await db.insert(quote).values({
@@ -207,6 +216,12 @@ requests.post(
       expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
     });
 
+    logger.info("Quote submitted: {id} on request {requestId} by driver {driverId} for {price}", {
+      id,
+      requestId,
+      driverId: driver.id,
+      price: body.price,
+    });
     return c.json({ id }, 201);
   }
 );
@@ -218,15 +233,19 @@ requests.patch("/:id/cancel", requireAuth, async (c) => {
   const req = await db.query.request.findFirst({
     where: and(eq(request.id, c.req.param("id")), eq(request.userId, user.id)),
   });
-  if (!req) return c.json({ error: "Not found" }, 404);
+  if (!req) throw notFound();
   if (req.status !== "open")
-    return c.json({ error: "Only open requests can be cancelled" }, 409);
+    throw conflict("Only open requests can be cancelled");
 
   await db
     .update(request)
     .set({ status: "cancelled" })
     .where(eq(request.id, req.id));
 
+  logger.info("Request cancelled: {requestId} by user {userId}", {
+    requestId: req.id,
+    userId: user.id,
+  });
   return c.json({ ok: true });
 });
 

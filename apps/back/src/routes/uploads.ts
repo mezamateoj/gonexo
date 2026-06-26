@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { requireAuth } from "../middleware/auth";
+import { badRequest, payloadTooLarge, unsupportedMediaType } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -13,11 +14,11 @@ uploads.post("/", requireAuth, async (c) => {
   const file = body["file"];
 
   if (!(file instanceof File))
-    return c.json({ error: "file field is required" }, 400);
+    throw badRequest("file field is required");
   if (!ALLOWED_TYPES.has(file.type))
-    return c.json({ error: "Only JPEG, PNG, and WebP are allowed" }, 415);
+    throw unsupportedMediaType("Only JPEG, PNG, and WebP are allowed");
   if (file.size > MAX_SIZE_BYTES)
-    return c.json({ error: "File exceeds 10 MB limit" }, 413);
+    throw payloadTooLarge("File exceeds 10 MB limit");
 
   const ext = file.type.split("/")[1];
   const key = `${crypto.randomUUID()}.${ext}`;
