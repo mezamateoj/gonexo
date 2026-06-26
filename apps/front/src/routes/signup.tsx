@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useForm } from "@tanstack/react-form"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { signUp, useSession } from "@/lib/auth-client"
 import { useAppMode, type AppMode } from "@/lib/app-mode"
@@ -14,11 +14,16 @@ export const Route = createFileRoute("/signup")({
   component: SignupPage,
 })
 
-const schema = z.object({
-  firstName: z.string().min(1, "Requerido"),
-  lastName: z.string().min(1, "Requerido"),
-  email: z.string().email("Ingresa un correo válido"),
-  password: z.string().min(8, "Mínimo 8 caracteres"),
+const firstNameSchema = z.string().min(1, "Requerido")
+const lastNameSchema  = z.string().min(1, "Requerido")
+const emailSchema     = z.string().email("Ingresa un correo válido")
+const passwordSchema  = z.string().min(8, "Mínimo 8 caracteres")
+
+const formSchema = z.object({
+  firstName: firstNameSchema,
+  lastName:  lastNameSchema,
+  email:     emailSchema,
+  password:  passwordSchema,
 })
 
 const INTENTS: { key: AppMode; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -53,31 +58,37 @@ function SignupPage() {
   const { setMode } = useAppMode()
   const [intent, setIntent] = useState<AppMode>("client")
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const handlingSubmit = useRef(false)
 
   useEffect(() => {
-    if (session) navigate({ to: "/requests" })
+    if (session && !handlingSubmit.current) {
+      navigate({ to: "/requests" })
+    }
   }, [session, navigate])
 
   const form = useForm({
     defaultValues: { firstName: "", lastName: "", email: "", password: "" },
-    validators: { onSubmit: schema },
+    validators: { onSubmit: formSchema },
     onSubmit: async ({ value }) => {
+      handlingSubmit.current = true
       setSubmitError(null)
-      try {
-        await signUp.email({
-          name: `${value.firstName} ${value.lastName}`.trim(),
-          email: value.email,
-          password: value.password,
-        })
-        if (intent === "driver") {
-          navigate({ to: "/driver-onboarding" })
-          return
-        }
-        setMode("client")
-        navigate({ to: "/requests" })
-      } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Error al crear la cuenta. Intenta de nuevo.")
+      const { error } = await signUp.email({
+        name: `${value.firstName} ${value.lastName}`.trim(),
+        email: value.email,
+        password: value.password,
+      })
+      if (error) {
+        handlingSubmit.current = false
+        setSubmitError("Error al crear la cuenta. Verifica tus datos e intenta de nuevo.")
+        return
       }
+      if (intent === "driver") {
+        setMode("driver")
+        navigate({ to: "/driver-onboarding" })
+        return
+      }
+      setMode("client")
+      navigate({ to: "/requests" })
     },
   })
 
@@ -96,7 +107,6 @@ function SignupPage() {
             <span className="flex-1 rounded-[7px] bg-white py-2 text-center text-[13px] font-semibold text-[#121715] shadow-sm">Crear cuenta</span>
           </div>
 
-          {/* Intent selection */}
           <div>
             <p className="mb-2 text-[12px] font-medium text-[#485450]">¿Qué quieres hacer?</p>
             <div className="grid grid-cols-2 gap-2">
@@ -128,9 +138,13 @@ function SignupPage() {
           >
             <FieldGroup>
               <div className="grid grid-cols-2 gap-3">
-                <form.Field name="firstName">
+                <form.Field
+                  name="firstName"
+                  validators={{ onChange: firstNameSchema, onBlur: firstNameSchema }}
+                >
                   {(field) => {
-                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                    const attempted = form.state.submissionAttempts > 0
+                    const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                     return (
                       <Field data-invalid={isInvalid || undefined}>
                         <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Nombre</FieldLabel>
@@ -148,9 +162,13 @@ function SignupPage() {
                   }}
                 </form.Field>
 
-                <form.Field name="lastName">
+                <form.Field
+                  name="lastName"
+                  validators={{ onChange: lastNameSchema, onBlur: lastNameSchema }}
+                >
                   {(field) => {
-                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                    const attempted = form.state.submissionAttempts > 0
+                    const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                     return (
                       <Field data-invalid={isInvalid || undefined}>
                         <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Apellido</FieldLabel>
@@ -169,9 +187,13 @@ function SignupPage() {
                 </form.Field>
               </div>
 
-              <form.Field name="email">
+              <form.Field
+                name="email"
+                validators={{ onChange: emailSchema, onBlur: emailSchema }}
+              >
                 {(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  const attempted = form.state.submissionAttempts > 0
+                  const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                   return (
                     <Field data-invalid={isInvalid || undefined}>
                       <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Correo electrónico</FieldLabel>
@@ -182,7 +204,10 @@ function SignupPage() {
                         autoComplete="email"
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        onChange={(e) => {
+                          field.handleChange(e.target.value)
+                          if (submitError) setSubmitError(null)
+                        }}
                         aria-invalid={isInvalid}
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -191,9 +216,13 @@ function SignupPage() {
                 }}
               </form.Field>
 
-              <form.Field name="password">
+              <form.Field
+                name="password"
+                validators={{ onChange: passwordSchema, onBlur: passwordSchema }}
+              >
                 {(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  const attempted = form.state.submissionAttempts > 0
+                  const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                   return (
                     <Field data-invalid={isInvalid || undefined}>
                       <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Contraseña</FieldLabel>

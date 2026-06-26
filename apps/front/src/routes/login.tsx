@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useForm } from "@tanstack/react-form"
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { signIn, useSession } from "@/lib/auth-client"
+import { useAppMode } from "@/lib/app-mode"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -11,25 +12,40 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 })
 
-const schema = z.object({
-  email: z.string().email("Ingresa un correo válido"),
-  password: z.string().min(1, "La contraseña es requerida"),
+const emailSchema = z.string().email("Ingresa un correo válido")
+const passwordSchema = z.string().min(1, "La contraseña es requerida")
+
+const formSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
 })
 
 function LoginPage() {
   const navigate = useNavigate()
   const { data: session } = useSession()
+  const { mode } = useAppMode()
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const handlingSubmit = useRef(false)
 
   useEffect(() => {
-    if (session) navigate({ to: "/requests" })
-  }, [session, navigate])
+    if (session && !handlingSubmit.current) {
+      navigate({ to: mode === "driver" ? "/available" : "/requests" })
+    }
+  }, [session, navigate, mode])
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
-    validators: { onSubmit: schema },
+    validators: { onSubmit: formSchema },
     onSubmit: async ({ value }) => {
-      await signIn.email({ email: value.email, password: value.password })
-      navigate({ to: "/requests" })
+      handlingSubmit.current = true
+      setSubmitError(null)
+      const { error } = await signIn.email({ email: value.email, password: value.password })
+      if (error) {
+        handlingSubmit.current = false
+        setSubmitError("Correo o contraseña incorrectos.")
+        return
+      }
+      navigate({ to: mode === "driver" ? "/available" : "/requests" })
     },
   })
 
@@ -69,11 +85,15 @@ function LoginPage() {
             className="flex flex-col gap-4"
           >
             <FieldGroup>
-              <form.Field name="email">
+              <form.Field
+                name="email"
+                validators={{ onChange: emailSchema, onBlur: emailSchema }}
+              >
                 {(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  const attempted = form.state.submissionAttempts > 0
+                  const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                   return (
-                    <Field data-invalid={isInvalid}>
+                    <Field data-invalid={isInvalid || undefined}>
                       <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Correo electrónico</FieldLabel>
                       <Input
                         id={field.name}
@@ -82,7 +102,10 @@ function LoginPage() {
                         autoComplete="email"
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        onChange={(e) => {
+                          field.handleChange(e.target.value)
+                          if (submitError) setSubmitError(null)
+                        }}
                         aria-invalid={isInvalid}
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -91,11 +114,15 @@ function LoginPage() {
                 }}
               </form.Field>
 
-              <form.Field name="password">
+              <form.Field
+                name="password"
+                validators={{ onChange: passwordSchema, onBlur: passwordSchema }}
+              >
                 {(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+                  const attempted = form.state.submissionAttempts > 0
+                  const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                   return (
-                    <Field data-invalid={isInvalid}>
+                    <Field data-invalid={isInvalid || undefined}>
                       <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">Contraseña</FieldLabel>
                       <Input
                         id={field.name}
@@ -104,7 +131,10 @@ function LoginPage() {
                         autoComplete="current-password"
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        onChange={(e) => {
+                          field.handleChange(e.target.value)
+                          if (submitError) setSubmitError(null)
+                        }}
                         aria-invalid={isInvalid}
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -114,15 +144,15 @@ function LoginPage() {
               </form.Field>
             </FieldGroup>
 
-            <form.Subscribe selector={(s) => s.errors}>
-              {(errors) => errors.length > 0 && (
-                <p className="text-sm text-destructive">{String(errors[0])}</p>
-              )}
-            </form.Subscribe>
+            {submitError && (
+              <p className="rounded-[8px] bg-red-50 px-3 py-2.5 text-[13px] text-red-600">
+                {submitError}
+              </p>
+            )}
 
-            <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
-              {([canSubmit, isSubmitting]) => (
-                <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
+            <form.Subscribe selector={(s) => s.isSubmitting}>
+              {(isSubmitting) => (
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? "Ingresando…" : "Iniciar sesión"}
                 </Button>
               )}

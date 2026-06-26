@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "@tanstack/react-form"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { z } from "zod"
 import { MapPin, ChevronLeft, Package, Calendar, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -44,15 +44,22 @@ const quoteSchema = z.object({
 })
 
 function SubmitQuoteForm({ requestId, onSuccess }: { requestId: string; onSuccess: () => void }) {
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
   const form = useForm({
     defaultValues: { price: "", message: "" },
     validators: { onSubmit: quoteSchema },
     onSubmit: async ({ value }) => {
-      await api.requests.submitQuote(requestId, {
-        price: parseInt(value.price.replace(/\D/g, "")),
-        message: value.message || undefined,
-      })
-      onSuccess()
+      setSubmitError(null)
+      try {
+        await api.requests.submitQuote(requestId, {
+          price: parseInt(value.price.replace(/\D/g, "")),
+          message: value.message || undefined,
+        })
+        onSuccess()
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Error al enviar la cotización. Intenta de nuevo.")
+      }
     },
   })
 
@@ -112,6 +119,12 @@ function SubmitQuoteForm({ requestId, onSuccess }: { requestId: string; onSucces
             )}
           </form.Field>
         </FieldGroup>
+
+        {submitError && (
+          <p className="rounded-[8px] bg-red-50 px-3 py-2.5 text-[13px] text-red-600">
+            {submitError}
+          </p>
+        )}
 
         <form.Subscribe selector={(s) => s.isSubmitting}>
           {(isSubmitting) => (

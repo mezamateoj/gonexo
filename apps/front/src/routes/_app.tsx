@@ -6,7 +6,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Bell, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAppMode } from "@/lib/app-mode"
 
@@ -50,18 +50,6 @@ function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <button type="button" className="hidden md:flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary/80 transition-colors">
-          Buscar...
-          <kbd className="pointer-events-none rounded border border-border bg-background px-1 text-[10px]">
-            ⌘K
-          </kbd>
-        </button>
-
-        <button type="button" className="relative flex size-8 items-center justify-center rounded-md bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors">
-          <Bell className="size-4" />
-          <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
-        </button>
-
         {mode === "client" && (
           <Button size="sm" asChild>
             <Link to="/requests/new">
