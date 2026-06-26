@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { GonexoLogo } from "@/components/gonexo-logo"
 import {
   LayoutList,
   CirclePlus,
@@ -183,13 +184,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="h-14 border-b border-sidebar-border px-3">
         <div className="flex items-center justify-between">
-          <Link to="/requests" className="flex items-center gap-2">
-            <div className="flex size-6 shrink-0 items-center justify-center rounded-[5px] bg-primary">
-              <span className="text-xs font-bold text-white">g</span>
-            </div>
-            <span className="text-sm font-bold text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden">
-              gonexo
-            </span>
+          <Link to="/requests">
+            <GonexoLogo size="xs" wordmarkClassName="group-data-[collapsible=icon]:hidden text-sidebar-accent-foreground" />
           </Link>
           <button
             type="button"

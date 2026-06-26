@@ -13,7 +13,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
-import { Truck, User } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff } from "lucide-react";
+import { GonexoLogo } from "@/components/gonexo-logo";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -22,67 +23,69 @@ export const Route = createFileRoute("/signup")({
 const firstNameSchema = z.string().min(1, "Requerido");
 const lastNameSchema = z.string().min(1, "Requerido");
 const emailSchema = z.email({ message: "Ingresa un correo válido" });
+const phoneSchema = z.string();
 const passwordSchema = z.string().min(8, "Mínimo 8 caracteres");
 
 const formSchema = z.object({
   firstName: firstNameSchema,
   lastName: lastNameSchema,
   email: emailSchema,
+  phone: phoneSchema,
   password: passwordSchema,
 });
 
-const INTENTS: {
-  key: AppMode;
-  label: string;
-  sub: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    key: "client",
-    label: "Necesito un flete",
-    sub: "Publica solicitudes y contrata transportistas",
-    icon: User,
-  },
-  {
-    key: "driver",
-    label: "Quiero transportar",
-    sub: "Recibe solicitudes y cotiza fletes",
-    icon: Truck,
-  },
+const BULLETS = [
+  "Publica tu solicitud en minutos",
+  "Recibe cotizaciones reales de transportistas",
+  "Compara, elige y coordina desde la plataforma",
 ];
 
-function DarkPanel() {
+function SignupLeftPanel() {
   return (
-    <div className="relative flex w-[500px] shrink-0 flex-col justify-between overflow-hidden bg-[#121715] p-10">
-      <Link to="/requests" className="relative z-10 flex items-center gap-2">
-        <div className="flex size-[26px] items-center justify-center rounded-[7px] bg-primary">
-          <span className="text-[13px] font-bold text-white">g</span>
-        </div>
-        <span className="text-[15px] font-semibold text-white">gonexo</span>
+    <div className="flex w-[560px] shrink-0 flex-col justify-between bg-[#0a0b0f] px-12 py-10">
+      <Link to="/">
+        <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
       </Link>
-      <div
-        className="pointer-events-none absolute bg-primary"
-        style={{
-          width: 340,
-          height: 520,
-          borderRadius: 170,
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%,-50%) rotate(30deg)",
-          opacity: 0.85,
-        }}
-      />
-      <div className="relative z-10">
-        <p className="text-[38px] font-bold leading-[1.15] tracking-tight text-white">
-          Conecta.
+
+      <div className="flex flex-col gap-7">
+        <h2 className="text-[40px] font-bold leading-[1.12] tracking-[-1.2px] text-[#faf8f5]">
+          El marketplace
           <br />
-          Transporta.
-          <br />
-          Confía.
+          chileno de fletes
+          <br />y mudanzas.
+        </h2>
+        <div className="flex flex-col gap-[14px]">
+          {BULLETS.map((bullet) => (
+            <div key={bullet} className="flex items-center gap-3">
+              <div className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#0c8c5e20]">
+                <Check className="size-3 text-primary" />
+              </div>
+              <span className="text-[15px] leading-[1.4] text-[#d9d7d4]">
+                {bullet}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-xl border border-[#2a2c32] bg-[#17191e] p-5">
+        <p className="w-[416px] text-[14px] leading-[1.65] text-[#d9d7d4]">
+          "Publiqué mi mudanza y en menos de una hora ya tenía tres
+          cotizaciones distintas. Elegí la que más me acomodó sin presiones."
         </p>
-        <p className="mt-3 text-[13px] leading-relaxed text-white/45">
-          Todo lo que necesitas para mover lo que importa.
-        </p>
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-[14px] font-bold text-white">
+            M
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[14px] font-semibold text-[#faf8f5]">
+              Macarena S.
+            </span>
+            <span className="text-[12px] text-[#717d79]">
+              Cliente gonexo, Santiago
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -94,6 +97,9 @@ function SignupPage() {
   const { setMode } = useAppMode();
   const [intent, setIntent] = useState<AppMode>("client");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [acceptsTerms, setAcceptsTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
   const handlingSubmit = useRef(false);
 
   useEffect(() => {
@@ -103,9 +109,19 @@ function SignupPage() {
   }, [session, navigate]);
 
   const form = useForm({
-    defaultValues: { firstName: "", lastName: "", email: "", password: "" },
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      password: "",
+    },
     validators: { onSubmit: formSchema },
     onSubmit: async ({ value }) => {
+      if (!acceptsTerms) {
+        setTermsError(true);
+        return;
+      }
       handlingSubmit.current = true;
       setSubmitError(null);
       const { error } = await signUp.email({
@@ -132,67 +148,53 @@ function SignupPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <DarkPanel />
-      <div className="flex flex-1 items-center justify-center overflow-y-auto bg-[#FAFAF8]">
-        <div className="flex w-[340px] flex-col gap-6 py-10">
-          <div>
-            <h1 className="text-[22px] font-semibold text-[#121715]">
-              Crea tu cuenta
-            </h1>
-            <p className="mt-1 text-[14px] text-[#969e9b]">
-              Empieza gratis. Sin tarjeta requerida.
-            </p>
-          </div>
+      <SignupLeftPanel />
 
-          <div className="flex gap-[2px] rounded-[9px] bg-[#F0EEE9] p-[3px]">
-            <Link
-              to="/login"
-              className="flex-1 rounded-[7px] py-2 text-center text-[13px] font-medium text-[#969e9b]"
-            >
-              Iniciar sesión
-            </Link>
-            <span className="flex-1 rounded-[7px] bg-white py-2 text-center text-[13px] font-semibold text-[#121715] shadow-sm">
+      <div className="flex flex-1 items-center justify-center overflow-y-auto bg-white">
+        <div className="flex w-[420px] flex-col gap-6 py-10">
+          <Link
+            to="/"
+            className="flex w-fit items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="size-[15px]" />
+            Volver al inicio
+          </Link>
+
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-[28px] font-bold tracking-[-0.5px] text-foreground">
               Crear cuenta
-            </span>
+            </h1>
+            <div className="flex items-center gap-1">
+              <span className="text-[14px] text-muted-foreground">
+                ¿Ya tienes cuenta?
+              </span>
+              <Link to="/login" className="text-[14px] font-medium text-primary">
+                Inicia sesión
+              </Link>
+            </div>
           </div>
 
-          <div>
-            <p className="mb-2 text-[12px] font-medium text-[#485450]">
-              ¿Qué quieres hacer?
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {INTENTS.map(({ key, label, sub, icon: Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setIntent(key)}
-                  className={cn(
-                    "flex flex-col items-start gap-1 rounded-[10px] border p-3 text-left transition-colors",
-                    intent === key
-                      ? "border-2 border-primary bg-white"
-                      : "border-[1.5px] border-[#E9E7E3] bg-white hover:border-[#C4C0BA]",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "size-4",
-                      intent === key ? "text-primary" : "text-[#969e9b]",
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "text-[12px] font-semibold leading-tight",
-                      intent === key ? "text-primary" : "text-[#121715]",
-                    )}
-                  >
-                    {label}
-                  </span>
-                  <span className="text-[11px] leading-tight text-[#969e9b]">
-                    {sub}
-                  </span>
-                </button>
-              ))}
-            </div>
+          <div className="flex gap-0.5 rounded-[10px] bg-secondary p-1">
+            {(
+              [
+                { key: "client" as AppMode, label: "Soy cliente" },
+                { key: "driver" as AppMode, label: "Soy transportista" },
+              ] as const
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setIntent(key)}
+                className={cn(
+                  "flex-1 rounded-[7px] py-[9px] text-center text-[14px] transition-all",
+                  intent === key
+                    ? "bg-white font-semibold text-foreground shadow-sm"
+                    : "font-medium text-muted-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           <form
@@ -200,7 +202,7 @@ function SignupPage() {
               e.preventDefault();
               form.handleSubmit();
             }}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-5"
           >
             <FieldGroup>
               <div className="grid grid-cols-2 gap-3">
@@ -220,7 +222,7 @@ function SignupPage() {
                       <Field data-invalid={isInvalid || undefined}>
                         <FieldLabel
                           htmlFor={field.name}
-                          className="text-[12px] font-medium text-[#485450]"
+                          className="text-[13px] font-medium"
                         >
                           Nombre
                         </FieldLabel>
@@ -256,7 +258,7 @@ function SignupPage() {
                       <Field data-invalid={isInvalid || undefined}>
                         <FieldLabel
                           htmlFor={field.name}
-                          className="text-[12px] font-medium text-[#485450]"
+                          className="text-[13px] font-medium"
                         >
                           Apellido
                         </FieldLabel>
@@ -290,14 +292,14 @@ function SignupPage() {
                     <Field data-invalid={isInvalid || undefined}>
                       <FieldLabel
                         htmlFor={field.name}
-                        className="text-[12px] font-medium text-[#485450]"
+                        className="text-[13px] font-medium"
                       >
                         Correo electrónico
                       </FieldLabel>
                       <Input
                         id={field.name}
                         type="email"
-                        placeholder="juan@empresa.cl"
+                        placeholder="tú@correo.cl"
                         autoComplete="email"
                         value={field.state.value}
                         onBlur={field.handleBlur}
@@ -313,6 +315,28 @@ function SignupPage() {
                     </Field>
                   );
                 }}
+              </form.Field>
+
+              <form.Field name="phone">
+                {(field) => (
+                  <Field>
+                    <FieldLabel
+                      htmlFor={field.name}
+                      className="text-[13px] font-medium"
+                    >
+                      Teléfono
+                    </FieldLabel>
+                    <Input
+                      id={field.name}
+                      type="tel"
+                      placeholder="+56 9 1234 5678"
+                      autoComplete="tel"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  </Field>
+                )}
               </form.Field>
 
               <form.Field
@@ -331,20 +355,37 @@ function SignupPage() {
                     <Field data-invalid={isInvalid || undefined}>
                       <FieldLabel
                         htmlFor={field.name}
-                        className="text-[12px] font-medium text-[#485450]"
+                        className="text-[13px] font-medium"
                       >
                         Contraseña
                       </FieldLabel>
-                      <Input
-                        id={field.name}
-                        type="password"
-                        placeholder="Mínimo 8 caracteres"
-                        autoComplete="new-password"
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        aria-invalid={isInvalid}
-                      />
+                      <div className="relative">
+                        <Input
+                          id={field.name}
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Mínimo 8 caracteres"
+                          autoComplete="new-password"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          aria-invalid={isInvalid}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          aria-label={
+                            showPassword ? "Ocultar contraseña" : "Ver contraseña"
+                          }
+                        >
+                          {showPassword ? (
+                            <EyeOff className="size-4" />
+                          ) : (
+                            <Eye className="size-4" />
+                          )}
+                        </button>
+                      </div>
                       {isInvalid && (
                         <FieldError errors={field.state.meta.errors} />
                       )}
@@ -353,6 +394,53 @@ function SignupPage() {
                 }}
               </form.Field>
             </FieldGroup>
+
+            <div className="flex flex-col gap-1">
+              <div
+                className="flex cursor-pointer items-start gap-2.5"
+                onClick={() => {
+                  setAcceptsTerms((v) => !v);
+                  setTermsError(false);
+                }}
+              >
+                <div
+                  className={cn(
+                    "mt-0.5 flex size-[17px] shrink-0 items-center justify-center rounded border transition-colors",
+                    acceptsTerms
+                      ? "border-primary bg-primary"
+                      : "border-border bg-white",
+                    termsError && !acceptsTerms && "border-destructive",
+                  )}
+                >
+                  {acceptsTerms && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path
+                        d="M1 4L3.5 6.5L9 1"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-1 text-[13px] text-muted-foreground">
+                  <span>Acepto los</span>
+                  <span className="font-medium text-primary">
+                    Términos de servicio
+                  </span>
+                  <span>y la</span>
+                  <span className="font-medium text-primary">
+                    Política de privacidad
+                  </span>
+                </div>
+              </div>
+              {termsError && !acceptsTerms && (
+                <p className="text-[12px] text-destructive">
+                  Debes aceptar los términos para continuar
+                </p>
+              )}
+            </div>
 
             {submitError && (
               <p className="rounded-[8px] bg-red-50 px-3 py-2.5 text-[13px] text-red-600">
@@ -364,23 +452,22 @@ function SignupPage() {
               {(isSubmitting) => (
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="h-auto w-full rounded-[9px] py-[14px] text-[15px] font-semibold"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Creando cuenta…" : "Crear cuenta"}
+                  {isSubmitting
+                    ? "Creando cuenta…"
+                    : intent === "client"
+                      ? "Crear cuenta de cliente"
+                      : "Crear cuenta de transportista"}
                 </Button>
               )}
             </form.Subscribe>
           </form>
 
-          <p className="text-center text-sm text-[#969e9b]">
-            ¿Ya tienes cuenta?{" "}
-            <Link
-              to="/login"
-              className="font-medium text-primary underline underline-offset-4"
-            >
-              Inicia sesión
-            </Link>
+          <p className="text-center text-[12px] text-muted-foreground">
+            Al registrarte, tu información queda protegida y no es compartida
+            sin tu consentimiento.
           </p>
         </div>
       </div>
