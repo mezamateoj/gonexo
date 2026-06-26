@@ -12,7 +12,7 @@
     "dev:front": "pnpm --filter @gonexo/front dev",
     "deploy:back": "pnpm --filter @gonexo/back deploy",
     "deploy:front": "pnpm --filter @gonexo/front deploy",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "pnpm dlx react-doctor@latest"
   },
   "keywords": [],
   "author": "",
