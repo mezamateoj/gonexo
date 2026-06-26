@@ -39,6 +39,15 @@ function RequestsPage() {
   const col1 = filtered.filter((_, i) => i % 2 === 0)
   const col2 = filtered.filter((_, i) => i % 2 === 1)
 
+  // Truly empty — full-height hero, no header/filters needed
+  if (!isLoading && !isError && (data?.length ?? 0) === 0 && filter === "all") {
+    return (
+      <div className="flex min-h-full items-center justify-center">
+        <EmptyState filtered={false} />
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
       <div className="flex flex-col gap-6">
@@ -86,24 +95,24 @@ function RequestsPage() {
           </div>
         )}
 
-        {!isLoading && !isError && (
+        {!isLoading && !isError && filtered.length === 0 && filter !== "all" && (
+          <div className="grid grid-cols-2 gap-4">
+            <EmptyState filtered />
+          </div>
+        )}
+
+        {!isLoading && !isError && filtered.length > 0 && (
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-[14px]">
               {col1.map((req) => (
                 <RequestCard key={req.id} req={req} />
               ))}
-              {col1.length === 0 && col2.length === 0 && (
-                <EmptyState filtered={filter !== "all"} />
-              )}
             </div>
-
             <div className="flex flex-col gap-[14px]">
               {col2.map((req) => (
                 <RequestCard key={req.id} req={req} />
               ))}
-              {filter === "all" && data && data.length > 0 && (
-                <PromoCard />
-              )}
+              {filter === "all" && <PromoCard />}
             </div>
           </div>
         )}

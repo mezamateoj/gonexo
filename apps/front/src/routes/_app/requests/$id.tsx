@@ -1,79 +1,28 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { MapPin, ChevronLeft, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
+import { formatCLP, formatLongDateTime, requestStatusClasses, requestStatusLabels, volumeLabels } from "@/lib/display"
+import { useAcceptQuote, useCancelRequest } from "@/hooks/use-request-mutations"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DetailRow } from "@/components/requests/detail-row"
 import { QuoteCard } from "@/components/requests/quote-card"
-import type { VolumeCategory } from "@/lib/types"
 
 export const Route = createFileRoute("/_app/requests/$id")({
   component: RequestDetailPage,
 })
 
-const VOLUME_LABEL: Record<VolumeCategory, string> = {
-  small: "Pequeño",
-  medium: "Mediano",
-  large: "Grande",
-  full_move: "Mudanza completa",
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  open: "Abierto",
-  accepted: "Aceptado",
-  in_progress: "En camino",
-  completed: "Completado",
-  cancelled: "Cancelado",
-}
-
-const STATUS_CLASS: Record<string, string> = {
-  open: "bg-[#E7F4EE] text-primary",
-  accepted: "bg-[#E7F4EE] text-primary",
-  in_progress: "bg-[#E7F4EE] text-primary",
-  completed: "bg-[#F5F4F0] text-[#969e9b]",
-  cancelled: "bg-[#FEF2F2] text-destructive",
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("es-CL", {
-    weekday: "long", day: "numeric", month: "long",
-    hour: "2-digit", minute: "2-digit",
-  })
-}
-
-function formatCLP(n: number) {
-  return n.toLocaleString("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 })
-}
-
 function RequestDetailPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const { data: req, isLoading, isError } = useQuery({
     queryKey: queryKeys.requests.detail(id),
     queryFn: () => api.requests.get(id),
   })
-
-  const acceptMutation = useMutation({
-    mutationFn: (quoteId: string) => api.quotes.accept(quoteId),
-    onSuccess: ({ jobId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(id) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.my })
-      navigate({ to: "/jobs/$id", params: { id: jobId } })
-    },
-  })
-
-  const cancelMutation = useMutation({
-    mutationFn: () => api.requests.cancel(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(id) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.available(1) })
-    },
-  })
+  const acceptMutation = useAcceptQuote(id)
+  const cancelMutation = useCancelRequest(id)
 
   if (isLoading) {
     return (
@@ -117,8 +66,8 @@ function RequestDetailPage() {
         <div className="flex flex-col gap-4">
           <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-6">
             <div className="mb-5 flex items-center justify-between">
-              <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold", STATUS_CLASS[req.status] ?? "bg-[#F5F4F0] text-[#969e9b]")}>
-                {STATUS_LABEL[req.status] ?? req.status}
+              <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold", requestStatusClasses[req.status] ?? "bg-[#F5F4F0] text-[#969e9b]")}>
+                {requestStatusLabels[req.status] ?? req.status}
               </span>
               <span className="text-[12px] text-[#B0ABA5]">
                 {new Date(req.createdAt).toLocaleDateString("es-CL")}
@@ -162,8 +111,8 @@ function RequestDetailPage() {
             </div>
 
             <div className="mt-5 grid grid-cols-3 gap-4 border-t border-[#F0EEE9] pt-4">
-              <DetailRow label="Fecha" value={formatDate(req.scheduledAt)} />
-              <DetailRow label="Volumen" value={VOLUME_LABEL[req.volumeCategory]} />
+              <DetailRow label="Fecha" value={formatLongDateTime(req.scheduledAt)} />
+              <DetailRow label="Volumen" value={volumeLabels[req.volumeCategory]} />
               <DetailRow label="Artículos" value={req.itemDescription} />
             </div>
 

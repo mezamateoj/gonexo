@@ -2,46 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
-import type { MyQuote, VolumeCategory } from "@/lib/types"
+import type { MyQuote } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { MessageSquare, MapPin } from "lucide-react"
+import { MapPin, MessageSquare } from "lucide-react"
+import { formatCLP, formatShortDate, quoteStatusClasses, quoteStatusLabels, volumeLabels } from "@/lib/display"
 
 export const Route = createFileRoute("/_app/quotes/")({
   component: QuotesPage,
 })
-
-const STATUS_LABEL: Record<MyQuote["status"], string> = {
-  pending: "Esperando",
-  accepted: "Aceptado",
-  rejected: "No elegido",
-  expired: "Expirado",
-}
-
-const STATUS_CLASS: Record<MyQuote["status"], string> = {
-  pending: "bg-amber-50 text-amber-700",
-  accepted: "bg-green-50 text-green-700",
-  rejected: "bg-[#F5F4F0] text-[#969e9b]",
-  expired: "bg-[#F5F4F0] text-[#969e9b]",
-}
-
-const VOLUME_LABEL: Record<VolumeCategory, string> = {
-  small: "Pequeño",
-  medium: "Mediano",
-  large: "Grande",
-  full_move: "Mudanza completa",
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-CL", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function formatCLP(n: number) {
-  return n.toLocaleString("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 })
-}
 
 function QuoteRow({ q }: { q: MyQuote }) {
   const isActive = q.status === "pending" || q.status === "accepted"
@@ -75,16 +43,16 @@ function QuoteRow({ q }: { q: MyQuote }) {
           </div>
           <span className={cn(
             "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-            STATUS_CLASS[q.status]
+            quoteStatusClasses[q.status]
           )}>
-            {STATUS_LABEL[q.status]}
+            {quoteStatusLabels[q.status]}
           </span>
         </div>
 
         <div className="mt-2 flex items-center gap-3">
           <span className="text-[14px] font-bold text-primary">{formatCLP(q.price)}</span>
-          <span className="text-[11px] text-[#969e9b]">{VOLUME_LABEL[q.request.volumeCategory]}</span>
-          <span className="text-[11px] text-[#969e9b]">{formatDate(q.request.scheduledAt)}</span>
+          <span className="text-[11px] text-[#969e9b]">{volumeLabels[q.request.volumeCategory]}</span>
+          <span className="text-[11px] text-[#969e9b]">{formatShortDate(q.request.scheduledAt)}</span>
         </div>
 
         {q.message && (
@@ -116,20 +84,36 @@ function QuotesPage() {
 
   if (!quotes || quotes.length === 0) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-[#F0EDE9]">
-          <MessageSquare className="size-5 text-[#969e9b]" />
+      <div className="flex min-h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-8 text-center">
+          <div className="flex size-24 items-center justify-center rounded-full bg-[#0c8c5e0d] text-[44px] leading-none">
+            💬
+          </div>
+
+          <div className="flex flex-col items-center gap-2.5">
+            <h2 className="text-[28px] font-bold tracking-[-0.5px] text-[#121715]">
+              Aún no tienes cotizaciones
+            </h2>
+            <p className="w-[400px] text-[15px] leading-[1.6] text-[#717d79]">
+              Explora las solicitudes disponibles y envía tu primera oferta para conseguir fletes.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-[13px]">
+            <span className="font-medium text-[#121715]">1. Explora</span>
+            <span className="text-[#717d79]">·</span>
+            <span className="font-medium text-[#121715]">2. Cotiza</span>
+            <span className="text-[#717d79]">·</span>
+            <span className="font-medium text-[#121715]">3. Consigue el flete</span>
+          </div>
+
+          <Link
+            to="/available"
+            className="rounded-[8px] bg-primary px-[28px] py-[13px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Ver solicitudes disponibles →
+          </Link>
         </div>
-        <p className="text-[15px] font-semibold text-[#121715]">Sin cotizaciones aún</p>
-        <p className="max-w-[240px] text-[13px] text-[#969e9b]">
-          Cuando envíes una cotización aparecerá aquí con su estado.
-        </p>
-        <Link
-          to="/available"
-          className="rounded-[8px] bg-primary px-4 py-2 text-[13px] font-semibold text-white"
-        >
-          Ver solicitudes disponibles
-        </Link>
       </div>
     )
   }

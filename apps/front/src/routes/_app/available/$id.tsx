@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useForm } from "@tanstack/react-form"
 import { useEffect, useState } from "react"
 import { z } from "zod"
@@ -8,33 +8,16 @@ import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { useSession } from "@/lib/auth-client"
+import { floorLine, formatCLP, formatLongDateTime, initials, volumeLabels } from "@/lib/display"
+import { useSubmitQuote } from "@/hooks/use-request-mutations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Field, FieldError, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
-import type { VolumeCategory } from "@/lib/types"
 
 export const Route = createFileRoute("/_app/available/$id")({
   component: DriverOpportunityPage,
 })
-
-const VOLUME_LABEL: Record<VolumeCategory, string> = {
-  small: "Pequeño",
-  medium: "Mediano",
-  large: "Grande",
-  full_move: "Mudanza completa",
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("es-CL", {
-    weekday: "long", day: "numeric", month: "long",
-    hour: "2-digit", minute: "2-digit",
-  })
-}
-
-function formatCLP(n: number) {
-  return n.toLocaleString("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 })
-}
 
 const quoteSchema = z.object({
   price: z.string().min(1, "Ingresa un precio").refine(
@@ -44,8 +27,9 @@ const quoteSchema = z.object({
   message: z.string().max(500),
 })
 
-function SubmitQuoteForm({ requestId, onSuccess }: { requestId: string; onSuccess: () => void }) {
+function SubmitQuoteForm({ requestId }: { requestId: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const submitQuote = useSubmitQuote(requestId)
 
   const form = useForm({
     defaultValues: { price: "", message: "" },
@@ -53,11 +37,10 @@ function SubmitQuoteForm({ requestId, onSuccess }: { requestId: string; onSucces
     onSubmit: async ({ value }) => {
       setSubmitError(null)
       try {
-        await api.requests.submitQuote(requestId, {
+        await submitQuote.mutateAsync({
           price: parseInt(value.price.replace(/\D/g, "")),
           message: value.message || undefined,
         })
-        onSuccess()
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : "Error al enviar la cotización. Intenta de nuevo.")
       }
@@ -142,7 +125,6 @@ function SubmitQuoteForm({ requestId, onSuccess }: { requestId: string; onSucces
 function DriverOpportunityPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const { data: session } = useSession()
 
   const { data: req, isLoading, isError } = useQuery({
@@ -204,12 +186,12 @@ function DriverOpportunityPage() {
             <div className="mb-5 flex items-center gap-3 text-[12px] text-[#B0ABA5]">
               <span className="flex items-center gap-1">
                 <Calendar className="size-3.5" />
-                {formatDate(req.scheduledAt)}
+                {formatLongDateTime(req.scheduledAt)}
               </span>
               <span>·</span>
               <span className="flex items-center gap-1">
                 <Package className="size-3.5" />
-                {VOLUME_LABEL[req.volumeCategory]}
+                {volumeLabels[req.volumeCategory]}
               </span>
             </div>
 
@@ -223,10 +205,7 @@ function DriverOpportunityPage() {
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Origen</p>
                   <p className="text-[14px] font-medium text-[#121715]">{req.originAddress}</p>
                   {(req.originFloor != null || req.originHasElevator) && (
-                    <p className="text-[12px] text-[#969e9b]">
-                      {req.originFloor != null ? `Piso ${req.originFloor} · ` : ""}
-                      {req.originHasElevator ? "Con ascensor" : "Sin ascensor"}
-                    </p>
+                    <p className="text-[12px] text-[#969e9b]">{floorLine(req.originFloor, req.originHasElevator)}</p>
                   )}
                 </div>
               </div>
@@ -239,10 +218,7 @@ function DriverOpportunityPage() {
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Destino</p>
                   <p className="text-[14px] font-medium text-[#121715]">{req.destAddress}</p>
                   {(req.destFloor != null || req.destHasElevator) && (
-                    <p className="text-[12px] text-[#969e9b]">
-                      {req.destFloor != null ? `Piso ${req.destFloor} · ` : ""}
-                      {req.destHasElevator ? "Con ascensor" : "Sin ascensor"}
-                    </p>
+                    <p className="text-[12px] text-[#969e9b]">{floorLine(req.destFloor, req.destHasElevator)}</p>
                   )}
                 </div>
               </div>
@@ -323,7 +299,7 @@ function DriverOpportunityPage() {
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Cliente</p>
             <div className="flex items-center gap-3">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-bold text-primary">
-                {req.user.name?.[0]?.toUpperCase() ?? "?"}
+                {initials(req.user.name)}
               </div>
               <p className="text-[13px] font-semibold text-[#121715]">{req.user.name}</p>
             </div>
@@ -362,15 +338,7 @@ function DriverOpportunityPage() {
           )}
 
           {/* Quote form — only if open and not yet quoted */}
-          {isOpen && !myQuote && (
-            <SubmitQuoteForm
-              requestId={id}
-              onSuccess={() => {
-                qc.invalidateQueries({ queryKey: queryKeys.requests.detail(id) })
-                qc.invalidateQueries({ queryKey: queryKeys.quotes.my })
-              }}
-            />
-          )}
+          {isOpen && !myQuote && <SubmitQuoteForm requestId={id} />}
 
           {/* Closed state */}
           {!isOpen && !myQuote && (

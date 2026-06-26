@@ -2,17 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
+import { vehicleLabels } from "@/lib/display"
 import { Car } from "lucide-react"
 
 export const Route = createFileRoute("/_app/vehicle")({
   component: VehiclePage,
 })
 
-const VEHICLE_LABELS: Record<string, { label: string; emoji: string }> = {
-  van: { label: "Furgón", emoji: "🚐" },
-  pickup: { label: "Camioneta", emoji: "🛻" },
-  truck_small: { label: "Camión chico", emoji: "🚚" },
-  truck_large: { label: "Camión grande", emoji: "🚛" },
+const VEHICLE_EMOJIS: Record<string, string> = {
+  van: "🚐",
+  pickup: "🛻",
+  truck_small: "🚚",
+  truck_large: "🚛",
 }
 
 function VehiclePage() {
@@ -48,8 +49,6 @@ function VehiclePage() {
     )
   }
 
-  const vehicleInfo = VEHICLE_LABELS[profile.vehicleType]
-
   return (
     <div className="mx-auto max-w-[480px] px-4 py-8">
       <h1 className="text-[18px] font-semibold text-[#121715]">Mi vehículo</h1>
@@ -57,9 +56,9 @@ function VehiclePage() {
       <div className="mt-6 space-y-4">
         <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-5">
           <div className="flex items-center gap-4">
-            <span className="text-4xl">{vehicleInfo?.emoji ?? "🚗"}</span>
+            <span className="text-4xl">{VEHICLE_EMOJIS[profile.vehicleType] ?? "🚗"}</span>
             <div>
-              <p className="text-[18px] font-semibold text-[#121715]">{vehicleInfo?.label ?? profile.vehicleType}</p>
+              <p className="text-[18px] font-semibold text-[#121715]">{vehicleLabels[profile.vehicleType] ?? profile.vehicleType}</p>
               <p className="font-mono text-[15px] font-bold tracking-[0.12em] text-[#485450]">
                 {profile.vehiclePlate}
               </p>

@@ -1,56 +1,59 @@
 import { Link } from "@tanstack/react-router"
-import { Package, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 export function EmptyState({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
       <div className="col-span-2 flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[#E9E7E3] bg-white py-12 text-center">
-        <Package className="size-9 text-[#CCCCCC] mb-3" />
+        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-[#F5F4F0] text-2xl leading-none">
+          📦
+        </div>
         <p className="text-[14px] font-medium text-foreground">Sin solicitudes en esta categoría</p>
-        <p className="mt-1 text-sm text-muted-foreground">Prueba otro filtro</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">Prueba otro filtro</p>
       </div>
     )
   }
 
   return (
-    <div className="col-span-2 flex flex-col items-center justify-center rounded-[12px] border border-dashed border-[#E9E7E3] bg-white py-14 text-center">
-      <div className="mb-6 flex items-center gap-1 rounded-full bg-[#F5F4F0] px-4 py-2">
-        {[
-          { n: 1, label: "Describe tu flete" },
-          { n: 2, label: "Recibe ofertas" },
-          { n: 3, label: "Elige y muévete" },
-        ].map(({ n, label }, i) => (
-          <div key={n} className="flex items-center gap-1">
-            {i > 0 && <span className="mx-1 text-[#D0CCC7]">·</span>}
-            <div className="flex items-center gap-1.5">
-              <div className="flex size-[18px] items-center justify-center rounded-full bg-primary">
-                <span className="text-[9px] font-bold text-white">{n}</span>
-              </div>
-              <span className="text-[11px] font-medium text-[#485450]">{label}</span>
-            </div>
-          </div>
-        ))}
+    <div className="flex flex-col items-center gap-8 text-center">
+      {/* Icon circle — 96×96, fully rounded, #0c8c5e0d fill */}
+      <div className="flex size-24 items-center justify-center rounded-full bg-[#0c8c5e0d] text-[44px] leading-none">
+        📦
       </div>
 
-      <p className="text-[16px] font-semibold text-[#121715]">Publica tu primer flete</p>
-      <p className="mt-1 text-[13px] text-[#969e9b] max-w-[260px] leading-relaxed">
-        Recibe cotizaciones de transportistas verificados en minutos.
-      </p>
+      {/* Text block — gap 10 */}
+      <div className="flex flex-col items-center gap-2.5">
+        <h2 className="text-[28px] font-bold tracking-[-0.5px] text-[#121715]">
+          Aún no tienes envíos
+        </h2>
+        <p className="w-[400px] text-[15px] leading-[1.6] text-[#717d79]">
+          Publica tu primer flete y recibe ofertas de transportistas verificados.
+        </p>
+      </div>
 
-      <Button className="mt-5 gap-2" asChild>
-        <Link to="/requests/new">
-          <Plus className="size-4" />
-          Publicar flete
-        </Link>
-      </Button>
+      {/* Steps row */}
+      <div className="flex items-center gap-2 text-[13px]">
+        <span className="font-medium text-[#121715]">1. Publica</span>
+        <span className="text-[#717d79]">·</span>
+        <span className="font-medium text-[#121715]">2. Recibe ofertas</span>
+        <span className="text-[#717d79]">·</span>
+        <span className="font-medium text-[#121715]">3. Elige y listo</span>
+      </div>
 
-      <p className="mt-4 text-[12px] text-[#B0ABA5]">
-        ¿Eres transportista?{" "}
-        <Link to="/driver-onboarding" className="text-primary underline underline-offset-2">
-          Regístrate aquí
+      {/* CTA group — gap 16, vertical, centered */}
+      <div className="flex flex-col items-center gap-4">
+        <Link
+          to="/requests/new"
+          className="rounded-[8px] bg-primary px-[28px] py-[13px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
+        >
+          Publicar mi primer flete →
         </Link>
-      </p>
+        <Link
+          to="/driver-onboarding"
+          className="text-[13px] text-[#717d79] transition-colors hover:text-foreground"
+        >
+          ¿Eres transportista? Encuentra solicitudes
+        </Link>
+      </div>
     </div>
   )
 }

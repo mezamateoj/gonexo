@@ -1,84 +1,35 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useSession } from "@/lib/auth-client"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
-import type { JobStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import {
+  formatPrice,
+  formatLongDateTime,
+  jobStatusClasses,
+  jobStatusLabels,
+  jobStatusOrder,
+  nextJobStatus,
+  nextJobStatusLabels,
+  volumeLabels,
+} from "@/lib/display"
+import { useAdvanceJobStatus, useConfirmJob } from "@/hooks/use-request-mutations"
 
 export const Route = createFileRoute("/_app/jobs/$id")({
   component: JobDetailPage,
 })
 
-const STATUS_LABELS: Record<JobStatus, string> = {
-  scheduled: "Agendado",
-  on_the_way: "En camino",
-  arrived: "En destino",
-  completed: "Completado",
-  cancelled: "Cancelado",
-}
-
-const STATUS_ORDER: JobStatus[] = ["scheduled", "on_the_way", "arrived", "completed"]
-
-const NEXT_STATUS: Partial<Record<JobStatus, "on_the_way" | "arrived" | "completed">> = {
-  scheduled: "on_the_way",
-  on_the_way: "arrived",
-  arrived: "completed",
-}
-
-const NEXT_STATUS_LABEL: Partial<Record<JobStatus, string>> = {
-  scheduled: "Marcar en camino",
-  on_the_way: "Marcar llegué",
-  arrived: "Marcar completado",
-}
-
-function formatPrice(n: number) {
-  return `$${n.toLocaleString("es-CL")}`
-}
-
-function formatDate(s: string) {
-  return new Date(s).toLocaleDateString("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-const VOLUME_LABELS: Record<string, string> = {
-  small: "Pequeño",
-  medium: "Mediano",
-  large: "Grande",
-  full_move: "Mudanza completa",
-}
-
 function JobDetailPage() {
   const { id } = Route.useParams()
   const { data: session } = useSession()
-  const qc = useQueryClient()
 
   const { data: job, isLoading, error } = useQuery({
     queryKey: queryKeys.jobs.detail(id),
     queryFn: () => api.jobs.get(id),
   })
-
-  const advanceStatus = useMutation({
-    mutationFn: (status: "on_the_way" | "arrived" | "completed") =>
-      api.jobs.updateStatus(id, status),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.jobs.detail(id) })
-      qc.invalidateQueries({ queryKey: queryKeys.jobs.my })
-    },
-  })
-
-  const confirmJob = useMutation({
-    mutationFn: () => api.jobs.confirm(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.jobs.detail(id) })
-      qc.invalidateQueries({ queryKey: queryKeys.jobs.my })
-    },
-  })
+  const advanceStatus = useAdvanceJobStatus(id)
+  const confirmJob = useConfirmJob(id)
 
   if (isLoading) {
     return (
@@ -102,8 +53,8 @@ function JobDetailPage() {
   const userId = session?.user?.id
   const isClient = userId === job.userId
   const isDriver = userId === job.driverId
-  const currentStatusIdx = STATUS_ORDER.indexOf(job.status)
-  const next = NEXT_STATUS[job.status]
+  const currentStatusIdx = jobStatusOrder.indexOf(job.status)
+  const next = nextJobStatus[job.status]
   const hasReviewed = job.reviews.some((r) => r.reviewerId === userId)
 
   const otherParty = isClient ? job.driver : job.user
@@ -123,15 +74,13 @@ function JobDetailPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-[18px] font-semibold text-[#121715]">Trabajo #{id.slice(-6).toUpperCase()}</h1>
-          <p className="mt-0.5 text-[13px] text-[#969e9b]">{formatDate(job.request.scheduledAt)}</p>
+          <p className="mt-0.5 text-[13px] text-[#969e9b]">{formatLongDateTime(job.request.scheduledAt)}</p>
         </div>
         <span className={cn(
           "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-          job.status === "completed" || job.status === "cancelled"
-            ? job.status === "completed" ? "bg-green-100 text-green-700" : "bg-red-50 text-red-600"
-            : "bg-amber-50 text-amber-700"
+          jobStatusClasses[job.status]
         )}>
-          {STATUS_LABELS[job.status]}
+          {jobStatusLabels[job.status]}
         </span>
       </div>
 
@@ -140,7 +89,7 @@ function JobDetailPage() {
         <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Progreso</p>
           <div className="flex items-center gap-0">
-            {STATUS_ORDER.map((s, i) => {
+            {jobStatusOrder.map((s, i) => {
               const done = i <= currentStatusIdx
               const active = i === currentStatusIdx
               return (
@@ -157,7 +106,7 @@ function JobDetailPage() {
                       <span>{i + 1}</span>
                     )}
                   </div>
-                  {i < STATUS_ORDER.length - 1 && (
+                  {i < jobStatusOrder.length - 1 && (
                     <div className={cn("h-[2px] flex-1", i < currentStatusIdx ? "bg-primary" : "bg-[#EDEAE6]")} />
                   )}
                 </div>
@@ -165,8 +114,8 @@ function JobDetailPage() {
             })}
           </div>
           <div className="mt-2 flex justify-between">
-            {STATUS_ORDER.map((s) => (
-              <p key={s} className="flex-1 text-center text-[10px] text-[#969e9b]">{STATUS_LABELS[s]}</p>
+            {jobStatusOrder.map((s) => (
+              <p key={s} className="flex-1 text-center text-[10px] text-[#969e9b]">{jobStatusLabels[s]}</p>
             ))}
           </div>
         </div>
@@ -180,7 +129,7 @@ function JobDetailPage() {
           disabled={advanceStatus.isPending}
           className="w-full rounded-[10px] bg-primary px-4 py-3 text-[14px] font-semibold text-white transition-opacity disabled:opacity-60"
         >
-              {advanceStatus.isPending ? "Actualizando…" : NEXT_STATUS_LABEL[job.status]}
+              {advanceStatus.isPending ? "Actualizando…" : nextJobStatusLabels[job.status]}
         </button>
       )}
 
@@ -235,7 +184,7 @@ function JobDetailPage() {
         <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Volumen</p>
           <p className="mt-1 text-[14px] font-semibold text-[#121715]">
-            {VOLUME_LABELS[job.request.volumeCategory] ?? job.request.volumeCategory}
+            {volumeLabels[job.request.volumeCategory]}
           </p>
         </div>
       </div>
