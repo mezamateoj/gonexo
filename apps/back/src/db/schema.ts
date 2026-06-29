@@ -1,23 +1,27 @@
 import { relations, sql } from "drizzle-orm";
-import { sqliteTable, text, integer, real, index, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, uniqueIndex, check } from "drizzle-orm/sqlite-core";
 
-export const user = sqliteTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" })
-    .default(false)
-    .notNull(),
-  image: text("image"),
-  phone: text("phone"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
+export const user = sqliteTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: integer("email_verified", { mode: "boolean" })
+      .default(false)
+      .notNull(),
+    image: text("image"),
+    phone: text("phone"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [uniqueIndex("user_phone_unique").on(table.phone)],
+);
 
 export const session = sqliteTable(
   "session",
@@ -67,7 +71,10 @@ export const account = sqliteTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("account_userId_idx").on(table.userId)],
+  (table) => [
+    index("account_userId_idx").on(table.userId),
+    uniqueIndex("account_provider_account_unique").on(table.providerId, table.accountId),
+  ],
 );
 
 export const verification = sqliteTable(
@@ -115,38 +122,50 @@ export const accountRelations = relations(account, ({ one }) => ({
 // A user becomes a driver by creating a profile. One user can be both
 // a customer and a driver — role is inferred from whether this row exists.
 
-export const driverProfile = sqliteTable("driver_profile", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .unique()
-    .references(() => user.id, { onDelete: "cascade" }),
-  phone: text("phone").notNull(),
-  vehicleType: text("vehicle_type").notNull(), // 'van' | 'pickup' | 'truck_small' | 'truck_large'
-  vehiclePlate: text("vehicle_plate").notNull(),
-  vehicleYear: integer("vehicle_year"),
-  bio: text("bio"),
-  isVerified: integer("is_verified", { mode: "boolean" }).default(false).notNull(),
-  isAvailable: integer("is_available", { mode: "boolean" }).default(true).notNull(),
-  avgRating: real("avg_rating"),         // cached, updated after every review
-  totalJobs: integer("total_jobs").default(0).notNull(),
+export const driverProfile = sqliteTable(
+  "driver_profile",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .unique()
+      .references(() => user.id, { onDelete: "cascade" }),
+    phone: text("phone").notNull(),
+    vehicleType: text("vehicle_type").notNull(), // 'van' | 'pickup' | 'truck_small' | 'truck_large'
+    vehiclePlate: text("vehicle_plate").notNull(),
+    vehicleYear: integer("vehicle_year"),
+    bio: text("bio"),
+    isVerified: integer("is_verified", { mode: "boolean" }).default(false).notNull(),
+    isAvailable: integer("is_available", { mode: "boolean" }).default(true).notNull(),
+    avgRating: real("avg_rating"),         // cached, updated after every review
+    totalJobs: integer("total_jobs").default(0).notNull(),
 
-  // Verification docs + LLM-enriched vehicle profile
-  licenseUrl: text("license_url"),
-  vehiclePhotos: text("vehicle_photos"),       // JSON array of R2 URLs
-  papersUrl: text("papers_url"),
-  vehicleDescription: text("vehicle_description"), // LLM-generated, editable
-  vehicleCapacity: text("vehicle_capacity"),       // LLM-generated, editable
-  documentsStatus: text("documents_status").notNull().default("pending"),
-  // 'pending' | 'submitted' | 'verified'
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+    // Verification docs + LLM-enriched vehicle profile
+    licenseUrl: text("license_url"),
+    vehiclePhotos: text("vehicle_photos"),       // JSON array of R2 URLs
+    papersUrl: text("papers_url"),
+    vehicleDescription: text("vehicle_description"), // LLM-generated, editable
+    vehicleCapacity: text("vehicle_capacity"),       // LLM-generated, editable
+    documentsStatus: text("documents_status").notNull().default("pending"),
+    // 'pending' | 'submitted' | 'verified'
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("driver_profile_vehicle_plate_unique").on(t.vehiclePlate),
+    check("driver_profile_vehicle_type_check", sql`${t.vehicleType} in ('van', 'pickup', 'truck_small', 'truck_large')`),
+    check("driver_profile_documents_status_check", sql`${t.documentsStatus} in ('pending', 'submitted', 'verified')`),
+    check("driver_profile_vehicle_year_check", sql`${t.vehicleYear} is null or (${t.vehicleYear} >= 1990 and ${t.vehicleYear} <= 2035)`),
+    check("driver_profile_rating_check", sql`${t.avgRating} is null or (${t.avgRating} >= 1 and ${t.avgRating} <= 5)`),
+    check("driver_profile_total_jobs_check", sql`${t.totalJobs} >= 0`),
+    check("driver_profile_verified_status_check", sql`${t.isVerified} = false or ${t.documentsStatus} = 'verified'`),
+  ],
+);
 
 export const driverProfileRelations = relations(driverProfile, ({ one }) => ({
   user: one(user, { fields: [driverProfile.userId], references: [user.id] }),
@@ -287,6 +306,7 @@ export const quote = sqliteTable(
   },
   (t) => [
     uniqueIndex("quote_request_driver_unique").on(t.requestId, t.driverId),
+    uniqueIndex("quote_one_accepted_per_request_unique").on(t.requestId).where(sql`${t.status} = 'accepted'`),
     index("quote_requestId_idx").on(t.requestId),
     index("quote_driverId_idx").on(t.driverId),
   ],

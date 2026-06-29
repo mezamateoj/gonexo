@@ -13,7 +13,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Check, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff, Package, Truck } from "lucide-react";
 import { GonexoLogo } from "@/components/gonexo-logo";
 
 export const Route = createFileRoute("/signup")({
@@ -40,19 +40,34 @@ const BULLETS = [
   "Compara, elige y coordina desde la plataforma",
 ];
 
+// Mobile-only dark header replaces the desktop left panel
+function SignupMobileHeader() {
+  return (
+    <div className="flex flex-col gap-3 bg-[#0a0b0f] px-6 pb-7 pt-10 md:hidden">
+      <Link to="/">
+        <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
+      </Link>
+      <h2 className="text-[28px] font-bold leading-[1.12] tracking-[-0.8px] text-[#faf8f5]">
+        El marketplace<br />chileno de fletes.
+      </h2>
+      <p className="text-[13px] leading-[1.5] text-[#717d79]">
+        Recibe cotizaciones, compara y elige tranquilo.
+      </p>
+    </div>
+  );
+}
+
+// Desktop-only left panel
 function SignupLeftPanel() {
   return (
-    <div className="flex w-[560px] shrink-0 flex-col justify-between bg-[#0a0b0f] px-12 py-10">
+    <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-[#0a0b0f] px-12 py-10 md:flex">
       <Link to="/">
         <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
       </Link>
 
       <div className="flex flex-col gap-7">
         <h2 className="text-[40px] font-bold leading-[1.12] tracking-[-1.2px] text-[#faf8f5]">
-          El marketplace
-          <br />
-          chileno de fletes
-          <br />y mudanzas.
+          El marketplace<br />chileno de fletes<br />y mudanzas.
         </h2>
         <div className="flex flex-col gap-[14px]">
           {BULLETS.map((bullet) => (
@@ -60,9 +75,7 @@ function SignupLeftPanel() {
               <div className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#0c8c5e20]">
                 <Check className="size-3 text-primary" />
               </div>
-              <span className="text-[15px] leading-[1.4] text-[#d9d7d4]">
-                {bullet}
-              </span>
+              <span className="text-[15px] leading-[1.4] text-[#d9d7d4]">{bullet}</span>
             </div>
           ))}
         </div>
@@ -78,12 +91,8 @@ function SignupLeftPanel() {
             M
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-[14px] font-semibold text-[#faf8f5]">
-              Macarena S.
-            </span>
-            <span className="text-[12px] text-[#717d79]">
-              Cliente gonexo, Santiago
-            </span>
+            <span className="text-[14px] font-semibold text-[#faf8f5]">Macarena S.</span>
+            <span className="text-[12px] text-[#717d79]">Cliente gonexo, Santiago</span>
           </div>
         </div>
       </div>
@@ -109,13 +118,7 @@ function SignupPage() {
   }, [session, navigate]);
 
   const form = useForm({
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      password: "",
-    },
+    defaultValues: { firstName: "", lastName: "", email: "", phone: "", password: "" },
     validators: { onSubmit: formSchema },
     onSubmit: async ({ value }) => {
       if (!acceptsTerms) {
@@ -131,9 +134,7 @@ function SignupPage() {
       });
       if (error) {
         handlingSubmit.current = false;
-        setSubmitError(
-          "Error al crear la cuenta. Verifica tus datos e intenta de nuevo.",
-        );
+        setSubmitError("Error al crear la cuenta. Verifica tus datos e intenta de nuevo.");
         return;
       }
       if (intent === "driver") {
@@ -147,83 +148,103 @@ function SignupPage() {
   });
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-screen flex-col md:h-screen md:flex-row md:overflow-hidden">
+      {/* Mobile: dark header on top */}
+      <SignupMobileHeader />
+
+      {/* Desktop: dark left panel */}
       <SignupLeftPanel />
 
-      <div className="flex flex-1 items-center justify-center overflow-y-auto bg-white">
-        <div className="flex w-[420px] flex-col gap-6 py-10">
+      {/* Form area */}
+      <div className="flex flex-1 bg-white px-5 py-7 md:items-center md:justify-center md:overflow-y-auto md:px-0 md:py-0">
+        <div className="flex w-full flex-col gap-5 md:w-[420px] md:py-10">
           <Link
             to="/"
             className="flex w-fit items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="size-[15px]" />
+            <ArrowLeft className="size-[14px]" />
             Volver al inicio
           </Link>
 
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-[28px] font-bold tracking-[-0.5px] text-foreground">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-[26px] font-bold tracking-[-0.5px] text-foreground md:text-[28px]">
               Crear cuenta
             </h1>
             <div className="flex items-center gap-1">
-              <span className="text-[14px] text-muted-foreground">
-                ¿Ya tienes cuenta?
-              </span>
+              <span className="text-[14px] text-muted-foreground">¿Ya tienes cuenta?</span>
               <Link to="/login" className="text-[14px] font-medium text-primary">
                 Inicia sesión
               </Link>
             </div>
           </div>
 
-          <div className="flex gap-0.5 rounded-[10px] bg-secondary p-1">
-            {(
-              [
-                { key: "client" as AppMode, label: "Soy cliente" },
-                { key: "driver" as AppMode, label: "Soy transportista" },
-              ] as const
-            ).map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setIntent(key)}
-                className={cn(
-                  "flex-1 rounded-[7px] py-[9px] text-center text-[14px] transition-all",
-                  intent === key
-                    ? "bg-white font-semibold text-foreground shadow-sm"
-                    : "font-medium text-muted-foreground",
-                )}
-              >
-                {label}
-              </button>
-            ))}
+          {/* Intent cards */}
+          <div className="flex flex-col gap-[10px]">
+            <p className="text-[13px] font-medium text-foreground">
+              ¿Qué quieres hacer primero?
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {(
+                [
+                  {
+                    key: "client" as AppMode,
+                    icon: Package,
+                    label: "Enviar algo",
+                    description: "Necesitas mover cosas y quieres recibir cotizaciones",
+                  },
+                  {
+                    key: "driver" as AppMode,
+                    icon: Truck,
+                    label: "Trabajar transportando",
+                    description: "Ofreces servicios de transporte y mudanzas",
+                  },
+                ] as const
+              ).map(({ key, icon: Icon, label, description }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setIntent(key)}
+                  className={cn(
+                    "flex flex-col gap-2.5 rounded-[10px] border p-3 text-left transition-all",
+                    intent === key
+                      ? "border-primary ring-1 ring-primary"
+                      : "border-border hover:border-primary/40",
+                  )}
+                >
+                  <div className="flex size-8 items-center justify-center rounded-full bg-[#0c8c5e15]">
+                    <Icon className="size-[15px] text-primary" />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[13px] font-semibold leading-[1.3] text-foreground">
+                      {label}
+                    </span>
+                    <span className="text-[11px] leading-[1.45] text-muted-foreground">
+                      {description}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              form.handleSubmit();
-            }}
+            onSubmit={(e) => { e.preventDefault(); form.handleSubmit(); }}
             className="flex flex-col gap-5"
           >
             <FieldGroup>
-              <div className="grid grid-cols-2 gap-3">
+              {/* Nombre + Apellido — stacked on mobile, side-by-side on desktop */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-3">
                 <form.Field
                   name="firstName"
-                  validators={{
-                    onChange: firstNameSchema,
-                    onBlur: firstNameSchema,
-                  }}
+                  validators={{ onChange: firstNameSchema, onBlur: firstNameSchema }}
                 >
                   {(field) => {
                     const isInvalid =
                       field.state.meta.errors.length > 0 &&
-                      (field.state.meta.isTouched ||
-                        form.state.submissionAttempts > 0);
+                      (field.state.meta.isTouched || form.state.submissionAttempts > 0);
                     return (
                       <Field data-invalid={isInvalid || undefined}>
-                        <FieldLabel
-                          htmlFor={field.name}
-                          className="text-[13px] font-medium"
-                        >
+                        <FieldLabel htmlFor={field.name} className="text-[13px] font-medium">
                           Nombre
                         </FieldLabel>
                         <Input
@@ -234,9 +255,7 @@ function SignupPage() {
                           onChange={(e) => field.handleChange(e.target.value)}
                           aria-invalid={isInvalid}
                         />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
                     );
                   }}
@@ -244,22 +263,15 @@ function SignupPage() {
 
                 <form.Field
                   name="lastName"
-                  validators={{
-                    onChange: lastNameSchema,
-                    onBlur: lastNameSchema,
-                  }}
+                  validators={{ onChange: lastNameSchema, onBlur: lastNameSchema }}
                 >
                   {(field) => {
                     const isInvalid =
                       field.state.meta.errors.length > 0 &&
-                      (field.state.meta.isTouched ||
-                        form.state.submissionAttempts > 0);
+                      (field.state.meta.isTouched || form.state.submissionAttempts > 0);
                     return (
                       <Field data-invalid={isInvalid || undefined}>
-                        <FieldLabel
-                          htmlFor={field.name}
-                          className="text-[13px] font-medium"
-                        >
+                        <FieldLabel htmlFor={field.name} className="text-[13px] font-medium">
                           Apellido
                         </FieldLabel>
                         <Input
@@ -270,9 +282,7 @@ function SignupPage() {
                           onChange={(e) => field.handleChange(e.target.value)}
                           aria-invalid={isInvalid}
                         />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
                     );
                   }}
@@ -286,14 +296,10 @@ function SignupPage() {
                 {(field) => {
                   const isInvalid =
                     field.state.meta.errors.length > 0 &&
-                    (field.state.meta.isTouched ||
-                      form.state.submissionAttempts > 0);
+                    (field.state.meta.isTouched || form.state.submissionAttempts > 0);
                   return (
                     <Field data-invalid={isInvalid || undefined}>
-                      <FieldLabel
-                        htmlFor={field.name}
-                        className="text-[13px] font-medium"
-                      >
+                      <FieldLabel htmlFor={field.name} className="text-[13px] font-medium">
                         Correo electrónico
                       </FieldLabel>
                       <Input
@@ -309,9 +315,7 @@ function SignupPage() {
                         }}
                         aria-invalid={isInvalid}
                       />
-                      {isInvalid && (
-                        <FieldError errors={field.state.meta.errors} />
-                      )}
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -320,10 +324,7 @@ function SignupPage() {
               <form.Field name="phone">
                 {(field) => (
                   <Field>
-                    <FieldLabel
-                      htmlFor={field.name}
-                      className="text-[13px] font-medium"
-                    >
+                    <FieldLabel htmlFor={field.name} className="text-[13px] font-medium">
                       Teléfono
                     </FieldLabel>
                     <Input
@@ -341,22 +342,15 @@ function SignupPage() {
 
               <form.Field
                 name="password"
-                validators={{
-                  onChange: passwordSchema,
-                  onBlur: passwordSchema,
-                }}
+                validators={{ onChange: passwordSchema, onBlur: passwordSchema }}
               >
                 {(field) => {
                   const isInvalid =
                     field.state.meta.errors.length > 0 &&
-                    (field.state.meta.isTouched ||
-                      form.state.submissionAttempts > 0);
+                    (field.state.meta.isTouched || form.state.submissionAttempts > 0);
                   return (
                     <Field data-invalid={isInvalid || undefined}>
-                      <FieldLabel
-                        htmlFor={field.name}
-                        className="text-[13px] font-medium"
-                      >
+                      <FieldLabel htmlFor={field.name} className="text-[13px] font-medium">
                         Contraseña
                       </FieldLabel>
                       <div className="relative">
@@ -375,20 +369,12 @@ function SignupPage() {
                           type="button"
                           onClick={() => setShowPassword((v) => !v)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          aria-label={
-                            showPassword ? "Ocultar contraseña" : "Ver contraseña"
-                          }
+                          aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
                         >
-                          {showPassword ? (
-                            <EyeOff className="size-4" />
-                          ) : (
-                            <Eye className="size-4" />
-                          )}
+                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
-                      {isInvalid && (
-                        <FieldError errors={field.state.meta.errors} />
-                      )}
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -398,41 +384,26 @@ function SignupPage() {
             <div className="flex flex-col gap-1">
               <div
                 className="flex cursor-pointer items-start gap-2.5"
-                onClick={() => {
-                  setAcceptsTerms((v) => !v);
-                  setTermsError(false);
-                }}
+                onClick={() => { setAcceptsTerms((v) => !v); setTermsError(false); }}
               >
                 <div
                   className={cn(
                     "mt-0.5 flex size-[17px] shrink-0 items-center justify-center rounded border transition-colors",
-                    acceptsTerms
-                      ? "border-primary bg-primary"
-                      : "border-border bg-white",
+                    acceptsTerms ? "border-primary bg-primary" : "border-border bg-white",
                     termsError && !acceptsTerms && "border-destructive",
                   )}
                 >
                   {acceptsTerms && (
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path
-                        d="M1 4L3.5 6.5L9 1"
-                        stroke="white"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
+                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-x-1 text-[13px] text-muted-foreground">
                   <span>Acepto los</span>
-                  <span className="font-medium text-primary">
-                    Términos de servicio
-                  </span>
+                  <span className="font-medium text-primary">Términos de servicio</span>
                   <span>y la</span>
-                  <span className="font-medium text-primary">
-                    Política de privacidad
-                  </span>
+                  <span className="font-medium text-primary">Política de privacidad</span>
                 </div>
               </div>
               {termsError && !acceptsTerms && (
@@ -452,22 +423,17 @@ function SignupPage() {
               {(isSubmitting) => (
                 <Button
                   type="submit"
-                  className="h-auto w-full rounded-[9px] py-[14px] text-[15px] font-semibold"
+                  className="h-auto w-full rounded-[9px] py-[15px] text-[15px] font-semibold"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting
-                    ? "Creando cuenta…"
-                    : intent === "client"
-                      ? "Crear cuenta de cliente"
-                      : "Crear cuenta de transportista"}
+                  {isSubmitting ? "Creando cuenta…" : "Crear cuenta"}
                 </Button>
               )}
             </form.Subscribe>
           </form>
 
-          <p className="text-center text-[12px] text-muted-foreground">
-            Al registrarte, tu información queda protegida y no es compartida
-            sin tu consentimiento.
+          <p className="text-center text-[12px] leading-[1.5] text-muted-foreground">
+            Al registrarte, tu información queda protegida y no es compartida sin tu consentimiento.
           </p>
         </div>
       </div>

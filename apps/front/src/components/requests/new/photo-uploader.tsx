@@ -4,14 +4,18 @@ import { uploadFile } from "@/lib/api"
 
 export function PhotoUploader({ urls, onChange }: { urls: string[]; onChange: (u: string[]) => void }) {
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleFiles(files: FileList | null) {
     if (!files || !files.length) return
+    setError(null)
     setUploading(true)
     try {
       const uploaded = await Promise.all(Array.from(files).slice(0, 8 - urls.length).map(uploadFile))
       onChange([...urls, ...uploaded])
+    } catch {
+      setError("No pudimos subir las fotos. Intenta nuevamente.")
     } finally {
       setUploading(false)
     }
@@ -29,6 +33,7 @@ export function PhotoUploader({ urls, onChange }: { urls: string[]; onChange: (u
         <span className="text-[13px] text-[#969e9b]">{uploading ? "Subiendo…" : "Subir fotos (opcional)"}</span>
         <span className="text-[12px] text-[#B0ABA5]">Ayuda a los transportistas a entender el tamaño</span>
       </button>
+      {error && <p className="text-[13px] text-destructive">{error}</p>}
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
       {urls.length > 0 && (
         <div className="flex flex-wrap gap-2">

@@ -1,6 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useForm, useStore } from "@tanstack/react-form"
 import { useState, useRef, useMemo } from "react"
+import { z } from "zod"
 import {
   Package, Boxes, Truck, Building2,
   ArrowRight, ArrowLeft, Loader2,
@@ -25,6 +27,7 @@ import { Calendar as CalendarUI } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { AddressStep } from "@/components/requests/new/address-step"
 import { PhotoUploader } from "@/components/requests/new/photo-uploader"
+import { GonexoLogo } from "@/components/gonexo-logo"
 import type { Draft, Step } from "@/components/requests/new/types"
 import type { VolumeCategory } from "@/lib/types"
 
@@ -68,6 +71,35 @@ const CHARACTERISTICS: {
   { key: "longCarry", label: "Acarreo largo", sub: "Más de 20 m entre la puerta y el camión", Icon: MoveRight },
 ]
 
+const addressSchema = z.object({
+  address: z.string().min(1),
+  lat: z.number().min(-90).max(90).refine((value) => value !== 0),
+  lng: z.number().min(-180).max(180).refine((value) => value !== 0),
+})
+
+const requestFormSchema = z.object({
+  origin: addressSchema.nullable().refine((value) => !!value, "Selecciona una dirección de origen"),
+  originFloor: z.string(),
+  originHasElevator: z.boolean(),
+  dest: addressSchema.nullable().refine((value) => !!value, "Selecciona una dirección de destino"),
+  destFloor: z.string(),
+  destHasElevator: z.boolean(),
+  scheduledDate: z.string().min(1, "Selecciona una fecha"),
+  scheduledTime: z.string().min(1, "Selecciona una hora"),
+  flexibleDate: z.boolean(),
+  volumeCategory: z.enum(["small", "medium", "large", "full_move"]).or(z.literal("")).refine((value) => value !== "", "Selecciona un volumen"),
+  itemDescription: z.string().min(5, "Describe qué vas a mover"),
+  notes: z.string(),
+  photoUrls: z.array(z.string()),
+  budgetMax: z.string(),
+  helpersNeeded: z.number().int().min(0).max(3),
+  hasFragileItems: z.boolean(),
+  assemblyRequired: z.boolean(),
+  packingIncluded: z.boolean(),
+  parkingType: z.enum(["street", "garage", "loading_dock"]),
+  longCarry: z.boolean(),
+})
+
 const STEP_META: { n: Step; label: string; sub: string }[] = [
   { n: 1, label: "Origen", sub: "¿Dónde retiramos?" },
   { n: 2, label: "Destino", sub: "¿Adónde lo llevas?" },
@@ -89,6 +121,25 @@ const SECTION_TITLES: Record<Step, { title: string; sub: string }> = {
   5: { title: "Detalles", sub: "Info extra para cotizar" },
   6: { title: "Confirmar", sub: "Revisa y publica" },
 }
+
+function previousStep(step: Step): Step {
+  return step === 1 ? 1 : ((step - 1) as Step)
+}
+
+function nextStep(step: Step): Step {
+  return step === 6 ? 6 : ((step + 1) as Step)
+}
+
+function isString(value: string | false): value is string {
+  return typeof value === "string"
+}
+
+const HELPER_OPTIONS = [
+  { n: 0, label: "Solo" },
+  { n: 1, label: "+1" },
+  { n: 2, label: "+2" },
+  { n: 3, label: "+3" },
+] as const
 
 function SidebarStep({ n, label, sub, currentStep }: { n: Step; label: string; sub: string; currentStep: Step }) {
   const isDone = n < currentStep
@@ -205,10 +256,30 @@ function NewRequestPage() {
   const [step, setStep] = useState<Step>(1)
   const [attempted, setAttempted] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
-  const [draft, setDraft] = useState<Draft>(defaultRequestDraft)
 
-  function set<K extends keyof Draft>(key: K, val: Draft[K]) {
-    setDraft((d) => ({ ...d, [key]: val }))
+  const mutation = useMutation({
+    mutationFn: (draft: Draft) => api.requests.create(toCreateRequestInput(draft)),
+    onSuccess: async ({ id }) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
+      navigate({ to: "/requests/$id", params: { id } })
+    },
+  })
+
+  const form = useForm({
+    defaultValues: defaultRequestDraft,
+    validators: { onSubmit: requestFormSchema },
+    onSubmit: async ({ value }) => {
+      await mutation.mutateAsync(value)
+    },
+  })
+
+  const draft = useStore(form.store, (state) => state.values)
+
+  function setCharacteristic(key: (typeof CHARACTERISTICS)[number]["key"], value: boolean) {
+    if (key === "hasFragileItems") return form.setFieldValue("hasFragileItems", value)
+    if (key === "assemblyRequired") return form.setFieldValue("assemblyRequired", value)
+    if (key === "packingIncluded") return form.setFieldValue("packingIncluded", value)
+    return form.setFieldValue("longCarry", value)
   }
 
   function canNext(): boolean {
@@ -217,7 +288,7 @@ function NewRequestPage() {
 
   function goBack() {
     setAttempted(false)
-    setStep((s) => (s - 1) as Step)
+    setStep(previousStep)
   }
 
   function goToStep(s: Step) {
@@ -225,22 +296,51 @@ function NewRequestPage() {
     setStep(s)
   }
 
-  const mutation = useMutation({
-    mutationFn: () => api.requests.create(toCreateRequestInput(draft)),
-    onSuccess: async ({ id }) => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
-      navigate({ to: "/requests/$id", params: { id } })
-    },
-  })
+  function goNext() {
+    if (!canNext()) {
+      setAttempted(true)
+      return
+    }
+    setAttempted(false)
+    setStep(nextStep)
+  }
 
   const volumeLabel = getDraftVolumeLabel(draft)
   const dateDisplay = formatDraftDate(draft)
   const dateTimeDisplay = formatDraftDateTime(draft)
+  const StepIcon = SECTION_ICONS[step]
+  const stepMeta = SECTION_TITLES[step]
+  const mutationError = mutation.error instanceof Error ? mutation.error.message : null
+  const submit = () => form.handleSubmit()
 
   return (
-    <div className="flex min-h-full">
-      {/* Step Sidebar */}
-      <aside className="flex w-[260px] shrink-0 flex-col justify-between border-r border-border bg-background">
+    <div className="flex min-h-full flex-col md:flex-row">
+      {/* Mobile: wizard nav bar */}
+      <div className="sticky top-0 z-10 flex h-14 items-center border-b border-border bg-background px-[18px] md:hidden">
+        <div className="flex w-14 items-center">
+          {step > 1 ? (
+            <button type="button" onClick={goBack} className="text-muted-foreground">
+              <ArrowLeft className="size-5" />
+            </button>
+          ) : (
+            <GonexoLogo size="sm" />
+          )}
+        </div>
+        <span className="flex-1 text-center text-[13px] text-muted-foreground">Paso {step} de 6</span>
+        <div className="flex w-14 justify-end">
+          <Link to="/requests" className="text-[13px] text-muted-foreground">Cancelar</Link>
+        </div>
+      </div>
+
+      {/* Mobile: 6-segment progress bar */}
+      <div className="flex gap-[2px] md:hidden">
+        {Array.from({ length: 6 }, (_, i) => i + 1).map((n) => (
+          <div key={n} className={cn("h-1 flex-1", n <= step ? "bg-primary" : "bg-secondary")} />
+        ))}
+      </div>
+
+      {/* Desktop: Step Sidebar */}
+      <aside className="hidden w-[260px] shrink-0 flex-col justify-between border-r border-border bg-background md:flex">
         <div className="flex flex-col gap-0.5 p-5">
           {STEP_META.map(({ n, label, sub }) => (
             <SidebarStep key={n} n={n} label={label} sub={sub} currentStep={step} />
@@ -261,28 +361,42 @@ function NewRequestPage() {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        {/* Page Header */}
-        <div className="border-b border-border bg-background px-8 py-[22px]">
+        {/* Desktop: Page Header */}
+        <div className="hidden border-b border-border bg-background px-8 py-[22px] md:block">
           <h1 className="text-[26px] font-bold tracking-[-0.5px] text-foreground">Nueva solicitud</h1>
           <p className="mt-1 text-[14px] text-muted-foreground">
             Completa los pasos y recibe cotizaciones de transportistas.
           </p>
         </div>
 
+        {/* Mobile: step header */}
+        <div className="flex items-center gap-3 px-[18px] pb-2 pt-5 md:hidden">
+          <div className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#0c8c5e14]">
+            <StepIcon className="size-[18px] text-primary" />
+          </div>
+          <div>
+            <h2 className="text-[20px] font-bold tracking-[-0.3px] text-foreground">{stepMeta.title}</h2>
+            <p className="text-[13px] text-muted-foreground">{stepMeta.sub}</p>
+          </div>
+        </div>
+
         {/* Step Content */}
-        <div className="flex flex-col gap-5 px-11 py-7">
-          <SectionHeader step={step} />
+        <div className="flex flex-col gap-4 px-[18px] py-3 md:gap-5 md:px-11 md:py-7">
+          {/* Desktop: section header */}
+          <div className="hidden md:block">
+            <SectionHeader step={step} />
+          </div>
 
           {/* Form Card */}
-          <div className="rounded-xl border border-border bg-white px-7 py-6 shadow-[0_2px_8px_rgba(0,0,0,0.031)]">
+          <div className="md:rounded-xl md:border md:border-border md:bg-white md:px-7 md:py-6 md:shadow-[0_2px_8px_rgba(0,0,0,0.031)]">
             {step === 1 && (
               <AddressStep
                 value={draft.origin}
-                onChange={(r) => set("origin", r)}
+                onChange={(r) => form.setFieldValue("origin", r)}
                 floor={draft.originFloor}
-                onFloor={(v) => set("originFloor", v)}
+                onFloor={(v) => form.setFieldValue("originFloor", v)}
                 elevator={draft.originHasElevator}
-                onElevator={(v) => set("originHasElevator", v)}
+                onElevator={(v) => form.setFieldValue("originHasElevator", v)}
                 sessionToken={sessionToken}
                 attempted={attempted}
               />
@@ -291,11 +405,11 @@ function NewRequestPage() {
             {step === 2 && (
               <AddressStep
                 value={draft.dest}
-                onChange={(r) => set("dest", r)}
+                onChange={(r) => form.setFieldValue("dest", r)}
                 floor={draft.destFloor}
-                onFloor={(v) => set("destFloor", v)}
+                onFloor={(v) => form.setFieldValue("destFloor", v)}
                 elevator={draft.destHasElevator}
-                onElevator={(v) => set("destHasElevator", v)}
+                onElevator={(v) => form.setFieldValue("destHasElevator", v)}
                 sessionToken={sessionToken}
                 attempted={attempted}
               />
@@ -326,7 +440,7 @@ function NewRequestPage() {
                         selected={draft.scheduledDate ? new Date(draft.scheduledDate + "T00:00:00") : undefined}
                         onSelect={(date) => {
                           if (date) {
-                            set("scheduledDate", date.toLocaleDateString("sv"))
+                            form.setFieldValue("scheduledDate", date.toLocaleDateString("sv"))
                             setCalendarOpen(false)
                           }
                         }}
@@ -348,7 +462,7 @@ function NewRequestPage() {
                           <button
                             key={time}
                             type="button"
-                            onClick={() => set("scheduledTime", time)}
+                            onClick={() => form.setFieldValue("scheduledTime", time)}
                             className={cn(
                               "rounded-[8px] border py-2.5 text-[13px] font-medium transition-colors",
                               draft.scheduledTime === time
@@ -368,7 +482,7 @@ function NewRequestPage() {
                 {/* Flexible date */}
                 <button
                   type="button"
-                  onClick={() => set("flexibleDate", !draft.flexibleDate)}
+                  onClick={() => form.setFieldValue("flexibleDate", !draft.flexibleDate)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-[8px] border px-4 py-3 text-left transition-colors",
                     draft.flexibleDate ? "border-primary bg-[#0c8c5e0d]" : "border-border bg-card",
@@ -401,7 +515,7 @@ function NewRequestPage() {
                         sub={sub}
                         Icon={Icon}
                         active={draft.volumeCategory === value}
-                        onSelect={() => set("volumeCategory", value)}
+                        onSelect={() => form.setFieldValue("volumeCategory", value)}
                       />
                     ))}
                   </div>
@@ -414,7 +528,7 @@ function NewRequestPage() {
                     placeholder="Ej: 2 camas, 1 sofá, cajas de ropa…"
                     value={draft.itemDescription}
                     aria-invalid={attempted && draft.itemDescription.length < 5}
-                    onChange={(e) => set("itemDescription", e.target.value)}
+                    onChange={(e) => form.setFieldValue("itemDescription", e.target.value)}
                   />
                   {attempted && draft.itemDescription.length < 5 && (
                     <FieldError>Describe qué vas a mover (mínimo 5 caracteres)</FieldError>
@@ -431,20 +545,34 @@ function NewRequestPage() {
                     rows={3}
                     placeholder="Frágil, requiere embalaje especial…"
                     value={draft.notes}
-                    onChange={(e) => set("notes", e.target.value)}
+                    onChange={(e) => form.setFieldValue("notes", e.target.value)}
                   />
                 </Field>
 
-                <PhotoUploader urls={draft.photoUrls} onChange={(u) => set("photoUrls", u)} />
+                <div className="rounded-[10px] border border-primary/20 bg-primary/5 p-3">
+                  <p className="text-[13px] font-medium text-foreground">Las fotos son opcionales, pero ayudan bastante.</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    Con fotos, los transportistas suelen cotizar con menos preguntas y con precios más ajustados.
+                  </p>
+                </div>
+
+                <PhotoUploader urls={draft.photoUrls} onChange={(u) => form.setFieldValue("photoUrls", u)} />
               </FieldGroup>
             )}
 
             {step === 5 && (
               <div className="flex flex-col gap-5">
-                <div className="rounded-[8px] bg-secondary px-[14px] py-3">
+                <div className="flex items-center justify-between gap-3 rounded-[8px] bg-secondary px-[14px] py-3">
                   <p className="text-[13px] text-muted-foreground">
                     Estos datos ayudan a los transportistas a cotizar con más precisión. Todos son opcionales.
                   </p>
+                  <button
+                    type="button"
+                    onClick={() => goToStep(6)}
+                    className="shrink-0 text-[13px] font-semibold text-primary transition-opacity hover:opacity-80"
+                  >
+                    Omitir
+                  </button>
                 </div>
 
                 {/* Budget */}
@@ -461,7 +589,7 @@ function NewRequestPage() {
                       value={draft.budgetMax}
                       onChange={(e) => {
                         const raw = e.target.value.replace(/\D/g, "")
-                        set("budgetMax", raw ? parseInt(raw).toLocaleString("es-CL") : "")
+                        form.setFieldValue("budgetMax", raw ? parseInt(raw).toLocaleString("es-CL") : "")
                       }}
                     />
                   </div>
@@ -472,16 +600,11 @@ function NewRequestPage() {
                 <div className="flex flex-col gap-1.5">
                   <span className="text-[14px] font-semibold text-foreground">¿Cuántos ayudantes necesitas?</span>
                   <div className="flex gap-[10px]">
-                    {([
-                      { n: 0, label: "Solo" },
-                      { n: 1, label: "+1" },
-                      { n: 2, label: "+2" },
-                      { n: 3, label: "+3" },
-                    ] as const).map(({ n, label }) => (
+                    {HELPER_OPTIONS.map(({ n, label }) => (
                       <button
                         key={n}
                         type="button"
-                        onClick={() => set("helpersNeeded", n)}
+                        onClick={() => form.setFieldValue("helpersNeeded", n)}
                         className={cn(
                           "flex flex-1 flex-col items-center gap-1.5 rounded-[10px] py-[14px] px-3 transition-colors",
                           draft.helpersNeeded === n
@@ -508,8 +631,8 @@ function NewRequestPage() {
                   {CHARACTERISTICS.map(({ key, label, sub, Icon }) => (
                     <CharacteristicToggle
                       key={key}
-                      value={draft[key] as boolean}
-                      onChange={(v) => set(key, v)}
+                      value={draft[key]}
+                      onChange={(v) => setCharacteristic(key, v)}
                       label={label}
                       sub={sub}
                       Icon={Icon}
@@ -526,7 +649,7 @@ function NewRequestPage() {
                       <button
                         key={value}
                         type="button"
-                        onClick={() => set("parkingType", value)}
+                        onClick={() => form.setFieldValue("parkingType", value)}
                         className={cn(
                           "flex w-full items-center gap-[14px] rounded-[10px] px-4 py-[14px] text-left transition-colors",
                           active
@@ -635,22 +758,22 @@ function NewRequestPage() {
                         draft.assemblyRequired && "Desarme/armado",
                         draft.packingIncluded && "Embalaje",
                         draft.longCarry && "Acarreo largo",
-                      ] as (string | false)[]).filter(Boolean).map((f) => (
-                        <span key={f as string} className="text-[12px] text-muted-foreground">• {f}</span>
+                      ] as (string | false)[]).filter(isString).map((f) => (
+                        <span key={f} className="text-[12px] text-muted-foreground">• {f}</span>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                {mutation.error && (
-                  <p className="text-[13px] text-destructive">{(mutation.error as Error).message}</p>
+                {mutationError && (
+                  <p className="text-[13px] text-destructive">{mutationError}</p>
                 )}
               </div>
             )}
           </div>
 
-          {/* Nav Buttons */}
-          <div className="flex items-center justify-between">
+          {/* Desktop: Nav Buttons */}
+          <div className="hidden items-center justify-between md:flex">
             {step > 1 ? (
               <button
                 type="button"
@@ -667,11 +790,7 @@ function NewRequestPage() {
             {step < 6 ? (
               <button
                 type="button"
-                onClick={() => {
-                  if (!canNext()) { setAttempted(true); return }
-                  setAttempted(false)
-                  setStep((s) => (s + 1) as Step)
-                }}
+                onClick={goNext}
                 className="flex items-center gap-1.5 rounded-[9px] bg-primary px-[22px] py-[11px] text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
               >
                 Siguiente <ArrowRight className="size-[15px]" />
@@ -679,7 +798,7 @@ function NewRequestPage() {
             ) : (
               <button
                 type="button"
-                onClick={() => mutation.mutate()}
+                onClick={submit}
                 disabled={mutation.isPending}
                 className="flex items-center gap-1.5 rounded-[9px] bg-primary px-[22px] py-[11px] text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
@@ -692,6 +811,32 @@ function NewRequestPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Mobile: sticky bottom CTA */}
+      <div className="sticky bottom-0 border-t border-border bg-background px-[18px] pb-6 pt-4 md:hidden">
+        {step < 6 ? (
+          <button
+            type="button"
+            onClick={goNext}
+            className="w-full rounded-[9px] bg-primary py-[13px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Siguiente →
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={submit}
+            disabled={mutation.isPending}
+            className="flex w-full items-center justify-center gap-2 rounded-[9px] bg-primary py-[13px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {mutation.isPending ? (
+              <><Loader2 className="size-4 animate-spin" /> Publicando…</>
+            ) : (
+              <>Publicar solicitud <CircleCheck className="size-[15px]" /></>
+            )}
+          </button>
+        )}
       </div>
     </div>
   )

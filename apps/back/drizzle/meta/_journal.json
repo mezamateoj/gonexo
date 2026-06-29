@@ -29,6 +29,13 @@
       "when": 1782428750627,
       "tag": "0003_material_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1782756859313,
+      "tag": "0004_safe_maestro",
+      "breakpoints": true
     }
   ]
 }

@@ -22,9 +22,11 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
   const [suggestions, setSuggestions] = useState<{ mapbox_id: string; name: string; place_formatted: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const query = typedQuery ?? value?.address ?? ""
+  const emptyMessage = error ?? "Sin resultados. Intenta con calle y comuna."
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -38,6 +40,7 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
 
   function handleInput(q: string) {
     setTypedQuery(q)
+    setError(null)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (q.length < 3) { setSuggestions([]); setOpen(false); return }
 
@@ -49,6 +52,8 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
         setOpen(true)
       } catch {
         setSuggestions([])
+        setError("No pudimos buscar direcciones. Intenta nuevamente.")
+        setOpen(true)
       } finally {
         setLoading(false)
       }
@@ -65,8 +70,10 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
       const [lng, lat] = feature.geometry.coordinates
       const address = feature.properties.full_address || suggestion.place_formatted
       setTypedQuery(null)
+      setError(null)
       onChange({ address, lat, lng })
     } catch {
+      setError("No pudimos confirmar esa dirección. Elige otra sugerencia.")
       setOpen(true)
     } finally {
       setLoading(false)
@@ -92,8 +99,9 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
         )}
       </div>
 
-      {open && suggestions.length > 0 && (
+      {open && (
         <ul className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[10px] border border-[#E9E7E3] bg-white shadow-lg">
+          {suggestions.length === 0 && <li className="px-4 py-3 text-[13px] text-[#969e9b]">{emptyMessage}</li>}
           {suggestions.map((s) => (
             <li key={s.mapbox_id}>
               <button

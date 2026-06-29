@@ -38,10 +38,9 @@ function GoogleIcon() {
   );
 }
 
-const ACTIVITY = [
-  { initials: "C", name: "Carlos R.", info: "Nueva cotización recibida", when: "Hace 2 min", bg: "#0c8c5e" },
-  { initials: "A", name: "Ana P.", info: "Solicitud confirmada", when: "Hace 5 min", bg: "#717d79" },
-  { initials: "D", name: "Diego M.", info: "Flete en camino", when: "Hace 9 min", bg: "#485450" },
+const ACTIVITY_MOBILE = [
+  { route: "Providencia → Ñuñoa", meta: "Nueva cotización · Hace 2 min" },
+  { route: "Las Condes → Vitacura", meta: "Flete en camino · Hace 9 min" },
 ];
 
 const STATS = [
@@ -50,9 +49,59 @@ const STATS = [
   { value: "4.8 ★", label: "Nota promedio" },
 ];
 
+const ACTIVITY = [
+  { initials: "C", name: "Carlos R.", info: "Nueva cotización recibida", when: "Hace 2 min", bg: "#0c8c5e" },
+  { initials: "A", name: "Ana P.", info: "Solicitud confirmada", when: "Hace 5 min", bg: "#717d79" },
+  { initials: "D", name: "Diego M.", info: "Flete en camino", when: "Hace 9 min", bg: "#485450" },
+];
+
+// Mobile-only dark header replaces the desktop left panel
+function LoginMobileHeader() {
+  return (
+    <div className="flex flex-col gap-[14px] bg-[#0a0b0f] px-6 pb-8 pt-10 md:hidden">
+      <Link to="/">
+        <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
+      </Link>
+      <h2 className="text-[28px] font-bold leading-[1.1] tracking-[-0.8px] text-[#faf8f5]">
+        Bienvenido<br />de vuelta.
+      </h2>
+      <p className="text-[14px] leading-[1.5] text-[#717d79]">
+        Revisa tus solicitudes y cotizaciones pendientes.
+      </p>
+      {/* Compact activity card */}
+      <div className="overflow-hidden rounded-[10px] border border-[#2a2c32] bg-[#17191e]">
+        <div className="border-b border-[#2a2c32] px-[14px] py-3">
+          <span className="text-[11px] font-semibold tracking-[0.8px] text-[#485450]">ACTIVIDAD RECIENTE</span>
+        </div>
+        {ACTIVITY_MOBILE.map(({ route, meta }) => (
+          <div key={route} className="flex items-center justify-between border-b border-[#2a2c32] px-[14px] py-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[13px] font-medium text-[#faf8f5]">{route}</span>
+              <span className="text-[11px] text-[#485450]">{meta}</span>
+            </div>
+            <div className="rounded-full px-2.5 py-1" style={{ background: "#18e2991a" }}>
+              <span className="text-[11px] font-medium" style={{ color: "#18e299" }}>Activo</span>
+            </div>
+          </div>
+        ))}
+        {/* Stats row */}
+        <div className="flex items-center justify-between px-[14px] py-3">
+          {STATS.map((s) => (
+            <div key={s.label} className="flex flex-col gap-0.5">
+              <span className="text-[15px] font-bold text-[#faf8f5]">{s.value}</span>
+              <span className="text-[11px] text-[#717d79]">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Desktop-only left panel
 function LoginLeftPanel() {
   return (
-    <div className="flex w-[560px] shrink-0 flex-col justify-between bg-[#0a0b0f] px-12 py-10">
+    <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-[#0a0b0f] px-12 py-10 md:flex">
       <Link to="/">
         <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
       </Link>
@@ -60,9 +109,7 @@ function LoginLeftPanel() {
       <div className="flex flex-col gap-7">
         <div className="flex flex-col gap-7">
           <h2 className="text-[44px] font-bold leading-[1.1] tracking-[-1.2px] text-[#faf8f5]">
-            Bienvenido
-            <br />
-            de vuelta.
+            Bienvenido<br />de vuelta.
           </h2>
           <p className="w-[420px] text-[15px] leading-[1.6] text-[#717d79]">
             Revisa tus solicitudes activas, cotizaciones pendientes y el estado
@@ -88,9 +135,7 @@ function LoginLeftPanel() {
                 {item.initials}
               </div>
               <div className="flex flex-1 flex-col gap-0.5">
-                <span className="text-[13px] font-medium text-[#faf8f5]">
-                  {item.name}
-                </span>
+                <span className="text-[13px] font-medium text-[#faf8f5]">{item.name}</span>
                 <span className="text-[12px] text-[#485450]">{item.info}</span>
               </div>
               <span className="text-[11px] text-[#485450]">{item.when}</span>
@@ -105,9 +150,7 @@ function LoginLeftPanel() {
             key={s.label}
             className="flex flex-1 flex-col gap-1 rounded-[10px] border border-[#2a2c32] bg-[#17191e] px-4 py-[14px]"
           >
-            <span className="text-[20px] font-bold text-[#faf8f5]">
-              {s.value}
-            </span>
+            <span className="text-[20px] font-bold text-[#faf8f5]">{s.value}</span>
             <span className="text-[12px] text-[#717d79]">{s.label}</span>
           </div>
         ))}
@@ -151,27 +194,30 @@ function LoginPage() {
   });
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-screen flex-col md:h-screen md:flex-row md:overflow-hidden">
+      {/* Mobile: dark header on top */}
+      <LoginMobileHeader />
+
+      {/* Desktop: dark left panel */}
       <LoginLeftPanel />
 
-      <div className="flex flex-1 items-center justify-center overflow-y-auto bg-white">
-        <div className="flex w-[420px] flex-col gap-[22px] py-10">
+      {/* Form area */}
+      <div className="flex flex-1 bg-white px-5 py-7 md:items-center md:justify-center md:overflow-y-auto md:px-0 md:py-0">
+        <div className="flex w-full flex-col gap-[18px] md:w-[420px] md:py-10">
           <Link
             to="/"
             className="flex w-fit items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="size-[15px]" />
+            <ArrowLeft className="size-[14px]" />
             Volver al inicio
           </Link>
 
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-[28px] font-bold tracking-[-0.5px] text-foreground">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-[26px] font-bold tracking-[-0.5px] text-foreground md:text-[28px]">
               Iniciar sesión
             </h1>
             <div className="flex items-center gap-1">
-              <span className="text-[14px] text-muted-foreground">
-                ¿No tienes cuenta?
-              </span>
+              <span className="text-[14px] text-muted-foreground">¿No tienes cuenta?</span>
               <Link to="/signup" className="text-[14px] font-medium text-primary">
                 Regístrate gratis
               </Link>
@@ -179,10 +225,7 @@ function LoginPage() {
           </div>
 
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              form.handleSubmit();
-            }}
+            onSubmit={(e) => { e.preventDefault(); form.handleSubmit(); }}
             className="flex flex-col gap-5"
           >
             <FieldGroup>
@@ -193,14 +236,10 @@ function LoginPage() {
                 {(field) => {
                   const isInvalid =
                     field.state.meta.errors.length > 0 &&
-                    (field.state.meta.isTouched ||
-                      form.state.submissionAttempts > 0);
+                    (field.state.meta.isTouched || form.state.submissionAttempts > 0);
                   return (
                     <Field data-invalid={isInvalid || undefined}>
-                      <FieldLabel
-                        htmlFor={field.name}
-                        className="text-[13px] font-medium"
-                      >
+                      <FieldLabel htmlFor={field.name} className="text-[13px] font-medium">
                         Correo electrónico
                       </FieldLabel>
                       <Input
@@ -216,9 +255,7 @@ function LoginPage() {
                         }}
                         aria-invalid={isInvalid}
                       />
-                      {isInvalid && (
-                        <FieldError errors={field.state.meta.errors} />
-                      )}
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -226,29 +263,19 @@ function LoginPage() {
 
               <form.Field
                 name="password"
-                validators={{
-                  onChange: passwordSchema,
-                  onBlur: passwordSchema,
-                }}
+                validators={{ onChange: passwordSchema, onBlur: passwordSchema }}
               >
                 {(field) => {
                   const isInvalid =
                     field.state.meta.errors.length > 0 &&
-                    (field.state.meta.isTouched ||
-                      form.state.submissionAttempts > 0);
+                    (field.state.meta.isTouched || form.state.submissionAttempts > 0);
                   return (
                     <Field data-invalid={isInvalid || undefined}>
                       <div className="flex items-center justify-between">
-                        <FieldLabel
-                          htmlFor={field.name}
-                          className="text-[13px] font-medium"
-                        >
+                        <FieldLabel htmlFor={field.name} className="text-[13px] font-medium">
                           Contraseña
                         </FieldLabel>
-                        <button
-                          type="button"
-                          className="text-[13px] font-medium text-primary"
-                        >
+                        <button type="button" className="text-[13px] font-medium text-primary">
                           ¿Olvidaste tu contraseña?
                         </button>
                       </div>
@@ -271,20 +298,12 @@ function LoginPage() {
                           type="button"
                           onClick={() => setShowPassword((v) => !v)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          aria-label={
-                            showPassword ? "Ocultar contraseña" : "Ver contraseña"
-                          }
+                          aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
                         >
-                          {showPassword ? (
-                            <EyeOff className="size-4" />
-                          ) : (
-                            <Eye className="size-4" />
-                          )}
+                          {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
-                      {isInvalid && (
-                        <FieldError errors={field.state.meta.errors} />
-                      )}
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -296,25 +315,15 @@ function LoginPage() {
                 role="checkbox"
                 aria-checked={remember}
                 onClick={() => setRemember((v) => !v)}
-                className={`flex size-[17px] shrink-0 cursor-pointer items-center justify-center rounded border transition-colors ${
-                  remember ? "border-primary bg-primary" : "border-border bg-white"
-                }`}
+                className={`flex size-[17px] shrink-0 cursor-pointer items-center justify-center rounded border transition-colors ${remember ? "border-primary bg-primary" : "border-border bg-white"}`}
               >
                 {remember && (
                   <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                    <path
-                      d="M1 4L3.5 6.5L9 1"
-                      stroke="white"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
               </div>
-              <span className="text-[13px] text-muted-foreground">
-                Mantener sesión iniciada
-              </span>
+              <span className="text-[13px] text-muted-foreground">Mantener sesión iniciada</span>
             </label>
 
             {submitError && (
@@ -327,7 +336,7 @@ function LoginPage() {
               {(isSubmitting) => (
                 <Button
                   type="submit"
-                  className="h-auto w-full rounded-[9px] py-[14px] text-[15px] font-semibold"
+                  className="h-auto w-full rounded-[9px] py-[15px] text-[15px] font-semibold"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? "Ingresando…" : "Iniciar sesión"}
@@ -338,22 +347,20 @@ function LoginPage() {
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-[13px] text-muted-foreground">
-              o continúa con
-            </span>
+            <span className="text-[13px] text-muted-foreground">o continúa con</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
           <button
             type="button"
             onClick={() => void signIn.social({ provider: "google" })}
-            className="flex w-full items-center justify-center gap-2.5 rounded-[8px] border border-border bg-white py-[11px] text-[14px] font-medium text-foreground transition-colors hover:bg-accent"
+            className="flex w-full items-center justify-center gap-2.5 rounded-[8px] border border-border bg-white py-[13px] text-[14px] font-medium text-foreground transition-colors hover:bg-accent"
           >
             <GoogleIcon />
-            Google
+            Continuar con Google
           </button>
 
-          <p className="text-center text-[12px] text-muted-foreground">
+          <p className="text-center text-[12px] leading-[1.5] text-muted-foreground">
             Al continuar, aceptas nuestros Términos y Política de privacidad.
           </p>
         </div>

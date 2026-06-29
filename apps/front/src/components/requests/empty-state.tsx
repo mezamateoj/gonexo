@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router"
 export function EmptyState({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="col-span-2 flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[#E9E7E3] bg-white py-12 text-center">
+      <div className="col-span-full flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[#E9E7E3] bg-white py-12 text-center">
         <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-[#F5F4F0] text-2xl leading-none">
           📦
         </div>
@@ -22,10 +22,10 @@ export function EmptyState({ filtered }: { filtered: boolean }) {
 
       {/* Text block — gap 10 */}
       <div className="flex flex-col items-center gap-2.5">
-        <h2 className="text-[28px] font-bold tracking-[-0.5px] text-[#121715]">
+        <h2 className="text-[22px] font-bold tracking-[-0.5px] text-[#121715] md:text-[28px]">
           Aún no tienes envíos
         </h2>
-        <p className="w-[400px] text-[15px] leading-[1.6] text-[#717d79]">
+        <p className="w-full max-w-[400px] px-4 text-[15px] leading-[1.6] text-[#717d79]">
           Publica tu primer flete y recibe ofertas de transportistas verificados.
         </p>
       </div>
