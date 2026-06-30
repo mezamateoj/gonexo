@@ -7,8 +7,44 @@ import { requireAuth, requireDriver } from "../middleware/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { logger } from "../lib/logger";
+import {
+  computePriceRange,
+  haversineKm,
+  CIRCUITY_FACTOR,
+  QUOTE_FLOOR_FACTOR,
+  QUOTE_CEILING_FACTOR,
+  type PriceRange,
+  type VolumeCategory,
+} from "../lib/pricing";
+import { mapboxDirections } from "../lib/directions";
 
 const requests = new Hono<AppEnv>();
+
+// Fair-price band for a request row. Uses real road distance when stored, else
+// haversine inflated for circuity. Shared by the price-range endpoint and the
+// quote-validation guard so they can never diverge.
+function fairPriceRange(req: typeof request.$inferSelect): PriceRange {
+  const distanceKm =
+    req.routeDistanceM != null
+      ? req.routeDistanceM / 1000
+      : haversineKm(req.originLat, req.originLng, req.destLat, req.destLng) *
+        CIRCUITY_FACTOR;
+
+  return computePriceRange({
+    volumeCategory: req.volumeCategory as VolumeCategory,
+    distanceKm,
+    originFloor: req.originFloor,
+    originHasElevator: req.originHasElevator,
+    destFloor: req.destFloor,
+    destHasElevator: req.destHasElevator,
+    longCarry: req.longCarry,
+    helpersNeeded: req.helpersNeeded,
+    assemblyRequired: req.assemblyRequired,
+    packingIncluded: req.packingIncluded,
+    hasFragileItems: req.hasFragileItems,
+    scheduledAt: req.scheduledAt,
+  });
+}
 
 const createRequestSchema = z.object({
   originAddress: z.string().min(1),
@@ -46,9 +82,19 @@ requests.post(
     const body = c.req.valid("json");
     const id = crypto.randomUUID();
 
+    // Resolve the real driving route once (immutable for a request). Null if
+    // Mapbox is unavailable — pricing then falls back to haversine.
+    const route = await mapboxDirections(
+      c.env.MAPBOX_TOKEN,
+      { lat: body.originLat, lng: body.originLng },
+      { lat: body.destLat, lng: body.destLng },
+    );
+
     const insertRequest = db.insert(request).values({
       id,
       userId: user.id,
+      routeDistanceM: route?.distanceM ?? null,
+      routeDurationS: route?.durationS ?? null,
       originAddress: body.originAddress,
       originLat: body.originLat,
       originLng: body.originLng,
@@ -211,10 +257,45 @@ requests.get("/:id", requireAuth, async (c) => {
   });
 });
 
-const createQuoteSchema = z.object({
-  price: z.number().int().positive(),
-  message: z.string().max(500).optional(),
+// Advisory fair-price band for a request. Same visibility as GET /:id: the owner,
+// or a driver while the request is open or one they personally quoted. Anyone
+// else gets 404 rather than leaking existence.
+requests.get("/:id/price-range", requireAuth, async (c) => {
+  const db = c.get("db");
+  const user = c.get("user")!;
+  const req = await db.query.request.findFirst({
+    where: eq(request.id, c.req.param("id")),
+  });
+  if (!req) throw notFound();
+
+  if (req.userId !== user.id) {
+    const isDriver = !!(await db.query.driverProfile.findFirst({
+      where: eq(driverProfile.userId, user.id),
+      columns: { id: true },
+    }));
+    if (!isDriver) throw notFound();
+    if (req.status !== "open") {
+      const myQuote = await db.query.quote.findFirst({
+        where: and(eq(quote.requestId, req.id), eq(quote.driverId, user.id)),
+        columns: { id: true },
+      });
+      if (!myQuote) throw notFound();
+    }
+  }
+
+  return c.json(fairPriceRange(req));
 });
+
+const createQuoteSchema = z
+  .object({
+    priceMin: z.number().int().positive(),
+    priceMax: z.number().int().positive(),
+    message: z.string().max(500).optional(),
+  })
+  .refine((v) => v.priceMin <= v.priceMax, {
+    message: "priceMin must be ≤ priceMax",
+    path: ["priceMax"],
+  });
 
 requests.post(
   "/:id/quotes",
@@ -233,21 +314,39 @@ requests.post(
     if (req.userId === driver.id)
       throw badRequest("Cannot quote your own request");
 
+    // Reject quotes absurdly outside the advisory fair band (typos, wild
+    // lowballs, gouging). The window is wide on purpose — the band is guidance.
+    const fair = fairPriceRange(req);
+    const floor = Math.round(fair.min * QUOTE_FLOOR_FACTOR);
+    const ceiling = Math.round(fair.max * QUOTE_CEILING_FACTOR);
+    if (body.priceMin < floor || body.priceMax > ceiling) {
+      throw badRequest(
+        `Quote outside the acceptable range (${floor}–${ceiling} CLP for this request)`,
+      );
+    }
+
+    // Drivers submit a min–max band; `price` is the accepted ceiling (priceMax)
+    // and becomes the agreed price if the client accepts this quote.
+    const price = body.priceMax;
+
     const id = crypto.randomUUID();
     await db.insert(quote).values({
       id,
       requestId,
       driverId: driver.id,
-      price: body.price,
+      price,
+      priceMin: body.priceMin,
+      priceMax: body.priceMax,
       message: body.message ?? null,
       expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
     });
 
-    logger.info("Quote submitted: {id} on request {requestId} by driver {driverId} for {price}", {
+    logger.info("Quote submitted: {id} on request {requestId} by driver {driverId} for {priceMin}-{priceMax}", {
       id,
       requestId,
       driverId: driver.id,
-      price: body.price,
+      priceMin: body.priceMin,
+      priceMax: body.priceMax,
     });
     return c.json({ id }, 201);
   }

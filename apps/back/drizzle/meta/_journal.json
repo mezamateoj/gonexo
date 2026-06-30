@@ -36,6 +36,13 @@
       "when": 1782756859313,
       "tag": "0004_safe_maestro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1782856248761,
+      "tag": "0005_majestic_devos",
+      "breakpoints": true
     }
   ]
 }
