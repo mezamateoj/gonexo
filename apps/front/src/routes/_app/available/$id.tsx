@@ -283,10 +283,10 @@ function DriverOpportunityPage() {
           )}
 
           {/* Other quotes count — social proof without revealing prices */}
-          {isOpen && req.quotes.length > 0 && (
+          {isOpen && req.quoteCount > 0 && (
             <div className="rounded-[10px] border border-[#E9E7E3] bg-[#F9F8F6] px-4 py-3">
               <p className="text-[12px] text-[#969e9b]">
-                {req.quotes.length} transportista{req.quotes.length !== 1 ? "s" : ""} ya cotizó este flete.
+                {req.quoteCount} transportista{req.quoteCount !== 1 ? "s" : ""} ya cotizó este flete.
               </p>
             </div>
           )}

@@ -15,7 +15,7 @@ import { distanceKm, floorLine, relativeDate, shortAddress, volumeColors, volume
 import { useDriverProfileGate } from "@/hooks/use-driver-profile-gate"
 import type { OpenRequest } from "@/lib/types"
 
-export const Route = createFileRoute("/_app/available")({
+export const Route = createFileRoute("/_app/available/")({
   component: AvailablePage,
 })
 
