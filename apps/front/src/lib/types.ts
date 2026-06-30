@@ -16,6 +16,8 @@ export type JobStatus =
 
 export type VehicleType = "van" | "pickup" | "truck_small" | "truck_large"
 
+export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired"
+
 export interface DriverProfile {
   id: string
   userId: string
@@ -56,18 +58,29 @@ export interface EnrichVehicleResult {
   attributes: string[]
 }
 
+// Public driver profile returned on request-detail quotes — no sensitive fields
+export interface PublicDriverProfile {
+  vehicleType: VehicleType
+  vehicleDescription: string | null
+  vehicleCapacity: string | null
+  isVerified: boolean
+  avgRating: number | null
+  totalJobs: number
+  bio: string | null
+}
+
 export interface QuoteWithDriver {
   id: string
   driverId: string
   price: number
   message: string | null
-  status: string
+  status: QuoteStatus
   createdAt: string
   driver: {
     id: string
     name: string
     image: string | null
-    driverProfile: DriverProfile | null
+    driverProfile: PublicDriverProfile | null
   }
 }
 
@@ -101,6 +114,8 @@ export interface RequestDetail {
   photos: { id: string; url: string; order: number }[]
   user: { id: string; name: string; image: string | null; phone: string | null }
   quotes: QuoteWithDriver[]
+  quoteCount: number
+  job: { id: string; status: JobStatus } | null
 }
 
 export interface OpenRequest {
@@ -137,7 +152,7 @@ export interface MyQuote {
   requestId: string
   price: number
   message: string | null
-  status: "pending" | "accepted" | "rejected" | "expired"
+  status: QuoteStatus
   createdAt: string
   expiresAt: string
   request: {

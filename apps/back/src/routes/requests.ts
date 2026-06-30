@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, ne, asc, desc } from "drizzle-orm";
-import { request, requestPhoto, quote } from "../db/schema";
+import { request, requestPhoto, quote, driverProfile } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
@@ -156,11 +156,25 @@ requests.get("/:id", requireAuth, async (c) => {
     with: {
       photos: { orderBy: [asc(requestPhoto.order)] },
       user: { columns: { id: true, name: true, image: true, phone: true } },
+      job: { columns: { id: true, status: true } },
       quotes: {
         with: {
           driver: {
             columns: { id: true, name: true, image: true },
-            with: { driverProfile: true },
+            // Public driver profile only — no phone, plate, docs, or photos
+            with: {
+              driverProfile: {
+                columns: {
+                  vehicleType: true,
+                  vehicleDescription: true,
+                  vehicleCapacity: true,
+                  isVerified: true,
+                  avgRating: true,
+                  totalJobs: true,
+                  bio: true,
+                },
+              },
+            },
           },
         },
         orderBy: [asc(quote.price)],
@@ -171,16 +185,29 @@ requests.get("/:id", requireAuth, async (c) => {
   if (!result) throw notFound();
 
   const isOwner = result.userId === user.id;
-  const matchedQuote = result.quotes.find(
-    (q) => q.status === "accepted" && q.driverId === user.id,
-  );
-  const canSeeContact = isOwner || !!matchedQuote;
+  const myQuote = result.quotes.find((q) => q.driverId === user.id);
+
+  // Access control: owners see their own request; everyone else must be a
+  // driver, and may only inspect open requests or ones they personally quoted.
+  // Hide existence (404) from anyone else rather than leaking it via 403.
+  if (!isOwner) {
+    const isDriver = !!(await db.query.driverProfile.findFirst({
+      where: eq(driverProfile.userId, user.id),
+      columns: { id: true },
+    }));
+    if (!isDriver || (result.status !== "open" && !myQuote)) throw notFound();
+  }
+
+  const quoteCount = result.quotes.length;
+
   return c.json({
     ...result,
-    user: {
-      ...result.user,
-      phone: canSeeContact ? result.user.phone : null,
-    },
+    // Client phone is exchanged on job detail only, never on request detail.
+    user: { ...result.user, phone: isOwner ? result.user.phone : null },
+    // Owner compares every quote; a quoting driver sees only their own.
+    quotes: isOwner ? result.quotes : myQuote ? [myQuote] : [],
+    quoteCount,
+    job: result.job ?? null,
   });
 });
 

@@ -27,7 +27,13 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
     db
       .update(quote)
       .set({ status: "rejected" })
-      .where(and(eq(quote.requestId, q.requestId), ne(quote.id, quoteId))),
+      .where(
+        and(
+          eq(quote.requestId, q.requestId),
+          ne(quote.id, quoteId),
+          eq(quote.status, "pending"),
+        ),
+      ),
 
     db
       .update(request)

@@ -17,10 +17,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppVehicleRouteImport } from './routes/_app/vehicle'
 import { Route as AppStatsRouteImport } from './routes/_app/stats'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
-import { Route as AppAvailableRouteImport } from './routes/_app/available'
 import { Route as AppRequestsIndexRouteImport } from './routes/_app/requests/index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
 import { Route as AppJobsIndexRouteImport } from './routes/_app/jobs/index'
+import { Route as AppAvailableIndexRouteImport } from './routes/_app/available/index'
 import { Route as AppRequestsNewRouteImport } from './routes/_app/requests/new'
 import { Route as AppRequestsIdRouteImport } from './routes/_app/requests/$id'
 import { Route as AppJobsIdRouteImport } from './routes/_app/jobs/$id'
@@ -65,11 +65,6 @@ const AppProfileRoute = AppProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAvailableRoute = AppAvailableRouteImport.update({
-  id: '/available',
-  path: '/available',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppRequestsIndexRoute = AppRequestsIndexRouteImport.update({
   id: '/requests/',
   path: '/requests/',
@@ -83,6 +78,11 @@ const AppQuotesIndexRoute = AppQuotesIndexRouteImport.update({
 const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
   id: '/jobs/',
   path: '/jobs/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAvailableIndexRoute = AppAvailableIndexRouteImport.update({
+  id: '/available/',
+  path: '/available/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRequestsNewRoute = AppRequestsNewRouteImport.update({
@@ -101,9 +101,9 @@ const AppJobsIdRoute = AppJobsIdRouteImport.update({
   getParentRoute: () => AppRoute,
 } as any)
 const AppAvailableIdRoute = AppAvailableIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AppAvailableRoute,
+  id: '/available/$id',
+  path: '/available/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -111,7 +111,6 @@ export interface FileRoutesByFullPath {
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/available': typeof AppAvailableRouteWithChildren
   '/profile': typeof AppProfileRoute
   '/stats': typeof AppStatsRoute
   '/vehicle': typeof AppVehicleRoute
@@ -119,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/jobs/$id': typeof AppJobsIdRoute
   '/requests/$id': typeof AppRequestsIdRoute
   '/requests/new': typeof AppRequestsNewRoute
+  '/available/': typeof AppAvailableIndexRoute
   '/jobs/': typeof AppJobsIndexRoute
   '/quotes/': typeof AppQuotesIndexRoute
   '/requests/': typeof AppRequestsIndexRoute
@@ -128,7 +128,6 @@ export interface FileRoutesByTo {
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/available': typeof AppAvailableRouteWithChildren
   '/profile': typeof AppProfileRoute
   '/stats': typeof AppStatsRoute
   '/vehicle': typeof AppVehicleRoute
@@ -136,6 +135,7 @@ export interface FileRoutesByTo {
   '/jobs/$id': typeof AppJobsIdRoute
   '/requests/$id': typeof AppRequestsIdRoute
   '/requests/new': typeof AppRequestsNewRoute
+  '/available': typeof AppAvailableIndexRoute
   '/jobs': typeof AppJobsIndexRoute
   '/quotes': typeof AppQuotesIndexRoute
   '/requests': typeof AppRequestsIndexRoute
@@ -147,7 +147,6 @@ export interface FileRoutesById {
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/_app/available': typeof AppAvailableRouteWithChildren
   '/_app/profile': typeof AppProfileRoute
   '/_app/stats': typeof AppStatsRoute
   '/_app/vehicle': typeof AppVehicleRoute
@@ -155,6 +154,7 @@ export interface FileRoutesById {
   '/_app/jobs/$id': typeof AppJobsIdRoute
   '/_app/requests/$id': typeof AppRequestsIdRoute
   '/_app/requests/new': typeof AppRequestsNewRoute
+  '/_app/available/': typeof AppAvailableIndexRoute
   '/_app/jobs/': typeof AppJobsIndexRoute
   '/_app/quotes/': typeof AppQuotesIndexRoute
   '/_app/requests/': typeof AppRequestsIndexRoute
@@ -166,7 +166,6 @@ export interface FileRouteTypes {
     | '/driver-onboarding'
     | '/login'
     | '/signup'
-    | '/available'
     | '/profile'
     | '/stats'
     | '/vehicle'
@@ -174,6 +173,7 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/requests/$id'
     | '/requests/new'
+    | '/available/'
     | '/jobs/'
     | '/quotes/'
     | '/requests/'
@@ -183,7 +183,6 @@ export interface FileRouteTypes {
     | '/driver-onboarding'
     | '/login'
     | '/signup'
-    | '/available'
     | '/profile'
     | '/stats'
     | '/vehicle'
@@ -191,6 +190,7 @@ export interface FileRouteTypes {
     | '/jobs/$id'
     | '/requests/$id'
     | '/requests/new'
+    | '/available'
     | '/jobs'
     | '/quotes'
     | '/requests'
@@ -201,7 +201,6 @@ export interface FileRouteTypes {
     | '/driver-onboarding'
     | '/login'
     | '/signup'
-    | '/_app/available'
     | '/_app/profile'
     | '/_app/stats'
     | '/_app/vehicle'
@@ -209,6 +208,7 @@ export interface FileRouteTypes {
     | '/_app/jobs/$id'
     | '/_app/requests/$id'
     | '/_app/requests/new'
+    | '/_app/available/'
     | '/_app/jobs/'
     | '/_app/quotes/'
     | '/_app/requests/'
@@ -280,13 +280,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/available': {
-      id: '/_app/available'
-      path: '/available'
-      fullPath: '/available'
-      preLoaderRoute: typeof AppAvailableRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/requests/': {
       id: '/_app/requests/'
       path: '/requests'
@@ -306,6 +299,13 @@ declare module '@tanstack/react-router' {
       path: '/jobs'
       fullPath: '/jobs/'
       preLoaderRoute: typeof AppJobsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/available/': {
+      id: '/_app/available/'
+      path: '/available'
+      fullPath: '/available/'
+      preLoaderRoute: typeof AppAvailableIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/requests/new': {
@@ -331,47 +331,37 @@ declare module '@tanstack/react-router' {
     }
     '/_app/available/$id': {
       id: '/_app/available/$id'
-      path: '/$id'
+      path: '/available/$id'
       fullPath: '/available/$id'
       preLoaderRoute: typeof AppAvailableIdRouteImport
-      parentRoute: typeof AppAvailableRoute
+      parentRoute: typeof AppRoute
     }
   }
 }
 
-interface AppAvailableRouteChildren {
-  AppAvailableIdRoute: typeof AppAvailableIdRoute
-}
-
-const AppAvailableRouteChildren: AppAvailableRouteChildren = {
-  AppAvailableIdRoute: AppAvailableIdRoute,
-}
-
-const AppAvailableRouteWithChildren = AppAvailableRoute._addFileChildren(
-  AppAvailableRouteChildren,
-)
-
 interface AppRouteChildren {
-  AppAvailableRoute: typeof AppAvailableRouteWithChildren
   AppProfileRoute: typeof AppProfileRoute
   AppStatsRoute: typeof AppStatsRoute
   AppVehicleRoute: typeof AppVehicleRoute
+  AppAvailableIdRoute: typeof AppAvailableIdRoute
   AppJobsIdRoute: typeof AppJobsIdRoute
   AppRequestsIdRoute: typeof AppRequestsIdRoute
   AppRequestsNewRoute: typeof AppRequestsNewRoute
+  AppAvailableIndexRoute: typeof AppAvailableIndexRoute
   AppJobsIndexRoute: typeof AppJobsIndexRoute
   AppQuotesIndexRoute: typeof AppQuotesIndexRoute
   AppRequestsIndexRoute: typeof AppRequestsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAvailableRoute: AppAvailableRouteWithChildren,
   AppProfileRoute: AppProfileRoute,
   AppStatsRoute: AppStatsRoute,
   AppVehicleRoute: AppVehicleRoute,
+  AppAvailableIdRoute: AppAvailableIdRoute,
   AppJobsIdRoute: AppJobsIdRoute,
   AppRequestsIdRoute: AppRequestsIdRoute,
   AppRequestsNewRoute: AppRequestsNewRoute,
+  AppAvailableIndexRoute: AppAvailableIndexRoute,
   AppJobsIndexRoute: AppJobsIndexRoute,
   AppQuotesIndexRoute: AppQuotesIndexRoute,
   AppRequestsIndexRoute: AppRequestsIndexRoute,
