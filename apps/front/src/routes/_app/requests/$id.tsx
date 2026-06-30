@@ -26,9 +26,9 @@ function RequestDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <Skeleton className="mb-6 h-5 w-40" />
-        <div className="grid grid-cols-[1fr_360px] gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px]">
           <div className="flex flex-col gap-4">
             <Skeleton className="h-52 w-full rounded-[14px]" />
             <Skeleton className="h-32 w-full rounded-[14px]" />
@@ -41,7 +41,7 @@ function RequestDetailPage() {
 
   if (isError || !req) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <p className="text-sm text-destructive">No se pudo cargar la solicitud.</p>
       </div>
     )
@@ -51,7 +51,7 @@ function RequestDetailPage() {
   const acceptedQuote = req.quotes.find((q) => q.status === "accepted")
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <button
         type="button"
         onClick={() => navigate({ to: "/requests" })}
@@ -61,10 +61,10 @@ function RequestDetailPage() {
         Mis solicitudes
       </button>
 
-      <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px] md:items-start">
         {/* Left */}
         <div className="flex flex-col gap-4">
-          <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-6">
+          <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-4 md:p-6">
             <div className="mb-5 flex items-center justify-between">
               <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold", requestStatusClasses[req.status] ?? "bg-[#F5F4F0] text-[#969e9b]")}>
                 {requestStatusLabels[req.status] ?? req.status}
@@ -110,7 +110,7 @@ function RequestDetailPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-4 border-t border-[#F0EEE9] pt-4">
+            <div className="mt-5 grid grid-cols-1 gap-4 border-t border-[#F0EEE9] pt-4 sm:grid-cols-3">
               <DetailRow label="Fecha" value={formatLongDateTime(req.scheduledAt)} />
               <DetailRow label="Volumen" value={volumeLabels[req.volumeCategory]} />
               <DetailRow label="Artículos" value={req.itemDescription} />

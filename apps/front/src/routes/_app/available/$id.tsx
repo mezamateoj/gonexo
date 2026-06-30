@@ -143,9 +143,9 @@ function DriverOpportunityPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <Skeleton className="mb-6 h-5 w-40" />
-        <div className="grid grid-cols-[1fr_360px] gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px]">
           <div className="space-y-4">
             <Skeleton className="h-52 w-full rounded-[14px]" />
           </div>
@@ -157,7 +157,7 @@ function DriverOpportunityPage() {
 
   if (isError || !req) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <p className="text-sm text-destructive">No se pudo cargar la solicitud.</p>
       </div>
     )
@@ -169,7 +169,7 @@ function DriverOpportunityPage() {
   const isOpen = req.status === "open"
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <button
         type="button"
         onClick={() => navigate({ to: "/available" })}
@@ -179,10 +179,10 @@ function DriverOpportunityPage() {
         Solicitudes disponibles
       </button>
 
-      <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px] md:items-start">
         {/* Left — request details */}
         <div className="flex flex-col gap-4">
-          <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-6">
+          <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-4 md:p-6">
             <div className="mb-5 flex items-center gap-3 text-[12px] text-[#B0ABA5]">
               <span className="flex items-center gap-1">
                 <Calendar className="size-3.5" />

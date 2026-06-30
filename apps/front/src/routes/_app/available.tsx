@@ -7,6 +7,8 @@ import { api } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
+import { AvailableRequestCard } from "@/components/available/available-request-card"
+import { AvailableCardSkeleton } from "@/components/available/available-card-skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { queryKeys } from "@/lib/query-keys"
 import { distanceKm, floorLine, relativeDate, shortAddress, volumeColors, volumeLabels } from "@/lib/display"
@@ -261,6 +263,22 @@ function TableSkeleton() {
   )
 }
 
+// Cards on mobile, table skeleton on desktop — mirrors the loaded layout
+function LoadingState() {
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-3 md:hidden">
+        {[1, 2, 3].map((n) => (
+          <AvailableCardSkeleton key={n} />
+        ))}
+      </div>
+      <div className="hidden md:block">
+        <TableSkeleton />
+      </div>
+    </>
+  )
+}
+
 function AvailablePage() {
   const { data: profile, isLoading: profileLoading } = useDriverProfileGate()
 
@@ -270,13 +288,13 @@ function AvailablePage() {
     enabled: !!profile,
   })
 
-  if (profileLoading) return <div className="p-8"><TableSkeleton /></div>
+  if (profileLoading) return <div className="p-4 md:p-8"><LoadingState /></div>
   if (!profile) return null
 
   const requests = data?.data ?? []
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="mb-6">
         <h1 className="text-[22px] font-bold text-[#121715]">Solicitudes disponibles</h1>
         <p className="mt-1 text-[13px] text-[#969e9b]">
@@ -293,7 +311,7 @@ function AvailablePage() {
       )}
 
       {requestsLoading ? (
-        <TableSkeleton />
+        <LoadingState />
       ) : requests.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[12px] border border-dashed border-[#E9E7E3] bg-white py-16 text-center">
           <MapPin className="mb-3 size-9 text-[#D0CCC7]" />
@@ -301,12 +319,24 @@ function AvailablePage() {
           <p className="mt-1 text-[13px] text-[#969e9b]">Vuelve pronto — los fletes aparecen aquí en tiempo real.</p>
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={requests}
-          filterColumn="cliente"
-          filterPlaceholder="Buscar por cliente..."
-        />
+        <>
+          {/* Mobile: card list */}
+          <div className="grid grid-cols-1 gap-3 md:hidden">
+            {requests.map((req) => (
+              <AvailableRequestCard key={req.id} req={req} />
+            ))}
+          </div>
+
+          {/* Desktop: sortable/filterable table */}
+          <div className="hidden md:block">
+            <DataTable
+              columns={columns}
+              data={requests}
+              filterColumn="cliente"
+              filterPlaceholder="Buscar por cliente..."
+            />
+          </div>
+        </>
       )}
     </div>
   )

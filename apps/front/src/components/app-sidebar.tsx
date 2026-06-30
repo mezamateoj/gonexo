@@ -64,12 +64,13 @@ function NavItem({
   to: string
 }) {
   const { pathname } = useRouterState({ select: (s) => s.location })
+  const { isMobile, setOpenMobile } = useSidebar()
   const isActive = pathname === to || (to !== "/" && pathname.startsWith(to + "/"))
 
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
-        <Link to={to}>
+        <Link to={to} onClick={() => isMobile && setOpenMobile(false)}>
           <Icon className="size-4" />
           <span>{label}</span>
         </Link>

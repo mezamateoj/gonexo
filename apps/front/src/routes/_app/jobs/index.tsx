@@ -91,7 +91,7 @@ function JobsPage() {
                         {job.request.originAddress}
                       </p>
                       <p className="truncate text-[12px] text-[#969e9b]">→ {job.request.destAddress}</p>
-                      <div className="mt-2 flex items-center gap-3">
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
                         <span className="text-[13px] font-semibold text-primary">{formatPrice(job.agreedPrice)}</span>
                         <span className="text-[11px] text-[#969e9b]">{volumeLabels[job.request.volumeCategory]}</span>
                         {!isClient && (
@@ -153,7 +153,7 @@ function JobsPage() {
                         {job.request.originAddress}
                       </p>
                       <p className="truncate text-[12px] text-[#969e9b]">→ {job.request.destAddress}</p>
-                      <div className="mt-2 flex items-center gap-3">
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
                         <span className="text-[13px] font-semibold text-[#485450]">{formatPrice(job.agreedPrice)}</span>
                         <span className="text-[11px] text-[#969e9b]">{volumeLabels[job.request.volumeCategory]}</span>
                         <span className="rounded-full bg-[#F0EDE9] px-2 py-0.5 text-[10px] font-medium text-[#485450]">{otherParty.name}</span>

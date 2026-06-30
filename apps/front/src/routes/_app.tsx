@@ -9,6 +9,7 @@ import {
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAppMode } from "@/lib/app-mode"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
@@ -34,11 +35,15 @@ const CRUMBS: Record<string, string> = {
 function TopBar() {
   const { pathname } = useRouterState({ select: (s) => s.location })
   const { mode } = useAppMode()
+  const isWizard = pathname === "/requests/new"
 
   const currentLabel = CRUMBS[pathname] ?? "Gonexo"
 
   return (
-    <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-[#EEEEEE] bg-white px-6">
+    <header className={cn(
+      "flex h-[52px] shrink-0 items-center justify-between border-b border-[#EEEEEE] bg-white px-6",
+      isWizard && "hidden md:flex",
+    )}>
       <div className="flex items-center gap-3">
         <SidebarTrigger className="text-muted-foreground" />
         <div className="h-5 w-px bg-border" />

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { badRequest, upstreamError } from "../lib/errors";
+import { requireAuth } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
 
 const MAPBOX_SUGGEST_URL = "https://api.mapbox.com/search/searchbox/v1/suggest";
@@ -9,11 +10,11 @@ const MAPBOX_RETRIEVE_URL =
 const geo = new Hono<AppEnv>();
 
 // GET /api/geo/suggest?q=...&session=...
-geo.get("/suggest", async (c) => {
-  const q = c.req.query("q");
-  const session = c.req.query("session");
+geo.get("/suggest", requireAuth, async (c) => {
+  const q = c.req.query("q")?.trim();
+  const session = c.req.query("session")?.trim();
 
-  if (!q || !session) {
+  if (!q || q.length < 3 || !session) {
     throw badRequest("q and session are required");
   }
 
@@ -25,7 +26,6 @@ geo.get("/suggest", async (c) => {
   url.searchParams.set("access_token", c.env.MAPBOX_TOKEN);
 
   const res = await fetch(url.toString());
-  console.log("res geo", res);
   if (!res.ok) {
     throw upstreamError("Geocoding service error");
   }
@@ -35,9 +35,9 @@ geo.get("/suggest", async (c) => {
 });
 
 // GET /api/geo/retrieve?id=...&session=...
-geo.get("/retrieve", async (c) => {
-  const id = c.req.query("id");
-  const session = c.req.query("session");
+geo.get("/retrieve", requireAuth, async (c) => {
+  const id = c.req.query("id")?.trim();
+  const session = c.req.query("session")?.trim();
 
   if (!id || !session) {
     throw badRequest("id and session are required");

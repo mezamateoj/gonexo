@@ -6,6 +6,7 @@ import { user } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { badRequest } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
+import { normalizePhone } from "../lib/normalizers";
 
 const users = new Hono<AppEnv>();
 
@@ -30,9 +31,13 @@ users.patch(
     if (!body.name && !body.phone)
       throw badRequest("Nothing to update");
 
+    const updates = body.phone
+      ? { ...body, phone: normalizePhone(body.phone) }
+      : body;
+
     await db
       .update(user)
-      .set({ ...body })
+      .set(updates)
       .where(eq(user.id, u.id));
 
     return c.json({ ok: true });

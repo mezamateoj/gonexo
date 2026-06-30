@@ -2,12 +2,13 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
-import { driverProfile, review } from "../db/schema";
+import { driverProfile, review, user as userTable } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { enrichVehicle } from "../ai/vehicle-enrichment";
 import { logger } from "../lib/logger";
+import { normalizePhone, normalizeVehiclePlate } from "../lib/normalizers";
 
 const drivers = new Hono<AppEnv>();
 
@@ -46,6 +47,8 @@ drivers.post(
     const db = c.get("db");
     const user = c.get("user")!;
     const body = c.req.valid("json");
+    const phone = normalizePhone(body.phone);
+    const vehiclePlate = normalizeVehiclePlate(body.vehiclePlate);
 
     const existing = await db.query.driverProfile.findFirst({
       where: eq(driverProfile.userId, user.id),
@@ -62,52 +65,64 @@ drivers.post(
       : null;
 
     if (existing) {
-      await db
-        .update(driverProfile)
-        .set({
-          phone: body.phone,
-          vehicleType: body.vehicleType,
-          vehiclePlate: body.vehiclePlate,
-          vehicleYear: body.vehicleYear ?? null,
-          bio: body.bio ?? null,
-          licenseUrl: body.licenseUrl ?? null,
-          vehiclePhotos: vehiclePhotosJson,
-          papersUrl: body.papersUrl ?? null,
-          vehicleDescription: body.vehicleDescription ?? null,
-          vehicleCapacity: body.vehicleCapacity ?? null,
-          documentsStatus,
-        })
-        .where(eq(driverProfile.userId, user.id));
+      await db.batch([
+        db
+          .update(userTable)
+          .set({ phone })
+          .where(eq(userTable.id, user.id)),
+        db
+          .update(driverProfile)
+          .set({
+            phone,
+            vehicleType: body.vehicleType,
+            vehiclePlate,
+            vehicleYear: body.vehicleYear ?? null,
+            bio: body.bio ?? null,
+            licenseUrl: body.licenseUrl ?? null,
+            vehiclePhotos: vehiclePhotosJson,
+            papersUrl: body.papersUrl ?? null,
+            vehicleDescription: body.vehicleDescription ?? null,
+            vehicleCapacity: body.vehicleCapacity ?? null,
+            documentsStatus,
+          })
+          .where(eq(driverProfile.userId, user.id)),
+      ]);
       logger.info("Driver profile updated: {userId} ({vehicleType} {vehiclePlate}, docs: {documentsStatus})", {
         userId: user.id,
         vehicleType: body.vehicleType,
-        vehiclePlate: body.vehiclePlate,
+        vehiclePlate,
         documentsStatus,
       });
       return c.json({ id: existing.id });
     }
 
     const id = crypto.randomUUID();
-    await db.insert(driverProfile).values({
-      id,
-      userId: user.id,
-      phone: body.phone,
-      vehicleType: body.vehicleType,
-      vehiclePlate: body.vehiclePlate,
-      vehicleYear: body.vehicleYear ?? null,
-      bio: body.bio ?? null,
-      licenseUrl: body.licenseUrl ?? null,
-      vehiclePhotos: vehiclePhotosJson,
-      papersUrl: body.papersUrl ?? null,
-      vehicleDescription: body.vehicleDescription ?? null,
-      vehicleCapacity: body.vehicleCapacity ?? null,
-      documentsStatus,
-    });
+    await db.batch([
+      db
+        .update(userTable)
+        .set({ phone })
+        .where(eq(userTable.id, user.id)),
+      db.insert(driverProfile).values({
+        id,
+        userId: user.id,
+        phone,
+        vehicleType: body.vehicleType,
+        vehiclePlate,
+        vehicleYear: body.vehicleYear ?? null,
+        bio: body.bio ?? null,
+        licenseUrl: body.licenseUrl ?? null,
+        vehiclePhotos: vehiclePhotosJson,
+        papersUrl: body.papersUrl ?? null,
+        vehicleDescription: body.vehicleDescription ?? null,
+        vehicleCapacity: body.vehicleCapacity ?? null,
+        documentsStatus,
+      }),
+    ]);
     logger.info("Driver profile created: {id} for user {userId} ({vehicleType} {vehiclePlate})", {
       id,
       userId: user.id,
       vehicleType: body.vehicleType,
-      vehiclePlate: body.vehiclePlate,
+      vehiclePlate,
       documentsStatus,
     });
     return c.json({ id }, 201);

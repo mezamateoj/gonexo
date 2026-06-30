@@ -64,7 +64,7 @@ function DriverOnboardingPage() {
   return (
     <div className="min-h-screen bg-[#fafaf8]">
       {/* Top bar */}
-      <header className="flex h-[60px] items-center border-b border-[#f1f0ee] bg-white px-10">
+      <header className="flex h-[60px] items-center border-b border-[#f1f0ee] bg-white px-5 md:px-10">
         <GonexoLogo size="xs" />
       </header>
 
@@ -81,7 +81,7 @@ function DriverOnboardingPage() {
         >
           {/* Page header */}
           <div className="flex flex-col gap-1.5">
-            <h1 className="text-[30px] font-bold tracking-[-0.6px] text-[#121715]">
+            <h1 className="text-[24px] font-bold tracking-[-0.6px] text-[#121715] md:text-[30px]">
               Conviértete en transportista
             </h1>
             <p className="text-[15px] text-[#717d79]">
@@ -125,7 +125,7 @@ function DriverOnboardingPage() {
               {/* Vehicle type */}
               <div className="flex flex-col gap-2">
                 <span className="text-[13px] font-medium text-[#121715]">Tipo de vehículo</span>
-                <div className="grid grid-cols-4 gap-[10px]">
+                <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-4">
                   {VEHICLE_TYPES.map(({ key, label, emoji }) => (
                     <button
                       key={key}
@@ -151,7 +151,7 @@ function DriverOnboardingPage() {
               </div>
 
               {/* Plate + Year */}
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <form.Field
                   name="plate"
                   validators={{ onChange: plateSchema, onBlur: plateSchema }}
@@ -160,7 +160,7 @@ function DriverOnboardingPage() {
                     const isInvalid = field.state.meta.errors.length > 0 &&
                       (field.state.meta.isTouched || form.state.submissionAttempts > 0)
                     return (
-                      <Field className="w-[240px] shrink-0" data-invalid={isInvalid || undefined}>
+                      <Field className="w-full sm:w-[240px] sm:shrink-0" data-invalid={isInvalid || undefined}>
                         <label htmlFor={field.name} className="text-[13px] font-medium text-[#121715]">
                           Patente
                         </label>
@@ -254,7 +254,7 @@ function DriverOnboardingPage() {
             </p>
           )}
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <form.Subscribe selector={(s) => s.isSubmitting}>
               {(isSubmitting) => (
                 <button

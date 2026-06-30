@@ -49,9 +49,9 @@ function RequestsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-[22px] font-bold text-foreground">Mis solicitudes</h1>
             <p className="mt-[2px] text-[13px] text-muted-foreground">
@@ -59,7 +59,7 @@ function RequestsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-[6px]">
+          <div className="flex flex-wrap items-center gap-[6px]">
             {FILTERS.map(({ key, label }) => (
               <button
                 key={key}
@@ -79,7 +79,7 @@ function RequestsPage() {
         </div>
 
         {isLoading && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {[1, 2, 3, 4].map((n) => (
               <div
                 key={n}
@@ -96,25 +96,34 @@ function RequestsPage() {
         )}
 
         {!isLoading && !isError && filtered.length === 0 && filter !== "all" && (
-          <div className="grid grid-cols-2 gap-4">
-            <EmptyState filtered />
-          </div>
+          <EmptyState filtered />
         )}
 
         {!isLoading && !isError && filtered.length > 0 && (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-[14px]">
-              {col1.map((req) => (
-                <RequestCard key={req.id} req={req} />
-              ))}
-            </div>
-            <div className="flex flex-col gap-[14px]">
-              {col2.map((req) => (
+          <>
+            {/* Mobile: single column, natural order */}
+            <div className="flex flex-col gap-[14px] md:hidden">
+              {filtered.map((req) => (
                 <RequestCard key={req.id} req={req} />
               ))}
               {filter === "all" && <PromoCard />}
             </div>
-          </div>
+
+            {/* Desktop: two-column interleaved layout */}
+            <div className="hidden grid-cols-2 gap-4 md:grid">
+              <div className="flex flex-col gap-[14px]">
+                {col1.map((req) => (
+                  <RequestCard key={req.id} req={req} />
+                ))}
+              </div>
+              <div className="flex flex-col gap-[14px]">
+                {col2.map((req) => (
+                  <RequestCard key={req.id} req={req} />
+                ))}
+                {filter === "all" && <PromoCard />}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -30,7 +30,7 @@ export function QuoteCard({
           <div>
             <div className="text-[13px] font-semibold text-[#121715]">{driver.name}</div>
             {profile && (
-              <div className="flex items-center gap-1 text-[11px] text-[#969e9b]">
+              <div className="flex flex-wrap items-center gap-1 text-[11px] text-[#969e9b]">
                 {profile.avgRating != null && (
                   <>
                     <Star className="size-3 fill-amber-400 text-amber-400" />
