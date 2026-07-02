@@ -89,6 +89,10 @@ export function formatPrice(n: number) {
   return `$${n.toLocaleString("es-CL")}`
 }
 
+export function formatCLPRange(min: number, max: number) {
+  return `${formatCLP(min)} – ${formatCLP(max)}`
+}
+
 export function formatShortDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-CL", {
     day: "numeric",
@@ -115,6 +119,18 @@ export function formatCompactDateTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+export function formatKm(meters: number) {
+  return `${(meters / 1000).toFixed(1)} km`
+}
+
+export function formatDurationMin(seconds: number) {
+  const min = Math.round(seconds / 60)
+  if (min < 60) return `~${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m === 0 ? `~${h} h` : `~${h} h ${m} min`
 }
 
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {

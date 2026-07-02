@@ -202,8 +202,8 @@ function RequestDetailPage() {
             <div className="rounded-[14px] border border-primary/20 bg-[#E7F4EE] p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Oferta aceptada</p>
               <p className="mt-1.5 text-[14px] text-[#485450]">
-                Acordado con <strong>{acceptedQuote.driver.name}</strong> por{" "}
-                <strong>{formatCLP(acceptedQuote.price)}</strong>.
+                Acordado con <strong>{acceptedQuote.driver.name}</strong> — precio acordado máximo:{" "}
+                <strong className="tabular-nums">{formatCLP(acceptedQuote.price)}</strong>.
               </p>
               {job && (
                 <Button

@@ -64,6 +64,7 @@ export interface PublicDriverProfile {
   vehicleDescription: string | null
   vehicleCapacity: string | null
   isVerified: boolean
+  documentsStatus: string // 'pending' | 'submitted' | 'verified'
   avgRating: number | null
   totalJobs: number
   bio: string | null
@@ -73,6 +74,10 @@ export interface QuoteWithDriver {
   id: string
   driverId: string
   price: number
+  // Null on quotes submitted before range quotes shipped — render as a single
+  // price (`price`) rather than a range in that case.
+  priceMin: number | null
+  priceMax: number | null
   message: string | null
   status: QuoteStatus
   createdAt: string
@@ -84,18 +89,33 @@ export interface QuoteWithDriver {
   }
 }
 
+// Fair-price advisory band for a request — GET /api/requests/:id/price-range
+export interface PriceRange {
+  min: number
+  mid: number
+  max: number
+  // Server-enforced acceptance window for POST .../quotes; the slider spans this.
+  acceptableMin: number
+  acceptableMax: number
+  distanceKm: number
+  distanceSource: "mapbox" | "haversine"
+  durationS: number | null
+  feeRate: number
+}
+
 export interface RequestDetail {
   id: string
   userId: string
   status: RequestStatus
   originAddress: string
-  originLat: number
-  originLng: number
+  // Exact coords are null unless the viewer is the owner or the matched driver.
+  originLat: number | null
+  originLng: number | null
   originFloor: number | null
   originHasElevator: boolean
   destAddress: string
-  destLat: number
-  destLng: number
+  destLat: number | null
+  destLng: number | null
   destFloor: number | null
   destHasElevator: boolean
   scheduledAt: string
@@ -111,6 +131,7 @@ export interface RequestDetail {
   packingIncluded: boolean
   parkingType: "street" | "garage" | "loading_dock"
   longCarry: boolean
+  distanceKm: number
   photos: { id: string; url: string; order: number }[]
   user: { id: string; name: string; image: string | null; phone: string | null }
   quotes: QuoteWithDriver[]
@@ -120,14 +141,12 @@ export interface RequestDetail {
 
 export interface OpenRequest {
   id: string
+  // Addresses are masked to the zone (street + comuna) and coords are withheld
+  // on the feed — drivers never see the exact door before winning the job.
   originAddress: string
-  originLat: number
-  originLng: number
   originFloor: number | null
   originHasElevator: boolean
   destAddress: string
-  destLat: number
-  destLng: number
   destFloor: number | null
   destHasElevator: boolean
   scheduledAt: string
@@ -145,12 +164,35 @@ export interface OpenRequest {
   packingIncluded: boolean
   parkingType: "street" | "garage" | "loading_dock"
   longCarry: boolean
+  routeDurationS: number | null
+  // Display distance (km) computed server-side, so exact coords stay hidden.
+  distanceKm: number
+  // Suggested fair price (band midpoint) computed server-side per row.
+  fairPrice: number
+}
+
+export type AvailableSort = "recent" | "soonest" | "distance"
+
+export interface AvailableQuery {
+  page: number
+  sort: AvailableSort
+  volume?: VolumeCategory[]
+  hasPhotos?: boolean
+}
+
+export interface AvailableResponse {
+  data: OpenRequest[]
+  page: number
+  limit: number
+  total: number
 }
 
 export interface MyQuote {
   id: string
   requestId: string
   price: number
+  priceMin: number | null
+  priceMax: number | null
   message: string | null
   status: QuoteStatus
   createdAt: string
@@ -224,6 +266,6 @@ export interface RequestSummary {
   notes: string | null
   createdAt: string
   photos: { url: string }[]
-  quotes: { id: string; status: string; price: number }[]
+  quotes: { id: string; status: string; price: number; priceMin: number | null; priceMax: number | null }[]
   job: { id: string; status: JobStatus } | null
 }

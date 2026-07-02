@@ -55,6 +55,11 @@ export const CIRCUITY_FACTOR = 1.3;
 export const QUOTE_FLOOR_FACTOR = 0.5;
 export const QUOTE_CEILING_FACTOR = 2.5;
 
+// Platform commission on the agreed price (job.platformFee). Shared with the
+// price-range response so the driver's displayed payout matches what's actually
+// deducted on accept.
+export const PLATFORM_FEE_RATE = 0.12;
+
 export type VolumeCategory = keyof typeof PRICING.baseByVolume;
 
 export type PriceRangeInput = {
@@ -154,5 +159,15 @@ export function computePriceRange(input: PriceRangeInput): PriceRange {
     mid: roundCLP(point),
     max: roundCLP(point * PRICING.bandMax),
     distanceKm: Math.round(routeKm * 10) / 10,
+  };
+}
+
+// The acceptance window servers validate submitted quotes against — the same
+// bounds POST /:id/quotes enforces, exposed here so the response a driver sees
+// and the rule they're checked against can never diverge.
+export function quoteAcceptableWindow(fair: PriceRange): { min: number; max: number } {
+  return {
+    min: roundCLP(fair.min * QUOTE_FLOOR_FACTOR),
+    max: roundCLP(fair.max * QUOTE_CEILING_FACTOR),
   };
 }

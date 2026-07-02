@@ -1,13 +1,14 @@
 import { Link } from "@tanstack/react-router"
 import { Package } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatCLP, formatCompactDateTime, requestStatusClasses, requestStatusLabels, volumeLabels } from "@/lib/display"
+import { formatCLP, formatCLPRange, formatCompactDateTime, requestStatusClasses, requestStatusLabels, volumeLabels } from "@/lib/display"
 import type { RequestSummary } from "@/lib/types"
 
 export function RequestCard({ req }: { req: RequestSummary }) {
   const openQuotes = req.quotes.filter((q) => q.status === "pending")
-  const bestPrice = req.quotes.length > 0
-    ? Math.min(...req.quotes.map((q) => q.price))
+  // Cheapest by representative price (priceMax); shown as its own range when present.
+  const cheapest = req.quotes.length > 0
+    ? req.quotes.reduce((a, b) => (a.price <= b.price ? a : b))
     : null
 
   return (
@@ -53,9 +54,11 @@ export function RequestCard({ req }: { req: RequestSummary }) {
           <span className="rounded-[8px] bg-[#FFF4ED] px-[10px] py-[4px] text-[12px] font-medium text-[#F97316]">
             {openQuotes.length} {openQuotes.length === 1 ? "cotización" : "cotizaciones"}
           </span>
-        ) : bestPrice != null ? (
-          <span className="text-[15px] font-bold text-foreground">
-            {formatCLP(bestPrice)}
+        ) : cheapest != null ? (
+          <span className="text-[15px] font-bold tabular-nums text-foreground">
+            {cheapest.priceMin != null && cheapest.priceMax != null
+              ? formatCLPRange(cheapest.priceMin, cheapest.priceMax)
+              : formatCLP(cheapest.price)}
           </span>
         ) : null}
       </div>

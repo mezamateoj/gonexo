@@ -72,9 +72,9 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="bg-[#FAFAFA]">
+      <SidebarInset className="min-w-0 bg-[#FAFAFA]">
         <TopBar />
-        <main className="flex-1 overflow-auto">
+        <main className="min-w-0 flex-1 overflow-auto">
           <Outlet />
         </main>
       </SidebarInset>

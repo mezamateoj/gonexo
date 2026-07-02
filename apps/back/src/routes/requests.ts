@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, ne, asc, desc } from "drizzle-orm";
+import { eq, and, ne, asc, desc, inArray, exists, count, sql } from "drizzle-orm";
 import { request, requestPhoto, quote, driverProfile } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
@@ -11,14 +11,26 @@ import {
   computePriceRange,
   haversineKm,
   CIRCUITY_FACTOR,
-  QUOTE_FLOOR_FACTOR,
-  QUOTE_CEILING_FACTOR,
+  PLATFORM_FEE_RATE,
+  quoteAcceptableWindow,
   type PriceRange,
   type VolumeCategory,
 } from "../lib/pricing";
 import { mapboxDirections } from "../lib/directions";
+import { maskAddress } from "../lib/address";
+import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
 
 const requests = new Hono<AppEnv>();
+
+// Display distance without exposing exact coordinates: real road distance when
+// Mapbox resolved it, else straight-line from the (server-side only) coords.
+function displayDistanceKm(req: typeof request.$inferSelect): number {
+  const km =
+    req.routeDistanceM != null
+      ? req.routeDistanceM / 1000
+      : haversineKm(req.originLat, req.originLng, req.destLat, req.destLng);
+  return Math.round(km * 10) / 10;
+}
 
 // Fair-price band for a request row. Uses real road distance when stored, else
 // haversine inflated for circuity. Shared by the price-range endpoint and the
@@ -80,6 +92,7 @@ requests.post(
     const db = c.get("db");
     const user = c.get("user")!;
     const body = c.req.valid("json");
+    if (containsContactInfo(body.notes)) throw badRequest(NO_CONTACT_MESSAGE);
     const id = crypto.randomUUID();
 
     // Resolve the real driving route once (immutable for a request). Null if
@@ -160,7 +173,7 @@ requests.get("/my", requireAuth, async (c) => {
         orderBy: [asc(requestPhoto.order)],
         columns: { url: true },
       },
-      quotes: { columns: { id: true, status: true, price: true } },
+      quotes: { columns: { id: true, status: true, price: true, priceMin: true, priceMax: true } },
       job: { columns: { id: true, status: true } },
     },
   });
@@ -168,30 +181,83 @@ requests.get("/my", requireAuth, async (c) => {
   return c.json(results);
 });
 
+// Available-feed sort options. Only real columns are sortable so paging stays
+// correct across the full set (computed values like fair price / competition
+// can't be ORDER BY'd in SQL — they're per-row JS). Distance nulls sort last.
+const AVAILABLE_SORTS = {
+  recent: [desc(request.createdAt)],
+  soonest: [asc(request.scheduledAt)],
+  distance: [sql`${request.routeDistanceM} is null`, asc(request.routeDistanceM)],
+} as const;
+type AvailableSort = keyof typeof AVAILABLE_SORTS;
+
+const VOLUME_CATEGORIES: VolumeCategory[] = ["small", "medium", "large", "full_move"];
+
 requests.get("/", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const page = Math.max(1, parseInt(c.req.query("page") ?? "1"));
-  const limit = Math.min(50, parseInt(c.req.query("limit") ?? "20"));
+  const limit = Math.min(50, Math.max(1, parseInt(c.req.query("limit") ?? "20")));
   const offset = (page - 1) * limit;
 
-  const results = await db.query.request.findMany({
-    where: and(eq(request.status, "open"), ne(request.userId, user.id)),
-    orderBy: [asc(request.scheduledAt)],
-    limit,
-    offset,
-    with: {
-      photos: {
-        limit: 1,
-        orderBy: [asc(requestPhoto.order)],
-        columns: { url: true },
-      },
-      user: { columns: { name: true, image: true } },
-      quotes: { columns: { id: true } },
-    },
-  });
+  const sortKey = c.req.query("sort") ?? "recent";
+  const orderBy =
+    AVAILABLE_SORTS[sortKey as AvailableSort] ?? AVAILABLE_SORTS.recent;
 
-  return c.json({ data: results, page, limit });
+  // Only open requests that aren't the caller's own.
+  const conditions = [eq(request.status, "open"), ne(request.userId, user.id)];
+
+  const volumeParam = c.req.query("volume");
+  if (volumeParam) {
+    const volumes = volumeParam
+      .split(",")
+      .filter((v): v is VolumeCategory => VOLUME_CATEGORIES.includes(v as VolumeCategory));
+    if (volumes.length > 0) conditions.push(inArray(request.volumeCategory, volumes));
+  }
+
+  if (c.req.query("hasPhotos") === "true") {
+    conditions.push(
+      exists(
+        db
+          .select({ x: sql`1` })
+          .from(requestPhoto)
+          .where(eq(requestPhoto.requestId, request.id)),
+      ),
+    );
+  }
+
+  const where = and(...conditions);
+
+  const [rows, countRows] = await Promise.all([
+    db.query.request.findMany({
+      where,
+      orderBy: [...orderBy],
+      limit,
+      offset,
+      with: {
+        photos: { orderBy: [asc(requestPhoto.order)], columns: { url: true } },
+        user: { columns: { name: true, image: true } },
+        quotes: { columns: { id: true } },
+      },
+    }),
+    db.select({ n: count() }).from(request).where(where),
+  ]);
+
+  // Browsing drivers see only the zone + a distance, never the exact address or
+  // coordinates. Fair price is included so they can gauge earnings from the feed.
+  const data = rows.map((r) => ({
+    ...r,
+    originAddress: maskAddress(r.originAddress),
+    destAddress: maskAddress(r.destAddress),
+    originLat: null,
+    originLng: null,
+    destLat: null,
+    destLng: null,
+    distanceKm: displayDistanceKm(r),
+    fairPrice: fairPriceRange(r).mid,
+  }));
+
+  return c.json({ data, page, limit, total: countRows[0]?.n ?? 0 });
 });
 
 requests.get("/:id", requireAuth, async (c) => {
@@ -202,7 +268,7 @@ requests.get("/:id", requireAuth, async (c) => {
     with: {
       photos: { orderBy: [asc(requestPhoto.order)] },
       user: { columns: { id: true, name: true, image: true, phone: true } },
-      job: { columns: { id: true, status: true } },
+      job: { columns: { id: true, status: true, driverId: true } },
       quotes: {
         with: {
           driver: {
@@ -215,6 +281,7 @@ requests.get("/:id", requireAuth, async (c) => {
                   vehicleDescription: true,
                   vehicleCapacity: true,
                   isVerified: true,
+                  documentsStatus: true,
                   avgRating: true,
                   totalJobs: true,
                   bio: true,
@@ -246,14 +313,27 @@ requests.get("/:id", requireAuth, async (c) => {
 
   const quoteCount = result.quotes.length;
 
+  // Exact address + coords are revealed only to the owner and the matched driver
+  // (once their quote is accepted). Everyone else sees the masked zone.
+  const isMatchedDriver = !!result.job && result.job.driverId === user.id;
+  const canSeeExact = isOwner || isMatchedDriver;
+
   return c.json({
     ...result,
+    originAddress: canSeeExact ? result.originAddress : maskAddress(result.originAddress),
+    destAddress: canSeeExact ? result.destAddress : maskAddress(result.destAddress),
+    originLat: canSeeExact ? result.originLat : null,
+    originLng: canSeeExact ? result.originLng : null,
+    destLat: canSeeExact ? result.destLat : null,
+    destLng: canSeeExact ? result.destLng : null,
+    distanceKm: displayDistanceKm(result),
     // Client phone is exchanged on job detail only, never on request detail.
     user: { ...result.user, phone: isOwner ? result.user.phone : null },
     // Owner compares every quote; a quoting driver sees only their own.
     quotes: isOwner ? result.quotes : myQuote ? [myQuote] : [],
     quoteCount,
-    job: result.job ?? null,
+    // driverId used only for the reveal check above — not exposed.
+    job: result.job ? { id: result.job.id, status: result.job.status } : null,
   });
 });
 
@@ -283,7 +363,20 @@ requests.get("/:id/price-range", requireAuth, async (c) => {
     }
   }
 
-  return c.json(fairPriceRange(req));
+  const fair = fairPriceRange(req);
+  const acceptable = quoteAcceptableWindow(fair);
+
+  return c.json({
+    min: fair.min,
+    mid: fair.mid,
+    max: fair.max,
+    acceptableMin: acceptable.min,
+    acceptableMax: acceptable.max,
+    distanceKm: fair.distanceKm,
+    distanceSource: req.routeDistanceM != null ? "mapbox" : "haversine",
+    durationS: req.routeDurationS,
+    feeRate: PLATFORM_FEE_RATE,
+  });
 });
 
 const createQuoteSchema = z
@@ -313,15 +406,15 @@ requests.post(
     if (!req) throw notFound("Request not found or not open");
     if (req.userId === driver.id)
       throw badRequest("Cannot quote your own request");
+    if (containsContactInfo(body.message)) throw badRequest(NO_CONTACT_MESSAGE);
 
     // Reject quotes absurdly outside the advisory fair band (typos, wild
     // lowballs, gouging). The window is wide on purpose — the band is guidance.
     const fair = fairPriceRange(req);
-    const floor = Math.round(fair.min * QUOTE_FLOOR_FACTOR);
-    const ceiling = Math.round(fair.max * QUOTE_CEILING_FACTOR);
+    const { min: floor, max: ceiling } = quoteAcceptableWindow(fair);
     if (body.priceMin < floor || body.priceMax > ceiling) {
       throw badRequest(
-        `Quote outside the acceptable range (${floor}–${ceiling} CLP for this request)`,
+        `Tu cotización está fuera del rango permitido (${floor.toLocaleString("es-CL")}–${ceiling.toLocaleString("es-CL")} CLP para esta solicitud).`,
       );
     }
 
@@ -330,16 +423,29 @@ requests.post(
     const price = body.priceMax;
 
     const id = crypto.randomUUID();
-    await db.insert(quote).values({
-      id,
-      requestId,
-      driverId: driver.id,
-      price,
-      priceMin: body.priceMin,
-      priceMax: body.priceMax,
-      message: body.message ?? null,
-      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-    });
+    try {
+      await db.insert(quote).values({
+        id,
+        requestId,
+        driverId: driver.id,
+        price,
+        priceMin: body.priceMin,
+        priceMax: body.priceMax,
+        message: body.message ?? null,
+        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      });
+    } catch (err) {
+      // quote_request_driver_unique: one quote per driver per request. Drizzle
+      // wraps the D1 error as DrizzleQueryError, whose own .message is just
+      // "Failed query: ..." — the SQLite detail lives one level down in .cause.
+      const messages = [err, (err as { cause?: unknown })?.cause]
+        .filter((e): e is { message: unknown } => !!e && typeof e === "object" && "message" in e)
+        .map((e) => String(e.message));
+      if (messages.some((m) => /UNIQUE constraint failed/i.test(m))) {
+        throw conflict("You have already quoted this request");
+      }
+      throw err;
+    }
 
     logger.info("Quote submitted: {id} on request {requestId} by driver {driverId} for {priceMin}-{priceMax}", {
       id,
