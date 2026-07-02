@@ -302,8 +302,8 @@ function AvailablePage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#F9F8F6] hover:bg-[#F9F8F6]">
-                  {TABLE_HEADS.map((h, i) => (
-                    <TableHead key={h || i} className="text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">
+                  {TABLE_HEADS.map((h) => (
+                    <TableHead key={h || "acciones"} className="text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">
                       {h}
                     </TableHead>
                   ))}

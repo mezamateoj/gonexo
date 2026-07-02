@@ -162,6 +162,7 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
                 <textarea
                   id={field.name}
                   rows={2}
+                  aria-label="Mensaje para el cliente"
                   className="w-full resize-none rounded-[8px] border border-[#E9E7E3] bg-white px-3 py-2.5 text-[13px] text-[#121715] placeholder:text-[#B0ABA5] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                   placeholder="Tengo experiencia en mudanzas de departamentos…"
                   value={field.state.value}
@@ -192,12 +193,12 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
 }
 
 function SubmitQuoteForm({ requestId }: { requestId: string }) {
-  const priceRangeQuery = useQuery({
+  const { data: fair, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.requests.priceRange(requestId),
     queryFn: () => api.requests.priceRange(requestId),
   })
 
-  if (priceRangeQuery.isLoading) {
+  if (isLoading) {
     return (
       <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
         <Skeleton className="mb-4 h-4 w-32" />
@@ -207,13 +208,13 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
     )
   }
 
-  if (priceRangeQuery.isError || !priceRangeQuery.data) {
+  if (isError || !fair) {
     return (
       <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5 text-center">
         <p className="text-[13px] text-[#969e9b]">No se pudo calcular el precio sugerido.</p>
         <button
           type="button"
-          onClick={() => priceRangeQuery.refetch()}
+          onClick={() => refetch()}
           className="mt-2 text-[13px] font-medium text-primary"
         >
           Reintentar
@@ -222,7 +223,7 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
     )
   }
 
-  return <QuoteRangeForm requestId={requestId} fair={priceRangeQuery.data} />
+  return <QuoteRangeForm requestId={requestId} fair={fair} />
 }
 
 function DriverOpportunityPage() {
