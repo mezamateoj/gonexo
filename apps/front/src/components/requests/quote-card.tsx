@@ -1,8 +1,32 @@
-import { Check, MessageSquare, Star } from "lucide-react"
+import { Check, MessageSquare, ShieldCheck, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { formatCLP, vehicleLabels } from "@/lib/display"
-import type { QuoteWithDriver } from "@/lib/types"
+import { formatCLP, formatCLPRange, vehicleLabels } from "@/lib/display"
+import type { PublicDriverProfile, QuoteWithDriver } from "@/lib/types"
+
+// Distinguishes a document-verified driver from one with a merely complete
+// profile — "verified" is a trust signal, "complete" is just onboarded.
+function TrustBadge({ profile }: { profile: PublicDriverProfile }) {
+  if (profile.isVerified && profile.documentsStatus === "verified") {
+    return (
+      <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
+        <ShieldCheck className="size-2.5" /> Verificado
+      </span>
+    )
+  }
+  if (profile.documentsStatus === "submitted") {
+    return (
+      <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+        Documentos en revisión
+      </span>
+    )
+  }
+  return (
+    <span className="shrink-0 rounded-full bg-[#F5F4F0] px-2 py-0.5 text-[10px] font-medium text-[#969e9b]">
+      Sin verificar
+    </span>
+  )
+}
 
 export function QuoteCard({
   quote,
@@ -31,16 +55,9 @@ export function QuoteCard({
           {driverInitials}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="truncate text-[13px] font-semibold text-[#121715]">{driver.name}</span>
-            {profile && (
-              <span className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                profile.isVerified ? "bg-green-50 text-green-700" : "bg-[#F5F4F0] text-[#969e9b]"
-              )}>
-                {profile.isVerified ? "Verificado" : "Sin verificar"}
-              </span>
-            )}
+            {profile && <TrustBadge profile={profile} />}
           </div>
           {profile && (
             <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-[#969e9b]">
@@ -63,19 +80,23 @@ export function QuoteCard({
             </div>
           )}
         </div>
-        <div className="shrink-0 text-right">
-          <div className={cn(
-            "text-[18px] font-bold",
-            isRejected ? "text-[#969e9b]" : "text-[#121715]"
-          )}>
-            {formatCLP(quote.price)}
-          </div>
-          {isAccepted && (
-            <div className="flex items-center justify-end gap-1 text-[11px] font-semibold text-primary">
-              <Check className="size-3" strokeWidth={3} /> Aceptado
-            </div>
-          )}
+      </div>
+
+      {/* Own row, not squeezed beside the name/badge — a range string can run wide */}
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-black/[0.04] pt-2.5">
+        <div className={cn(
+          "text-[18px] font-bold tabular-nums",
+          isRejected ? "text-[#969e9b]" : "text-[#121715]"
+        )}>
+          {quote.priceMin != null && quote.priceMax != null
+            ? formatCLPRange(quote.priceMin, quote.priceMax)
+            : formatCLP(quote.price)}
         </div>
+        {isAccepted && (
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-primary">
+            <Check className="size-3" strokeWidth={3} /> Aceptado
+          </div>
+        )}
       </div>
 
       {quote.message && (
@@ -86,14 +107,20 @@ export function QuoteCard({
       )}
 
       {quote.status === "pending" && onAccept && (
-        <Button
-          size="sm"
-          className="mt-3 w-full"
-          disabled={accepting}
-          onClick={() => onAccept(quote.id)}
-        >
-          {accepting ? "Aceptando..." : "Aceptar oferta"}
-        </Button>
+        <>
+          {/* Accepting locks the price at the driver's ceiling (priceMax), not the midpoint */}
+          <p className="mt-3 text-[12px] text-[#969e9b]">
+            Si aceptas, pagas hasta {formatCLP(quote.price)}
+          </p>
+          <Button
+            size="sm"
+            className="mt-1.5 w-full active:scale-[0.96] transition-[scale,opacity]"
+            disabled={accepting}
+            onClick={() => onAccept(quote.id)}
+          >
+            {accepting ? "Aceptando..." : "Aceptar oferta"}
+          </Button>
+        </>
       )}
     </div>
   )

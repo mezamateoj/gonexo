@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/query-keys"
 import type { MyQuote } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { MapPin, MessageSquare } from "lucide-react"
-import { formatCLP, formatShortDate, quoteStatusClasses, quoteStatusLabels, volumeLabels } from "@/lib/display"
+import { formatCLP, formatCLPRange, formatShortDate, quoteStatusClasses, quoteStatusLabels, volumeLabels } from "@/lib/display"
 
 export const Route = createFileRoute("/_app/quotes/")({
   component: QuotesPage,
@@ -49,8 +49,10 @@ function QuoteRow({ q }: { q: MyQuote }) {
           </span>
         </div>
 
-        <div className="mt-2 flex items-center gap-3">
-          <span className="text-[14px] font-bold text-primary">{formatCLP(q.price)}</span>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <span className="text-[14px] font-bold tabular-nums text-primary">
+            {q.priceMin != null && q.priceMax != null ? formatCLPRange(q.priceMin, q.priceMax) : formatCLP(q.price)}
+          </span>
           <span className="text-[11px] text-[#969e9b]">{volumeLabels[q.request.volumeCategory]}</span>
           <span className="text-[11px] text-[#969e9b]">{formatShortDate(q.request.scheduledAt)}</span>
         </div>

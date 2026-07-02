@@ -4,11 +4,12 @@ import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { driverProfile, review, user as userTable } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
-import { notFound } from "../lib/errors";
+import { badRequest, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { enrichVehicle } from "../ai/vehicle-enrichment";
 import { logger } from "../lib/logger";
 import { normalizePhone, normalizeVehiclePlate } from "../lib/normalizers";
+import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
 
 const drivers = new Hono<AppEnv>();
 
@@ -47,6 +48,7 @@ drivers.post(
     const db = c.get("db");
     const user = c.get("user")!;
     const body = c.req.valid("json");
+    if (containsContactInfo(body.bio)) throw badRequest(NO_CONTACT_MESSAGE);
     const phone = normalizePhone(body.phone);
     const vehiclePlate = normalizeVehiclePlate(body.vehiclePlate);
 
@@ -152,10 +154,26 @@ drivers.post(
   },
 );
 
-drivers.get("/:id", async (c) => {
+// Public driver profile. Auth-gated and projected to non-sensitive fields only —
+// phone, plate, document URLs, and internal ids never leave the server here.
+drivers.get("/:id", requireAuth, async (c) => {
   const db = c.get("db");
   const profile = await db.query.driverProfile.findFirst({
     where: eq(driverProfile.id, c.req.param("id")),
+    columns: {
+      id: true,
+      userId: true, // needed to look up reviews; stripped from the response
+      vehicleType: true,
+      vehicleYear: true,
+      bio: true,
+      isVerified: true,
+      documentsStatus: true,
+      avgRating: true,
+      totalJobs: true,
+      vehicleDescription: true,
+      vehicleCapacity: true,
+      createdAt: true,
+    },
     with: {
       user: { columns: { id: true, name: true, image: true } },
     },
@@ -166,12 +184,14 @@ drivers.get("/:id", async (c) => {
     where: eq(review.revieweeId, profile.userId),
     orderBy: [desc(review.createdAt)],
     limit: 10,
+    columns: { rating: true, comment: true, reviewerRole: true, createdAt: true },
     with: {
       reviewer: { columns: { name: true, image: true } },
     },
   });
 
-  return c.json({ ...profile, recentReviews });
+  const { userId: _userId, ...publicProfile } = profile;
+  return c.json({ ...publicProfile, recentReviews });
 });
 
 export type DriversType = typeof drivers;

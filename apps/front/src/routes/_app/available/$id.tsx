@@ -3,46 +3,66 @@ import { useQuery } from "@tanstack/react-query"
 import { useForm } from "@tanstack/react-form"
 import { useEffect, useState } from "react"
 import { z } from "zod"
-import { MapPin, ChevronLeft, Package, Calendar, MessageSquare } from "lucide-react"
+import { MapPin, ChevronLeft, Package, Calendar, MessageSquare, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { useSession } from "@/lib/auth-client"
-import { floorLine, formatCLP, formatLongDateTime, initials, volumeLabels } from "@/lib/display"
+import { floorLine, formatCLP, formatCLPRange, formatLongDateTime, initials, volumeLabels } from "@/lib/display"
 import { useSubmitQuote } from "@/hooks/use-request-mutations"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Field, FieldError, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
+import { FairPriceBar } from "@/components/requests/fair-price-bar"
+import type { PriceRange } from "@/lib/types"
 
 export const Route = createFileRoute("/_app/available/$id")({
   component: DriverOpportunityPage,
 })
 
-const quoteSchema = z.object({
-  price: z.string().min(1, "Ingresa un precio").refine(
-    (v) => parseInt(v.replace(/\D/g, "")) > 0,
-    "El precio debe ser mayor a 0"
-  ),
-  message: z.string().max(500),
-})
+// Parses a formatted "80.000" input back to a plain integer, following the
+// same raw-digit-strip pattern used elsewhere in the codebase for CLP inputs.
+function parseCLPInput(raw: string): number {
+  const digits = raw.replace(/\D/g, "")
+  return digits ? parseInt(digits, 10) : 0
+}
 
-function SubmitQuoteForm({ requestId }: { requestId: string }) {
+function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRange }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const submitQuote = useSubmitQuote(requestId)
 
+  const quoteSchema = z
+    .object({
+      priceMin: z.number().int().min(fair.acceptableMin, `Mínimo permitido: ${formatCLP(fair.acceptableMin)}`),
+      priceMax: z.number().int().max(fair.acceptableMax, `Máximo permitido: ${formatCLP(fair.acceptableMax)}`),
+      message: z.string().max(500),
+    })
+    .refine((v) => v.priceMin <= v.priceMax, {
+      message: "El máximo debe ser mayor o igual al mínimo.",
+      path: ["priceMax"],
+    })
+
   const form = useForm({
-    defaultValues: { price: "", message: "" },
+    defaultValues: { priceMin: fair.min, priceMax: fair.max, message: "" },
     validators: { onSubmit: quoteSchema },
     onSubmit: async ({ value }) => {
       setSubmitError(null)
       try {
         await submitQuote.mutateAsync({
-          price: parseInt(value.price.replace(/\D/g, "")),
+          priceMin: value.priceMin,
+          priceMax: value.priceMax,
           message: value.message || undefined,
         })
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Error al enviar la cotización. Intenta de nuevo.")
+        if (err instanceof ApiError && err.status === 409) {
+          setSubmitError("Ya enviaste una cotización para esta solicitud.")
+        } else if (err instanceof ApiError && err.status === 400) {
+          // Backend returns a clear Spanish message (out-of-band or contact info).
+          setSubmitError(err.message)
+        } else {
+          setSubmitError(err instanceof Error ? err.message : "Error al enviar la cotización. Intenta de nuevo.")
+        }
       }
     },
   })
@@ -50,38 +70,87 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
   return (
     <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
       <h3 className="mb-1 text-[14px] font-semibold text-[#121715]">Enviar cotización</h3>
-      <p className="mb-4 text-[12px] text-[#969e9b]">El cliente verá tu precio y mensaje.</p>
-      <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }} className="flex flex-col gap-3">
+      <p className="mb-4 text-[12px] text-[#969e9b]">El cliente verá tu rango y tu mensaje.</p>
+
+      <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }} className="flex flex-col gap-4">
+        <form.Subscribe selector={(s) => [s.values.priceMin, s.values.priceMax] as const}>
+          {([priceMin, priceMax]) => (
+            <FairPriceBar
+              fair={fair}
+              value={[priceMin, priceMax]}
+              onChange={([min, max]) => {
+                form.setFieldValue("priceMin", min)
+                form.setFieldValue("priceMax", max)
+              }}
+              disabled={form.state.isSubmitting}
+            />
+          )}
+        </form.Subscribe>
+
         <FieldGroup>
-          <form.Field
-            name="price"
-            validators={{ onChange: z.string().min(1, "Ingresa un precio"), onBlur: z.string().min(1) }}
-          >
-            {(field) => {
-              const attempted = form.state.submissionAttempts > 0
-              const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
-              return (
-                <Field data-invalid={isInvalid || undefined}>
-                  <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
-                    Tu precio (CLP)
-                  </FieldLabel>
-                  <Input
-                    id={field.name}
-                    className="font-semibold"
-                    placeholder="Ej: 35.000"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, "")
-                      field.handleChange(raw ? parseInt(raw).toLocaleString("es-CL") : "")
-                    }}
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                </Field>
-              )
-            }}
-          </form.Field>
+          <div className="grid grid-cols-2 gap-3">
+            <form.Field name="priceMin">
+              {(field) => {
+                const attempted = form.state.submissionAttempts > 0
+                const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
+                return (
+                  <Field data-invalid={isInvalid || undefined}>
+                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
+                      Mínimo
+                    </FieldLabel>
+                    <Input
+                      id={field.name}
+                      className="font-semibold tabular-nums"
+                      value={field.state.value.toLocaleString("es-CL")}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(parseCLPInput(e.target.value))}
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            </form.Field>
+
+            <form.Field name="priceMax">
+              {(field) => {
+                const attempted = form.state.submissionAttempts > 0
+                const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
+                return (
+                  <Field data-invalid={isInvalid || undefined}>
+                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
+                      Máximo
+                    </FieldLabel>
+                    <Input
+                      id={field.name}
+                      className="font-semibold tabular-nums"
+                      value={field.state.value.toLocaleString("es-CL")}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(parseCLPInput(e.target.value))}
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            </form.Field>
+          </div>
+
+          <form.Subscribe selector={(s) => [s.values.priceMin, s.values.priceMax] as const}>
+            {([priceMin, priceMax]) => (
+              <div className="rounded-[8px] bg-[#F5F4F0] px-3 py-2.5">
+                <p className="text-[12px] text-[#485450]">
+                  Recibes después de la comisión ({Math.round(fair.feeRate * 100)}%)
+                </p>
+                <p className="text-[15px] font-bold tabular-nums text-primary">
+                  {formatCLPRange(
+                    Math.round(priceMin * (1 - fair.feeRate)),
+                    Math.round(priceMax * (1 - fair.feeRate)),
+                  )}
+                </p>
+              </div>
+            )}
+          </form.Subscribe>
 
           <form.Field name="message">
             {(field) => (
@@ -93,6 +162,7 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
                 <textarea
                   id={field.name}
                   rows={2}
+                  aria-label="Mensaje para el cliente"
                   className="w-full resize-none rounded-[8px] border border-[#E9E7E3] bg-white px-3 py-2.5 text-[13px] text-[#121715] placeholder:text-[#B0ABA5] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                   placeholder="Tengo experiencia en mudanzas de departamentos…"
                   value={field.state.value}
@@ -112,7 +182,7 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
 
         <form.Subscribe selector={(s) => s.isSubmitting}>
           {(isSubmitting) => (
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="active:scale-[0.96] transition-[scale,opacity]">
               {isSubmitting ? "Enviando…" : "Enviar cotización"}
             </Button>
           )}
@@ -120,6 +190,40 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
       </form>
     </div>
   )
+}
+
+function SubmitQuoteForm({ requestId }: { requestId: string }) {
+  const { data: fair, isLoading, isError, refetch } = useQuery({
+    queryKey: queryKeys.requests.priceRange(requestId),
+    queryFn: () => api.requests.priceRange(requestId),
+  })
+
+  if (isLoading) {
+    return (
+      <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
+        <Skeleton className="mb-4 h-4 w-32" />
+        <Skeleton className="mb-4 h-10 w-full rounded-[8px]" />
+        <Skeleton className="h-10 w-full rounded-[9px]" />
+      </div>
+    )
+  }
+
+  if (isError || !fair) {
+    return (
+      <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5 text-center">
+        <p className="text-[13px] text-[#969e9b]">No se pudo calcular el precio sugerido.</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-2 text-[13px] font-medium text-primary"
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
+
+  return <QuoteRangeForm requestId={requestId} fair={fair} />
 }
 
 function DriverOpportunityPage() {
@@ -312,19 +416,28 @@ function DriverOpportunityPage() {
               myQuote.status === "accepted" ? "border-primary bg-[#E7F4EE]" : "border-[#E9E7E3] bg-white"
             )}>
               <p className="mb-1 text-[13px] font-semibold text-[#121715]">Tu cotización</p>
-              <p className="text-[24px] font-bold text-primary">{formatCLP(myQuote.price)}</p>
+              <p className="text-[24px] font-bold tabular-nums text-primary">
+                {myQuote.priceMin != null && myQuote.priceMax != null
+                  ? formatCLPRange(myQuote.priceMin, myQuote.priceMax)
+                  : formatCLP(myQuote.price)}
+              </p>
               {myQuote.message && (
                 <div className="mt-2 flex gap-2 rounded-[8px] bg-[#F5F4F0] px-3 py-2">
                   <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-[#B0ABA5]" />
                   <p className="text-[12px] text-[#485450]">{myQuote.message}</p>
                 </div>
               )}
-              <p className="mt-3 text-[12px] text-[#969e9b]">
-                {myQuote.status === "accepted"
-                  ? "El cliente aceptó tu cotización."
-                  : myQuote.status === "rejected"
-                  ? "El cliente eligió otro transportista."
-                  : "Esperando respuesta del cliente."}
+              <p className="mt-3 flex items-center gap-1.5 text-[12px] text-[#969e9b]">
+                {myQuote.status === "accepted" ? (
+                  `El cliente aceptó tu cotización por ${formatCLP(myQuote.price)}.`
+                ) : myQuote.status === "rejected" ? (
+                  "El cliente eligió otro transportista."
+                ) : (
+                  <>
+                    <Clock className="size-3.5 shrink-0" />
+                    Esperando respuesta del cliente.
+                  </>
+                )}
               </p>
               {myQuote.status === "accepted" && (
                 <Link

@@ -26,7 +26,7 @@ export function useCancelRequest(requestId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.available(1) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
     },
   })
 }
@@ -35,7 +35,8 @@ export function useSubmitQuote(requestId: string, onSuccess?: () => void) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (body: { price: number; message?: string }) => api.requests.submitQuote(requestId, body),
+    mutationFn: (body: { priceMin: number; priceMax: number; message?: string }) =>
+      api.requests.submitQuote(requestId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.quotes.my })

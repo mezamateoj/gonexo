@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router"
-import { ArrowRight, Calendar, Package } from "lucide-react"
-import { formatCompactDateTime, initials, volumeLabels } from "@/lib/display"
+import { ArrowRight, Calendar, MapPin, Package } from "lucide-react"
+import { formatCLP, formatCompactDateTime, initials, volumeLabels } from "@/lib/display"
 import type { OpenRequest } from "@/lib/types"
 
 export function AvailableRequestCard({ req }: { req: OpenRequest }) {
+  const distance = `${req.distanceKm} km`
+
   return (
     <Link
       to="/available/$id"
@@ -29,7 +31,13 @@ export function AvailableRequestCard({ req }: { req: OpenRequest }) {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-3 border-t border-[#F0EEE9] pt-3">
+      {/* Suggested fair price — quick earnings signal from the feed */}
+      <div className="mt-4 flex items-center justify-between rounded-[8px] bg-primary/[0.06] px-3 py-2">
+        <span className="text-[11px] font-medium text-[#485450]">Precio justo</span>
+        <span className="text-[14px] font-bold tabular-nums text-primary">≈ {formatCLP(req.fairPrice)}</span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[#F0EEE9] pt-3">
         <div className="flex items-center gap-1.5 text-[#969e9b]">
           <Calendar className="size-3.5" />
           <span className="text-[12px]">{formatCompactDateTime(req.scheduledAt)}</span>
@@ -37,6 +45,10 @@ export function AvailableRequestCard({ req }: { req: OpenRequest }) {
         <div className="flex items-center gap-1.5 text-[#969e9b]">
           <Package className="size-3.5" />
           <span className="text-[12px]">{volumeLabels[req.volumeCategory]}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[#969e9b]">
+          <MapPin className="size-3.5" />
+          <span className="text-[12px] tabular-nums">{distance}</span>
         </div>
         <ArrowRight className="ml-auto size-4 text-[#B0ABA5] transition-transform group-hover:translate-x-0.5" />
       </div>

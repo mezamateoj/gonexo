@@ -1,4 +1,4 @@
-import type { RequestSummary, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, OpenRequest, JobDetail, JobSummary, MyQuote } from "./types"
+import type { RequestSummary, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -79,15 +79,20 @@ export async function uploadFile(file: File): Promise<string> {
 export const api = {
   requests: {
     my: () => apiFetch<RequestSummary[]>("/api/requests/my"),
-    list: (page = 1) =>
-      apiFetch<{ data: OpenRequest[]; page: number; limit: number }>(`/api/requests?page=${page}`),
+    list: (query: AvailableQuery) => {
+      const params = new URLSearchParams({ page: String(query.page), sort: query.sort })
+      if (query.volume?.length) params.set("volume", query.volume.join(","))
+      if (query.hasPhotos) params.set("hasPhotos", "true")
+      return apiFetch<AvailableResponse>(`/api/requests?${params.toString()}`)
+    },
     get: (id: string) => apiFetch<RequestDetail>(`/api/requests/${id}`),
+    priceRange: (id: string) => apiFetch<PriceRange>(`/api/requests/${id}/price-range`),
     create: (body: CreateRequestInput) =>
       apiFetch<{ id: string }>("/api/requests", {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    submitQuote: (requestId: string, body: { price: number; message?: string }) =>
+    submitQuote: (requestId: string, body: { priceMin: number; priceMax: number; message?: string }) =>
       apiFetch<{ id: string }>(`/api/requests/${requestId}/quotes`, {
         method: "POST",
         body: JSON.stringify(body),

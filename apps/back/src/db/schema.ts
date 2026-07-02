@@ -226,6 +226,13 @@ export const request = sqliteTable(
     longCarry: integer("long_carry", { mode: "boolean" }).default(false).notNull(),
     // true = >20m between truck and door
 
+    // Real driving route, resolved once via Mapbox Directions at creation
+    // (immutable for a request). Drives fair pricing and ETA display. Nullable:
+    // null when Mapbox was unavailable or for rows predating this — pricing then
+    // falls back to haversine × a circuity factor.
+    routeDistanceM: integer("route_distance_m"),
+    routeDurationS: integer("route_duration_s"),
+
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),

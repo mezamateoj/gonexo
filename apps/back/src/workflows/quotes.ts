@@ -3,8 +3,7 @@ import { job, quote, request } from "../db/schema";
 import type { Db } from "../db";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import { logger } from "../lib/logger";
-
-const PLATFORM_FEE_RATE = 0.12;
+import { PLATFORM_FEE_RATE } from "../lib/pricing";
 
 export async function acceptQuote(db: Db, userId: string, quoteId: string) {
   const q = await db.query.quote.findFirst({
