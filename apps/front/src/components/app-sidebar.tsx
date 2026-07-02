@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { useEffect } from "react"
 import {
   Sidebar,
@@ -150,6 +151,7 @@ function ModeSwitcher({
 export function AppSidebar() {
   const { data: session } = useSession()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { toggleSidebar } = useSidebar()
   const { mode, setMode } = useAppMode()
   const { pathname } = useRouterState({ select: (s) => s.location })
@@ -168,8 +170,19 @@ export function AppSidebar() {
     : "?"
 
   async function handleSignOut() {
-    await signOut()
-    navigate({ to: "/login" })
+    // signOut clears the Better Auth session cookie and the useSession store.
+    // In onSuccess we also drop everything scoped to the old account so it can't
+    // leak into the next login: the cached queries (drivers.me, requests.my, …)
+    // and the persisted client/driver mode. Then SPA-navigate to /login.
+    await signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          queryClient.clear()
+          setMode("client")
+          navigate({ to: "/login" })
+        },
+      },
+    })
   }
 
   const isDriver = mode === "driver"
