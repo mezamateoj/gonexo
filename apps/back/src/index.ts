@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { configureSync, getConsoleSink, resetSync } from "@logtape/logtape";
+import { configureSync, getConsoleSink, logfmtFormatter, resetSync } from "@logtape/logtape";
 import { honoLogger } from "@logtape/hono";
 import { createAuth } from "./lib/auth";
 import { AppError, notFound } from "./lib/errors";
@@ -18,7 +18,11 @@ import seed from "./routes/seed";
 
 resetSync();
 configureSync({
-  sinks: { console: getConsoleSink() },
+  sinks: {
+    console: getConsoleSink({
+      formatter: logfmtFormatter,
+    }),
+  },
   loggers: [
     { category: ["gonexo"], sinks: ["console"], lowestLevel: "debug" },
     { category: ["logtape", "meta"], sinks: ["console"], lowestLevel: "warning" },
