@@ -68,9 +68,9 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
   })
 
   return (
-    <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
-      <h3 className="mb-1 text-[14px] font-semibold text-[#121715]">Enviar cotización</h3>
-      <p className="mb-4 text-[12px] text-[#969e9b]">El cliente verá tu rango y tu mensaje.</p>
+    <div className="rounded-[14px] border border-border bg-white p-5">
+      <h3 className="mb-1 text-[14px] font-semibold text-foreground">Enviar cotización</h3>
+      <p className="mb-4 text-[12px] text-muted-foreground">El cliente verá tu rango y tu mensaje.</p>
 
       <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }} className="flex flex-col gap-4">
         <form.Subscribe selector={(s) => [s.values.priceMin, s.values.priceMax] as const}>
@@ -95,7 +95,7 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
                 const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                 return (
                   <Field data-invalid={isInvalid || undefined}>
-                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
+                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-ink-soft">
                       Mínimo
                     </FieldLabel>
                     <Input
@@ -118,7 +118,7 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
                 const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
                 return (
                   <Field data-invalid={isInvalid || undefined}>
-                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
+                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-ink-soft">
                       Máximo
                     </FieldLabel>
                     <Input
@@ -138,8 +138,8 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
 
           <form.Subscribe selector={(s) => [s.values.priceMin, s.values.priceMax] as const}>
             {([priceMin, priceMax]) => (
-              <div className="rounded-[8px] bg-[#F5F4F0] px-3 py-2.5">
-                <p className="text-[12px] text-[#485450]">
+              <div className="rounded-[8px] bg-muted px-3 py-2.5">
+                <p className="text-[12px] text-ink-soft">
                   Recibes después de la comisión ({Math.round(fair.feeRate * 100)}%)
                 </p>
                 <p className="text-[15px] font-bold tabular-nums text-primary">
@@ -155,15 +155,15 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
           <form.Field name="message">
             {(field) => (
               <Field>
-                <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-[#485450]">
-                  Mensaje <span className="font-normal text-[#969e9b]">(opcional)</span>
+                <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-ink-soft">
+                  Mensaje <span className="font-normal text-muted-foreground">(opcional)</span>
                 </FieldLabel>
                 <FieldDescription>Cuéntale algo al cliente sobre tu servicio.</FieldDescription>
                 <textarea
                   id={field.name}
                   rows={2}
                   aria-label="Mensaje para el cliente"
-                  className="w-full resize-none rounded-[8px] border border-[#E9E7E3] bg-white px-3 py-2.5 text-[13px] text-[#121715] placeholder:text-[#B0ABA5] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                  className="w-full resize-none rounded-[8px] border border-border bg-white px-3 py-2.5 text-[13px] text-foreground placeholder:text-ink-faint outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                   placeholder="Tengo experiencia en mudanzas de departamentos…"
                   value={field.state.value}
                   onBlur={field.handleBlur}
@@ -200,7 +200,7 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
 
   if (isLoading) {
     return (
-      <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
+      <div className="rounded-[14px] border border-border bg-white p-5">
         <Skeleton className="mb-4 h-4 w-32" />
         <Skeleton className="mb-4 h-10 w-full rounded-[8px]" />
         <Skeleton className="h-10 w-full rounded-[9px]" />
@@ -210,8 +210,8 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
 
   if (isError || !fair) {
     return (
-      <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5 text-center">
-        <p className="text-[13px] text-[#969e9b]">No se pudo calcular el precio sugerido.</p>
+      <div className="rounded-[14px] border border-border bg-white p-5 text-center">
+        <p className="text-[13px] text-muted-foreground">No se pudo calcular el precio sugerido.</p>
         <button
           type="button"
           onClick={() => refetch()}
@@ -277,7 +277,7 @@ function DriverOpportunityPage() {
       <button
         type="button"
         onClick={() => navigate({ to: "/available" })}
-        className="mb-6 flex items-center gap-1.5 text-[13px] text-[#969e9b] transition-colors hover:text-[#485450]"
+        className="mb-6 flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-ink-soft"
       >
         <ChevronLeft className="size-4" />
         Solicitudes disponibles
@@ -286,8 +286,8 @@ function DriverOpportunityPage() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px] md:items-start">
         {/* Left — request details */}
         <div className="flex flex-col gap-4">
-          <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-4 md:p-6">
-            <div className="mb-5 flex items-center gap-3 text-[12px] text-[#B0ABA5]">
+          <div className="rounded-[14px] border border-border bg-white p-4 md:p-6">
+            <div className="mb-5 flex items-center gap-3 text-[12px] text-ink-faint">
               <span className="flex items-center gap-1">
                 <Calendar className="size-3.5" />
                 {formatLongDateTime(req.scheduledAt)}
@@ -306,35 +306,35 @@ function DriverOpportunityPage() {
                   <MapPin className="size-3.5 text-white" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Origen</p>
-                  <p className="text-[14px] font-medium text-[#121715]">{req.originAddress}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Origen</p>
+                  <p className="text-[14px] font-medium text-foreground">{req.originAddress}</p>
                   {(req.originFloor != null || req.originHasElevator) && (
-                    <p className="text-[12px] text-[#969e9b]">{floorLine(req.originFloor, req.originHasElevator)}</p>
+                    <p className="text-[12px] text-muted-foreground">{floorLine(req.originFloor, req.originHasElevator)}</p>
                   )}
                 </div>
               </div>
-              <div className="ml-3 h-5 w-px bg-[#E9E7E3]" />
+              <div className="ml-3 h-5 w-px bg-border" />
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#F5F4F0]">
-                  <MapPin className="size-3.5 text-[#969e9b]" />
+                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <MapPin className="size-3.5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Destino</p>
-                  <p className="text-[14px] font-medium text-[#121715]">{req.destAddress}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Destino</p>
+                  <p className="text-[14px] font-medium text-foreground">{req.destAddress}</p>
                   {(req.destFloor != null || req.destHasElevator) && (
-                    <p className="text-[12px] text-[#969e9b]">{floorLine(req.destFloor, req.destHasElevator)}</p>
+                    <p className="text-[12px] text-muted-foreground">{floorLine(req.destFloor, req.destHasElevator)}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 border-t border-[#F0EEE9] pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Qué se mueve</p>
-              <p className="mt-1 text-[13px] text-[#121715]">{req.itemDescription}</p>
+            <div className="mt-5 border-t border-surface-dim pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Qué se mueve</p>
+              <p className="mt-1 text-[13px] text-foreground">{req.itemDescription}</p>
             </div>
 
             {/* Service details */}
-            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#F0EEE9] pt-4">
+            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-surface-dim pt-4">
               {req.budgetMax && (
                 <div className="col-span-2 rounded-[8px] bg-green-50 px-3 py-2">
                   <p className="text-[11px] font-semibold text-green-700">
@@ -343,15 +343,15 @@ function DriverOpportunityPage() {
                 </div>
               )}
               {req.helpersNeeded > 0 && (
-                <div className="rounded-[8px] bg-[#F5F4F0] px-3 py-2">
-                  <p className="text-[10px] text-[#969e9b]">Ayudantes</p>
-                  <p className="text-[13px] font-medium text-[#121715]">+{req.helpersNeeded}</p>
+                <div className="rounded-[8px] bg-muted px-3 py-2">
+                  <p className="text-[10px] text-muted-foreground">Ayudantes</p>
+                  <p className="text-[13px] font-medium text-foreground">+{req.helpersNeeded}</p>
                 </div>
               )}
               {req.parkingType !== "street" && (
-                <div className="rounded-[8px] bg-[#F5F4F0] px-3 py-2">
-                  <p className="text-[10px] text-[#969e9b]">Estacionamiento</p>
-                  <p className="text-[13px] font-medium text-[#121715]">
+                <div className="rounded-[8px] bg-muted px-3 py-2">
+                  <p className="text-[10px] text-muted-foreground">Estacionamiento</p>
+                  <p className="text-[13px] font-medium text-foreground">
                     {req.parkingType === "garage" ? "Garage" : "Andén de carga"}
                   </p>
                 </div>
@@ -360,24 +360,24 @@ function DriverOpportunityPage() {
             {(req.hasFragileItems || req.assemblyRequired || req.packingIncluded || req.longCarry || req.flexibleDate) && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {req.hasFragileItems && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">⚠ Artículos frágiles</span>}
-                {req.assemblyRequired && <span className="rounded-full bg-[#F0EEE9] px-2.5 py-1 text-[11px] font-medium text-[#485450]">🔧 Desarme requerido</span>}
-                {req.packingIncluded && <span className="rounded-full bg-[#F0EEE9] px-2.5 py-1 text-[11px] font-medium text-[#485450]">📦 Incluye embalaje</span>}
-                {req.longCarry && <span className="rounded-full bg-[#F0EEE9] px-2.5 py-1 text-[11px] font-medium text-[#485450]">↔ Acarreo largo</span>}
+                {req.assemblyRequired && <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">🔧 Desarme requerido</span>}
+                {req.packingIncluded && <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">📦 Incluye embalaje</span>}
+                {req.longCarry && <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">↔ Acarreo largo</span>}
                 {req.flexibleDate && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">📅 Fecha flexible</span>}
               </div>
             )}
 
             {req.notes && (
-              <div className="mt-4 rounded-[8px] bg-[#F5F4F0] px-3 py-2.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Notas del cliente</p>
-                <p className="mt-0.5 text-[13px] text-[#485450]">{req.notes}</p>
+              <div className="mt-4 rounded-[8px] bg-muted px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Notas del cliente</p>
+                <p className="mt-0.5 text-[13px] text-ink-soft">{req.notes}</p>
               </div>
             )}
           </div>
 
           {req.photos.length > 0 && (
-            <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
-              <p className="mb-3 text-[13px] font-semibold text-[#121715]">Fotos</p>
+            <div className="rounded-[14px] border border-border bg-white p-5">
+              <p className="mb-3 text-[13px] font-semibold text-foreground">Fotos</p>
               <div className="flex flex-wrap gap-2">
                 {req.photos.map((p) => (
                   <img key={p.id} src={p.url} alt="" className="h-24 w-24 rounded-[8px] object-cover" />
@@ -388,8 +388,8 @@ function DriverOpportunityPage() {
 
           {/* Other quotes count — social proof without revealing prices */}
           {isOpen && req.quoteCount > 0 && (
-            <div className="rounded-[10px] border border-[#E9E7E3] bg-[#F9F8F6] px-4 py-3">
-              <p className="text-[12px] text-[#969e9b]">
+            <div className="rounded-[10px] border border-border bg-surface px-4 py-3">
+              <p className="text-[12px] text-muted-foreground">
                 {req.quoteCount} transportista{req.quoteCount !== 1 ? "s" : ""} ya cotizó este flete.
               </p>
             </div>
@@ -399,13 +399,13 @@ function DriverOpportunityPage() {
         {/* Right — action panel */}
         <div className="flex flex-col gap-4">
           {/* Client info — name only, no phone until job accepted */}
-          <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Cliente</p>
+          <div className="rounded-[14px] border border-border bg-white p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Cliente</p>
             <div className="flex items-center gap-3">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-bold text-primary">
                 {initials(req.user.name)}
               </div>
-              <p className="text-[13px] font-semibold text-[#121715]">{req.user.name}</p>
+              <p className="text-[13px] font-semibold text-foreground">{req.user.name}</p>
             </div>
           </div>
 
@@ -413,21 +413,21 @@ function DriverOpportunityPage() {
           {myQuote && (
             <div className={cn(
               "rounded-[14px] border p-5",
-              myQuote.status === "accepted" ? "border-primary bg-[#E7F4EE]" : "border-[#E9E7E3] bg-white"
+              myQuote.status === "accepted" ? "border-primary bg-accent" : "border-border bg-white"
             )}>
-              <p className="mb-1 text-[13px] font-semibold text-[#121715]">Tu cotización</p>
+              <p className="mb-1 text-[13px] font-semibold text-foreground">Tu cotización</p>
               <p className="text-[24px] font-bold tabular-nums text-primary">
                 {myQuote.priceMin != null && myQuote.priceMax != null
                   ? formatCLPRange(myQuote.priceMin, myQuote.priceMax)
                   : formatCLP(myQuote.price)}
               </p>
               {myQuote.message && (
-                <div className="mt-2 flex gap-2 rounded-[8px] bg-[#F5F4F0] px-3 py-2">
-                  <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-[#B0ABA5]" />
-                  <p className="text-[12px] text-[#485450]">{myQuote.message}</p>
+                <div className="mt-2 flex gap-2 rounded-[8px] bg-muted px-3 py-2">
+                  <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-ink-faint" />
+                  <p className="text-[12px] text-ink-soft">{myQuote.message}</p>
                 </div>
               )}
-              <p className="mt-3 flex items-center gap-1.5 text-[12px] text-[#969e9b]">
+              <p className="mt-3 flex items-center gap-1.5 text-[12px] text-muted-foreground">
                 {myQuote.status === "accepted" ? (
                   `El cliente aceptó tu cotización por ${formatCLP(myQuote.price)}.`
                 ) : myQuote.status === "rejected" ? (
@@ -455,8 +455,8 @@ function DriverOpportunityPage() {
 
           {/* Closed state */}
           {!isOpen && !myQuote && (
-            <div className="rounded-[14px] border border-[#E9E7E3] bg-[#F5F4F0] p-5 text-center">
-              <p className="text-[13px] text-[#969e9b]">Esta solicitud ya no está disponible.</p>
+            <div className="rounded-[14px] border border-border bg-muted p-5 text-center">
+              <p className="text-[13px] text-muted-foreground">Esta solicitud ya no está disponible.</p>
             </div>
           )}
         </div>

@@ -61,7 +61,11 @@ drivers.post(
       body.vehiclePhotos?.length ||
       body.papersUrl
     );
-    const documentsStatus = hasDocuments ? "submitted" : "pending";
+    // Never downgrade: a plain profile edit must not reset submitted/verified
+    // (verified + non-verified status violates driver_profile_verified_status_check).
+    const currentStatus = existing?.documentsStatus ?? "pending";
+    const documentsStatus =
+      currentStatus === "pending" && hasDocuments ? "submitted" : currentStatus;
     const vehiclePhotosJson = body.vehiclePhotos
       ? JSON.stringify(body.vehiclePhotos)
       : null;

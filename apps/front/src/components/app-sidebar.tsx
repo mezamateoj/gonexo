@@ -112,11 +112,11 @@ function ModeSwitcher({
           )}>
             <div className={cn(
               "flex size-5 shrink-0 items-center justify-center rounded-[5px]",
-              isDriver ? "bg-primary/15" : "bg-[#E9E7E3]"
+              isDriver ? "bg-primary/15" : "bg-border"
             )}>
               {isDriver
                 ? <Truck className="size-3 text-primary" />
-                : <User className="size-3 text-[#485450]" />
+                : <User className="size-3 text-ink-soft" />
               }
             </div>
             <span className="flex-1 text-[13px] font-semibold text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden">

@@ -27,11 +27,11 @@ export function PhotoUploader({ urls, onChange }: { urls: string[]; onChange: (u
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading || urls.length >= 8}
-        className="flex flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#E9E7E3] bg-[#FAFAF8] py-6 text-center transition-colors hover:border-primary/40 disabled:opacity-50"
+        className="flex flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-border bg-background py-6 text-center transition-colors hover:border-primary/40 disabled:opacity-50"
       >
-        {uploading ? <Loader2 className="size-7 animate-spin text-[#B0ABA5]" /> : <Camera className="size-7 text-[#B0ABA5]" />}
-        <span className="text-[13px] text-[#969e9b]">{uploading ? "Subiendo…" : "Subir fotos (opcional)"}</span>
-        <span className="text-[12px] text-[#B0ABA5]">Ayuda a los transportistas a entender el tamaño</span>
+        {uploading ? <Loader2 className="size-7 animate-spin text-ink-faint" /> : <Camera className="size-7 text-ink-faint" />}
+        <span className="text-[13px] text-muted-foreground">{uploading ? "Subiendo…" : "Subir fotos (opcional)"}</span>
+        <span className="text-[12px] text-ink-faint">Ayuda a los transportistas a entender el tamaño</span>
       </button>
       {error && <p className="text-[13px] text-destructive">{error}</p>}
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
@@ -43,7 +43,7 @@ export function PhotoUploader({ urls, onChange }: { urls: string[]; onChange: (u
               <button
                 type="button"
                 onClick={() => onChange(urls.filter((_, j) => j !== i))}
-                className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-[#121715] text-white"
+                className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-foreground text-white"
               >
                 <X className="size-2.5" />
               </button>

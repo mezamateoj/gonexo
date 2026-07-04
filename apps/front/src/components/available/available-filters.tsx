@@ -48,12 +48,12 @@ export function AvailableFilters({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-1.5">
-            <ArrowDownWideNarrow className="size-3.5 text-[#969e9b]" />
+            <ArrowDownWideNarrow className="size-3.5 text-muted-foreground" />
             {SORT_LABELS[sort]}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-44">
-          <DropdownMenuLabel className="text-[11px] text-[#969e9b]">Ordenar por</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-[11px] text-muted-foreground">Ordenar por</DropdownMenuLabel>
           <DropdownMenuRadioGroup value={sort} onValueChange={(v) => onChange({ sort: v as AvailableSort })}>
             <DropdownMenuRadioItem value="recent">Recientes</DropdownMenuRadioItem>
             <DropdownMenuRadioItem value="soonest">Fecha más pronta</DropdownMenuRadioItem>
@@ -66,7 +66,7 @@ export function AvailableFilters({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-1.5">
-            <SlidersHorizontal className="size-3.5 text-[#969e9b]" />
+            <SlidersHorizontal className="size-3.5 text-muted-foreground" />
             Carga
             {volume.length > 0 && (
               <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold tabular-nums text-white">
@@ -76,7 +76,7 @@ export function AvailableFilters({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuLabel className="text-[11px] text-[#969e9b]">Tipo de carga</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-[11px] text-muted-foreground">Tipo de carga</DropdownMenuLabel>
           {VOLUME_ORDER.map((v) => (
             <DropdownMenuCheckboxItem
               key={v}
@@ -93,7 +93,7 @@ export function AvailableFilters({
               <button
                 type="button"
                 onClick={() => onChange({ volume: [] })}
-                className="w-full px-2 py-1.5 text-left text-[12px] text-[#969e9b] hover:text-foreground"
+                className="w-full px-2 py-1.5 text-left text-[12px] text-muted-foreground hover:text-foreground"
               >
                 Limpiar carga
               </button>
@@ -114,7 +114,7 @@ export function AvailableFilters({
           hasPhotos && "border-primary bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
         )}
       >
-        {hasPhotos ? <Check className="size-3.5" /> : <ImageIcon className="size-3.5 text-[#969e9b]" />}
+        {hasPhotos ? <Check className="size-3.5" /> : <ImageIcon className="size-3.5 text-muted-foreground" />}
         Con fotos
       </Button>
 
@@ -122,7 +122,7 @@ export function AvailableFilters({
         <button
           type="button"
           onClick={onReset}
-          className="flex items-center gap-1 px-1 text-[12px] text-[#969e9b] transition-colors hover:text-foreground"
+          className="flex items-center gap-1 px-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
         >
           <X className="size-3.5" />
           Limpiar

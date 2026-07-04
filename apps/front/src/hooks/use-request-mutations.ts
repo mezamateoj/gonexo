@@ -11,7 +11,7 @@ export function useAcceptQuote(requestId: string) {
     mutationFn: (quoteId: string) => api.quotes.accept(quoteId),
     onSuccess: ({ jobId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.my })
       navigate({ to: "/jobs/$id", params: { id: jobId } })
     },
@@ -25,7 +25,7 @@ export function useCancelRequest(requestId: string) {
     mutationFn: () => api.requests.cancel(requestId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
     },
   })

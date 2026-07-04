@@ -1,19 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
-import { useState } from "react"
+import { createFileRoute, stripSearchParams, useNavigate } from "@tanstack/react-router"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
+import { z } from "zod"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { EmptyState } from "@/components/requests/empty-state"
 import { PromoCard } from "@/components/requests/promo-card"
 import { RequestCard } from "@/components/requests/request-card"
-import type { RequestStatus } from "@/lib/types"
+
+const SEARCH_DEFAULTS = { status: "all" as const }
+
+const requestsSearchSchema = z.object({
+  status: z.enum(["all", "open", "in_progress", "completed"]).catch("all").default("all"),
+})
 
 export const Route = createFileRoute("/_app/requests/")({
+  validateSearch: requestsSearchSchema,
+  search: { middlewares: [stripSearchParams(SEARCH_DEFAULTS)] },
   component: RequestsPage,
 })
 
-type FilterTab = "all" | RequestStatus
+type FilterTab = z.infer<typeof requestsSearchSchema>["status"]
 
 const FILTERS: { key: FilterTab; label: string }[] = [
   { key: "all", label: "Todos" },
@@ -23,24 +30,24 @@ const FILTERS: { key: FilterTab; label: string }[] = [
 ]
 
 function RequestsPage() {
-  const [filter, setFilter] = useState<FilterTab>("all")
+  const { status } = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: queryKeys.requests.my,
-    queryFn: api.requests.my,
+  const filterStatus = status === "all" ? undefined : status
+  const { data, isLoading, isFetching, isError } = useQuery({
+    queryKey: queryKeys.requests.my(filterStatus),
+    queryFn: () => api.requests.my(filterStatus),
+    placeholderData: keepPreviousData,
   })
 
-  const filtered =
-    filter === "all"
-      ? (data ?? [])
-      : (data ?? []).filter((r) => r.status === filter)
+  const rows = data ?? []
 
   // Split into two columns interleaving
-  const col1 = filtered.filter((_, i) => i % 2 === 0)
-  const col2 = filtered.filter((_, i) => i % 2 === 1)
+  const col1 = rows.filter((_, i) => i % 2 === 0)
+  const col2 = rows.filter((_, i) => i % 2 === 1)
 
   // Truly empty — full-height hero, no header/filters needed
-  if (!isLoading && !isError && (data?.length ?? 0) === 0 && filter === "all") {
+  if (!isLoading && !isError && rows.length === 0 && status === "all") {
     return (
       <div className="flex min-h-full items-center justify-center">
         <EmptyState filtered={false} />
@@ -64,12 +71,12 @@ function RequestsPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => setFilter(key)}
+                onClick={() => navigate({ replace: true, search: { status: key } })}
                 className={cn(
                   "rounded-full px-[12px] py-[5px] text-[12px] transition-colors",
-                  filter === key
+                  status === key
                     ? "bg-foreground text-background font-medium"
-                    : "border border-[#E5E5E5] bg-white text-[#666666] hover:border-foreground/20"
+                    : "border border-border bg-white text-muted-foreground hover:border-foreground/20"
                 )}
               >
                 {label}
@@ -83,7 +90,7 @@ function RequestsPage() {
             {[1, 2, 3, 4].map((n) => (
               <div
                 key={n}
-                className="h-[140px] animate-pulse rounded-[10px] bg-[#F0F0F0]"
+                className="h-[140px] animate-pulse rounded-[10px] bg-muted"
               />
             ))}
           </div>
@@ -95,18 +102,18 @@ function RequestsPage() {
           </div>
         )}
 
-        {!isLoading && !isError && filtered.length === 0 && filter !== "all" && (
+        {!isLoading && !isError && rows.length === 0 && status !== "all" && (
           <EmptyState filtered />
         )}
 
-        {!isLoading && !isError && filtered.length > 0 && (
-          <>
+        {!isLoading && !isError && rows.length > 0 && (
+          <div className={cn("transition-opacity", isFetching && "opacity-60")}>
             {/* Mobile: single column, natural order */}
             <div className="flex flex-col gap-[14px] md:hidden">
-              {filtered.map((req) => (
+              {rows.map((req) => (
                 <RequestCard key={req.id} req={req} />
               ))}
-              {filter === "all" && <PromoCard />}
+              {status === "all" && <PromoCard />}
             </div>
 
             {/* Desktop: two-column interleaved layout */}
@@ -120,10 +127,10 @@ function RequestsPage() {
                 {col2.map((req) => (
                   <RequestCard key={req.id} req={req} />
                 ))}
-                {filter === "all" && <PromoCard />}
+                {status === "all" && <PromoCard />}
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import type { RequestSummary, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse } from "./types"
+import type { RequestSummary, RequestStatus, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -78,7 +78,8 @@ export async function uploadFile(file: File): Promise<string> {
 
 export const api = {
   requests: {
-    my: () => apiFetch<RequestSummary[]>("/api/requests/my"),
+    my: (status?: RequestStatus) =>
+      apiFetch<RequestSummary[]>(`/api/requests/my${status ? `?status=${status}` : ""}`),
     list: (query: AvailableQuery) => {
       const params = new URLSearchParams({ page: String(query.page), sort: query.sort })
       if (query.volume?.length) params.set("volume", query.volume.join(","))
@@ -130,6 +131,13 @@ export const api = {
       apiFetch<{ features: { geometry: { coordinates: [number, number] }; properties: { full_address: string } }[] }>(
         `/api/geo/retrieve?id=${encodeURIComponent(id)}&session=${session}`
       ),
+  },
+  users: {
+    updateMe: (body: { name?: string; phone?: string }) =>
+      apiFetch<{ ok: boolean }>("/api/users/me", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
   drivers: {
     me: () => apiFetch<DriverProfile | null>("/api/drivers/me"),

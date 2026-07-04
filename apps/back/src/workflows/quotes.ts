@@ -19,6 +19,9 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
   const platformFee = Math.round(agreedPrice * PLATFORM_FEE_RATE);
   const driverPayout = agreedPrice - platformFee;
   const jobId = crypto.randomUUID();
+  // Rappi-style handoff code: shown to the client, entered by the driver at
+  // delivery to mark the job completed.
+  const confirmCode = String(Math.floor(1000 + Math.random() * 9000));
 
   await db.batch([
     db.update(quote).set({ status: "accepted" }).where(eq(quote.id, quoteId)),
@@ -48,6 +51,7 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
       agreedPrice,
       platformFee,
       driverPayout,
+      confirmCode,
     }),
   ]);
 
@@ -62,5 +66,5 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
     driverPayout,
   });
 
-  return { jobId };
+  return { jobId, driverId: q.driverId, agreedPrice, request: q.request };
 }

@@ -48,6 +48,26 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Gonexo extended palette — warm grays between foreground and muted-foreground,
+   cream surfaces, and the dark marketing panel. Change colors here, not inline. */
+@theme {
+    /* Text scale: foreground (#121715) > ink-soft > ink-muted > muted-foreground (#969e9b) > ink-faint */
+    --color-ink-soft: #485450;
+    --color-ink-muted: #717d79;
+    --color-ink-faint: #b0aba5;
+    /* Warm cream surfaces: card < surface < surface-dim < muted */
+    --color-surface: #faf8f5;
+    --color-surface-dim: #f0ede9;
+    /* Dark panel on signup/login/landing */
+    --color-panel: #0a0b0f;
+    --color-panel-card: #17191e;
+    --color-panel-border: #2a2c32;
+    --color-panel-line: #1e1f21;
+    --color-panel-muted: #d9d7d4;
+    /* Bright green accent that reads on the dark panel */
+    --color-panel-accent: #18e299;
+}
+
 :root {
     /* Gonexo design tokens — Mintlify green brand */
     --background: #FAFAF8;

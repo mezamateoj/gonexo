@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { signUp, useSession } from "@/lib/auth-client";
+import { api } from "@/lib/api";
 import { useAppMode, type AppMode } from "@/lib/app-mode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,12 @@ export const Route = createFileRoute("/signup")({
 const firstNameSchema = z.string().min(1, "Requerido");
 const lastNameSchema = z.string().min(1, "Requerido");
 const emailSchema = z.email({ message: "Ingresa un correo válido" });
-const phoneSchema = z.string();
+// Optional, but if provided it must satisfy the backend's min-8-digit rule.
+const phoneSchema = z
+  .string()
+  .refine((v) => v.trim() === "" || v.replace(/\D/g, "").length >= 8, {
+    message: "Ingresa un teléfono válido (+56 9 ...)",
+  });
 const passwordSchema = z.string().min(8, "Mínimo 8 caracteres");
 
 const formSchema = z.object({
@@ -43,16 +49,16 @@ const BULLETS = [
 // Mobile-only dark header replaces the desktop left panel
 function SignupMobileHeader() {
   return (
-    <div className="flex flex-col gap-3 bg-[#0a0b0f] px-6 pb-7 pt-10 md:hidden">
+    <div className="flex flex-col gap-3 bg-panel px-6 pb-7 pt-10 md:hidden">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
+        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
-      <h2 className="text-[28px] font-bold leading-[1.12] tracking-[-0.8px] text-[#faf8f5]">
+      <h2 className="text-[28px] font-bold leading-[1.12] tracking-[-0.8px] text-surface">
         El marketplace
         <br />
         chileno de fletes.
       </h2>
-      <p className="text-[13px] leading-[1.5] text-[#717d79]">
+      <p className="text-[13px] leading-[1.5] text-ink-muted">
         Recibe cotizaciones, compara y elige tranquilo.
       </p>
     </div>
@@ -62,13 +68,13 @@ function SignupMobileHeader() {
 // Desktop-only left panel
 function SignupLeftPanel() {
   return (
-    <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-[#0a0b0f] px-12 py-10 md:flex">
+    <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-panel px-12 py-10 md:flex">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
+        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
 
       <div className="flex flex-col gap-7">
-        <h2 className="text-[40px] font-bold leading-[1.12] tracking-[-1.2px] text-[#faf8f5]">
+        <h2 className="text-[40px] font-bold leading-[1.12] tracking-[-1.2px] text-surface">
           El marketplace
           <br />
           chileno de envios
@@ -77,10 +83,10 @@ function SignupLeftPanel() {
         <div className="flex flex-col gap-[14px]">
           {BULLETS.map((bullet) => (
             <div key={bullet} className="flex items-center gap-3">
-              <div className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#0c8c5e20]">
+              <div className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-primary/12">
                 <Check className="size-3 text-primary" />
               </div>
-              <span className="text-[15px] leading-[1.4] text-[#d9d7d4]">
+              <span className="text-[15px] leading-[1.4] text-panel-muted">
                 {bullet}
               </span>
             </div>
@@ -88,8 +94,8 @@ function SignupLeftPanel() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 rounded-xl border border-[#2a2c32] bg-[#17191e] p-5">
-        <p className="w-[416px] text-[14px] leading-[1.65] text-[#d9d7d4]">
+      <div className="flex flex-col gap-4 rounded-xl border border-panel-border bg-panel-card p-5">
+        <p className="w-[416px] text-[14px] leading-[1.65] text-panel-muted">
           "Publiqué mi mudanza y en menos de una hora ya tenía tres cotizaciones
           distintas. Elegí la que más me acomodó sin presiones."
         </p>
@@ -98,10 +104,10 @@ function SignupLeftPanel() {
             M
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-[14px] font-semibold text-[#faf8f5]">
+            <span className="text-[14px] font-semibold text-surface">
               Macarena S.
             </span>
-            <span className="text-[12px] text-[#717d79]">
+            <span className="text-[12px] text-ink-muted">
               Cliente gonexo, Santiago
             </span>
           </div>
@@ -155,6 +161,11 @@ function SignupPage() {
           "Error al crear la cuenta. Verifica tus datos e intenta de nuevo.",
         );
         return;
+      }
+      // The account exists at this point, so a failed phone save (e.g. phone
+      // already taken by another account) must not strand the user on signup.
+      if (value.phone.trim()) {
+        await api.users.updateMe({ phone: value.phone }).catch(() => {});
       }
       if (intent === "driver") {
         setMode("driver");
@@ -236,7 +247,7 @@ function SignupPage() {
                       : "border-border hover:border-primary/40",
                   )}
                 >
-                  <div className="flex size-8 items-center justify-center rounded-full bg-[#0c8c5e15]">
+                  <div className="flex size-8 items-center justify-center rounded-full bg-primary/8">
                     <Icon className="size-[15px] text-primary" />
                   </div>
                   <div className="flex flex-col gap-0.5">
@@ -373,26 +384,39 @@ function SignupPage() {
                 }}
               </form.Field>
 
-              <form.Field name="phone">
-                {(field) => (
-                  <Field>
-                    <FieldLabel
-                      htmlFor={field.name}
-                      className="text-[13px] font-medium"
-                    >
-                      Teléfono
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      type="tel"
-                      placeholder="+56 9 1234 5678"
-                      autoComplete="tel"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                    />
-                  </Field>
-                )}
+              <form.Field
+                name="phone"
+                validators={{ onChange: phoneSchema, onBlur: phoneSchema }}
+              >
+                {(field) => {
+                  const isInvalid =
+                    field.state.meta.errors.length > 0 &&
+                    (field.state.meta.isTouched ||
+                      form.state.submissionAttempts > 0);
+                  return (
+                    <Field data-invalid={isInvalid || undefined}>
+                      <FieldLabel
+                        htmlFor={field.name}
+                        className="text-[13px] font-medium"
+                      >
+                        Teléfono
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        type="tel"
+                        placeholder="+56 9 1234 5678"
+                        autoComplete="tel"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
               </form.Field>
 
               <form.Field

@@ -23,10 +23,10 @@ export const requestStatusLabels: Record<string, string> = {
 }
 
 export const requestStatusClasses: Record<string, string> = {
-  open: "bg-[#E7F4EE] text-primary",
-  accepted: "bg-[#E7F4EE] text-primary",
-  in_progress: "bg-[#E7F4EE] text-primary",
-  completed: "bg-[#F5F4F0] text-[#969e9b]",
+  open: "bg-accent text-primary",
+  accepted: "bg-accent text-primary",
+  in_progress: "bg-accent text-primary",
+  completed: "bg-muted text-muted-foreground",
   cancelled: "bg-[#FEF2F2] text-destructive",
 }
 
@@ -40,8 +40,8 @@ export const quoteStatusLabels: Record<MyQuote["status"], string> = {
 export const quoteStatusClasses: Record<MyQuote["status"], string> = {
   pending: "bg-amber-50 text-amber-700",
   accepted: "bg-green-50 text-green-700",
-  rejected: "bg-[#F5F4F0] text-[#969e9b]",
-  expired: "bg-[#F5F4F0] text-[#969e9b]",
+  rejected: "bg-muted text-muted-foreground",
+  expired: "bg-muted text-muted-foreground",
 }
 
 export const jobStatusLabels: Record<JobStatus, string> = {

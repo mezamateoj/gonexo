@@ -4,8 +4,9 @@ import { z } from "zod";
 import { eq, and, sql, or, desc } from "drizzle-orm";
 import { job, review, driverProfile } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
-import { conflict, forbidden, notFound } from "../lib/errors";
+import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
+import { sendEmail, confirmReminderEmail } from "../lib/email";
 
 const jobs = new Hono<AppEnv>();
 
@@ -67,11 +68,17 @@ jobs.get("/:id", requireAuth, async (c) => {
   if (j.userId !== userId && j.driverId !== userId)
     throw forbidden();
 
+  // The handoff code belongs to the client — the driver must get it in person.
+  if (userId !== j.userId) {
+    const { confirmCode: _confirmCode, ...withoutCode } = j;
+    return c.json(withoutCode);
+  }
   return c.json(j);
 });
 
 const updateStatusSchema = z.object({
   status: z.enum(["on_the_way", "arrived", "completed"]),
+  confirmCode: z.string().optional(),
 });
 
 jobs.patch(
@@ -81,15 +88,25 @@ jobs.patch(
   async (c) => {
     const db = c.get("db");
     const driver = c.get("user")!;
-    const { status: nextStatus } = c.req.valid("json");
+    const { status: nextStatus, confirmCode } = c.req.valid("json");
 
     const j = await db.query.job.findFirst({
       where: and(eq(job.id, c.req.param("id")), eq(job.driverId, driver.id)),
+      with: {
+        user: { columns: { name: true, email: true } },
+        request: { columns: { originAddress: true, destAddress: true } },
+      },
     });
     if (!j) throw notFound("Job not found");
 
     if (STATUS_TRANSITIONS[j.status] !== nextStatus) {
       throw conflict(`Cannot transition from '${j.status}' to '${nextStatus}'`);
+    }
+
+    // Completing requires the client's handoff code — proof the driver actually
+    // delivered. Jobs created before codes existed (null) complete without one.
+    if (nextStatus === "completed" && j.confirmCode && confirmCode !== j.confirmCode) {
+      throw badRequest("Código incorrecto. Pídele al cliente su código de entrega.");
     }
 
     const now = new Date();
@@ -98,20 +115,29 @@ jobs.patch(
         ? { onTheWayAt: now }
         : nextStatus === "arrived"
           ? { arrivedAt: now }
-          : { completedAt: now };
-
-    const extra =
-      nextStatus === "completed"
-        ? {
-            // TODO: schedule Upstash QStash job with delay=86400s → POST /api/jobs/:id/confirm
-            autoConfirmAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-          }
-        : {};
+          : {
+              completedAt: now,
+              confirmCodeUsedAt: j.confirmCode ? now : null,
+              // The hourly cron sweeps jobs past this if the client never confirms.
+              autoConfirmAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+            };
 
     await db
       .update(job)
-      .set({ status: nextStatus, ...timestampUpdates, ...extra })
+      .set({ status: nextStatus, ...timestampUpdates })
       .where(eq(job.id, j.id));
+
+    if (nextStatus === "completed") {
+      c.executionCtx.waitUntil(
+        sendEmail(c.env, j.user.email, confirmReminderEmail({
+          clientName: j.user.name,
+          origin: j.request.originAddress,
+          dest: j.request.destAddress,
+          jobId: j.id,
+          frontendUrl: c.env.FRONTEND_URL,
+        })),
+      );
+    }
 
     return c.json({ status: nextStatus });
   }

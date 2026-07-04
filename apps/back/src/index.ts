@@ -7,6 +7,9 @@ import { AppError, notFound } from "./lib/errors";
 import { logger } from "./lib/logger";
 import type { AppEnv } from "./lib/types";
 import { dbMiddleware } from "./middleware/db";
+import { createDb } from "./db";
+import { autoConfirmOverdueJobs } from "./workflows/jobs";
+import type { Bindings } from "./binding";
 import requests from "./routes/requests";
 import quotes from "./routes/quotes";
 import jobs from "./routes/jobs";
@@ -131,4 +134,11 @@ app.notFound((c) =>
 
 export type AppType = typeof api;
 
-export default app;
+export default {
+  fetch: app.fetch,
+  // Hourly Cron Trigger (wrangler.jsonc `triggers.crons`): auto-confirm
+  // delivered jobs whose 24h client-confirmation window expired.
+  scheduled: (_event, env, ctx) => {
+    ctx.waitUntil(autoConfirmOverdueJobs(createDb(env.db)));
+  },
+} satisfies ExportedHandler<Bindings>;

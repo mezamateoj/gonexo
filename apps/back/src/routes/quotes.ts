@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { desc, eq } from "drizzle-orm";
-import { quote } from "../db/schema";
+import { quote, user } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
 import { acceptQuote } from "../workflows/quotes";
+import { sendEmail, quoteAcceptedEmail } from "../lib/email";
 
 const quotes = new Hono<AppEnv>();
 
@@ -41,9 +42,28 @@ quotes.get("/my", requireAuth, async (c) => {
 // Rejects all other pending quotes on the same request in the same transaction.
 quotes.post("/:id/accept", requireAuth, async (c) => {
   const db = c.get("db");
-  const user = c.get("user")!;
+  const client = c.get("user")!;
   const quoteId = c.req.param("id");
-  const { jobId } = await acceptQuote(db, user.id, quoteId);
+  const { jobId, driverId, agreedPrice, request: req } = await acceptQuote(db, client.id, quoteId);
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      const driver = await db.query.user.findFirst({
+        where: eq(user.id, driverId),
+        columns: { name: true, email: true },
+      });
+      if (!driver) return;
+      await sendEmail(c.env, driver.email, quoteAcceptedEmail({
+        driverName: driver.name,
+        origin: req.originAddress,
+        dest: req.destAddress,
+        agreedPrice,
+        jobId,
+        frontendUrl: c.env.FRONTEND_URL,
+      }));
+    })(),
+  );
+
   return c.json({ jobId }, 201);
 });
 

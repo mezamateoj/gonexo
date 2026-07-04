@@ -62,14 +62,14 @@ function DriverOnboardingPage() {
   })
 
   return (
-    <div className="min-h-screen bg-[#fafaf8]">
+    <div className="min-h-screen bg-background">
       {/* Top bar */}
-      <header className="flex h-[60px] items-center border-b border-[#f1f0ee] bg-white px-5 md:px-10">
+      <header className="flex h-[60px] items-center border-b border-border bg-white px-5 md:px-10">
         <GonexoLogo size="xs" />
       </header>
 
       {/* Progress bar — half filled */}
-      <div className="h-[4px] bg-[#f1f0ee]">
+      <div className="h-[4px] bg-border">
         <div className="h-full w-1/2 bg-primary" />
       </div>
 
@@ -81,17 +81,17 @@ function DriverOnboardingPage() {
         >
           {/* Page header */}
           <div className="flex flex-col gap-1.5">
-            <h1 className="text-[24px] font-bold tracking-[-0.6px] text-[#121715] md:text-[30px]">
+            <h1 className="text-[24px] font-bold tracking-[-0.6px] text-foreground md:text-[30px]">
               Conviértete en transportista
             </h1>
-            <p className="text-[15px] text-[#717d79]">
+            <p className="text-[15px] text-ink-muted">
               Toma ~3 minutos. Necesitas tu vehículo y documentos a mano.
             </p>
           </div>
 
           {/* Section A: Vehicle */}
           <div className="flex flex-col gap-5">
-            <h2 className="text-[18px] font-semibold text-[#121715]">Tu vehículo</h2>
+            <h2 className="text-[18px] font-semibold text-foreground">Tu vehículo</h2>
 
             <FieldGroup>
               {/* Phone */}
@@ -104,7 +104,7 @@ function DriverOnboardingPage() {
                     (field.state.meta.isTouched || form.state.submissionAttempts > 0)
                   return (
                     <Field data-invalid={isInvalid || undefined}>
-                      <label htmlFor={field.name} className="text-[13px] font-medium text-[#121715]">
+                      <label htmlFor={field.name} className="text-[13px] font-medium text-foreground">
                         Teléfono de contacto
                       </label>
                       <Input
@@ -124,7 +124,7 @@ function DriverOnboardingPage() {
 
               {/* Vehicle type */}
               <div className="flex flex-col gap-2">
-                <span className="text-[13px] font-medium text-[#121715]">Tipo de vehículo</span>
+                <span className="text-[13px] font-medium text-foreground">Tipo de vehículo</span>
                 <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-4">
                   {VEHICLE_TYPES.map(({ key, label, emoji }) => (
                     <button
@@ -134,14 +134,14 @@ function DriverOnboardingPage() {
                       className={cn(
                         "flex flex-col items-center justify-center gap-1.5 rounded-[8px] py-[14px] px-3 transition-colors",
                         vehicleType === key
-                          ? "border-2 border-primary bg-[#0c8c5e0d]"
-                          : "border border-[#f1f0ee] bg-[#faf8f5] hover:border-border",
+                          ? "border-2 border-primary bg-primary/5"
+                          : "border border-border bg-surface hover:border-border",
                       )}
                     >
                       <span className="text-2xl leading-none">{emoji}</span>
                       <span className={cn(
                         "text-[12px] font-medium",
-                        vehicleType === key ? "text-primary" : "text-[#121715]",
+                        vehicleType === key ? "text-primary" : "text-foreground",
                       )}>
                         {label}
                       </span>
@@ -161,7 +161,7 @@ function DriverOnboardingPage() {
                       (field.state.meta.isTouched || form.state.submissionAttempts > 0)
                     return (
                       <Field className="w-full sm:w-[240px] sm:shrink-0" data-invalid={isInvalid || undefined}>
-                        <label htmlFor={field.name} className="text-[13px] font-medium text-[#121715]">
+                        <label htmlFor={field.name} className="text-[13px] font-medium text-foreground">
                           Patente
                         </label>
                         <Input
@@ -182,9 +182,9 @@ function DriverOnboardingPage() {
                 <form.Field name="year">
                   {(field) => (
                     <Field className="flex-1">
-                      <label htmlFor={field.name} className="text-[13px] font-medium text-[#121715]">
+                      <label htmlFor={field.name} className="text-[13px] font-medium text-foreground">
                         Año{" "}
-                        <span className="font-normal text-[#717d79]">(opcional)</span>
+                        <span className="font-normal text-ink-muted">(opcional)</span>
                       </label>
                       <Input
                         id={field.name}
@@ -203,12 +203,12 @@ function DriverOnboardingPage() {
           <div className="flex flex-col gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-[18px] font-semibold text-[#121715]">Documentos</h2>
-                <span className="rounded-full bg-[#f1f0ee] px-[10px] py-[3px] text-[11px] font-semibold uppercase tracking-wide text-[#717d79]">
+                <h2 className="text-[18px] font-semibold text-foreground">Documentos</h2>
+                <span className="rounded-full bg-border px-[10px] py-[3px] text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
                   Próximamente
                 </span>
               </div>
-              <p className="mt-1 text-[13px] text-[#717d79]">
+              <p className="mt-1 text-[13px] text-ink-muted">
                 Tus documentos se revisan para dar confianza a los clientes.
               </p>
             </div>
@@ -219,16 +219,16 @@ function DriverOnboardingPage() {
                 {DOCUMENTS.map(({ emoji, title, hint }) => (
                   <div
                     key={title}
-                    className="flex items-center gap-[14px] rounded-[10px] border border-[#f1f0ee] bg-[#faf8f5] px-[18px] py-4"
+                    className="flex items-center gap-[14px] rounded-[10px] border border-border bg-surface px-[18px] py-4"
                   >
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-[#ebe9e6] text-[22px] leading-none">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-surface-dim text-[22px] leading-none">
                       {emoji}
                     </div>
                     <div className="flex flex-1 flex-col gap-0.5">
-                      <span className="text-[14px] font-semibold text-[#121715]">{title}</span>
-                      <span className="text-[12px] text-[#717d79]">{hint}</span>
+                      <span className="text-[14px] font-semibold text-foreground">{title}</span>
+                      <span className="text-[12px] text-ink-muted">{hint}</span>
                     </div>
-                    <div className="rounded-full bg-[#ebe9e6] px-[10px] py-1 text-[12px] font-medium text-[#717d79]">
+                    <div className="rounded-full bg-surface-dim px-[10px] py-1 text-[12px] font-medium text-ink-muted">
                       Pendiente
                     </div>
                   </div>
@@ -269,7 +269,7 @@ function DriverOnboardingPage() {
             <Link
               to="/requests"
               onClick={() => setMode("client")}
-              className="shrink-0 text-[13px] text-[#717d79] transition-colors hover:text-[#485450]"
+              className="shrink-0 text-[13px] text-ink-muted transition-colors hover:text-ink-soft"
             >
               Saltar por ahora
             </Link>

@@ -42,7 +42,7 @@ function JobDetailPage() {
   if (error || !job) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
-        <p className="text-sm text-[#969e9b]">No se encontró el trabajo.</p>
+        <p className="text-sm text-muted-foreground">No se encontró el trabajo.</p>
         <Link to="/jobs" className="text-sm text-primary hover:underline">
           Ver mis trabajos
         </Link>
@@ -63,7 +63,7 @@ function JobDetailPage() {
   return (
     <div className="mx-auto max-w-[600px] space-y-5 px-4 py-6">
       {/* Back link */}
-      <Link to="/jobs" className="flex items-center gap-1.5 text-[13px] text-[#969e9b] hover:text-[#485450]">
+      <Link to="/jobs" className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-ink-soft">
         <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
@@ -73,8 +73,8 @@ function JobDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold text-[#121715]">Trabajo #{id.slice(-6).toUpperCase()}</h1>
-          <p className="mt-0.5 text-[13px] text-[#969e9b]">{formatLongDateTime(job.request.scheduledAt)}</p>
+          <h1 className="text-[18px] font-semibold text-foreground">Trabajo #{id.slice(-6).toUpperCase()}</h1>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{formatLongDateTime(job.request.scheduledAt)}</p>
         </div>
         <span className={cn(
           "rounded-full px-2.5 py-1 text-[11px] font-semibold",
@@ -86,8 +86,8 @@ function JobDetailPage() {
 
       {/* Status timeline */}
       {job.status !== "cancelled" && (
-        <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Progreso</p>
+        <div className="rounded-[12px] border border-border bg-white p-4">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Progreso</p>
           <div className="flex items-center gap-0">
             {jobStatusOrder.map((s, i) => {
               const done = i <= currentStatusIdx
@@ -96,7 +96,7 @@ function JobDetailPage() {
                 <div key={s} className="flex flex-1 items-center">
                   <div className={cn(
                     "flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                    done ? "bg-primary text-white" : "border border-[#EDEAE6] bg-white text-[#C4C0BA]"
+                    done ? "bg-primary text-white" : "border border-border bg-white text-ink-faint"
                   )}>
                     {done && !active ? (
                       <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -107,7 +107,7 @@ function JobDetailPage() {
                     )}
                   </div>
                   {i < jobStatusOrder.length - 1 && (
-                    <div className={cn("h-[2px] flex-1", i < currentStatusIdx ? "bg-primary" : "bg-[#EDEAE6]")} />
+                    <div className={cn("h-[2px] flex-1", i < currentStatusIdx ? "bg-primary" : "bg-border")} />
                   )}
                 </div>
               )
@@ -115,7 +115,7 @@ function JobDetailPage() {
           </div>
           <div className="mt-2 flex justify-between">
             {jobStatusOrder.map((s) => (
-              <p key={s} className="flex-1 text-center text-[10px] text-[#969e9b]">{jobStatusLabels[s]}</p>
+              <p key={s} className="flex-1 text-center text-[10px] text-muted-foreground">{jobStatusLabels[s]}</p>
             ))}
           </div>
         </div>
@@ -154,22 +154,22 @@ function JobDetailPage() {
       )}
 
       {/* Route card */}
-      <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Ruta</p>
+      <div className="rounded-[12px] border border-border bg-white p-4">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ruta</p>
         <div className="space-y-2">
           <div className="flex items-start gap-2.5">
             <div className="mt-1 size-2 shrink-0 rounded-full bg-primary" />
             <div>
-              <p className="text-[11px] text-[#969e9b]">Origen</p>
-              <p className="text-[13px] font-medium text-[#121715]">{job.request.originAddress}</p>
+              <p className="text-[11px] text-muted-foreground">Origen</p>
+              <p className="text-[13px] font-medium text-foreground">{job.request.originAddress}</p>
             </div>
           </div>
-          <div className="ml-[3px] h-5 w-[2px] bg-[#EDEAE6]" />
+          <div className="ml-[3px] h-5 w-[2px] bg-border" />
           <div className="flex items-start gap-2.5">
-            <div className="mt-1 size-2 shrink-0 rounded-full bg-[#485450]" />
+            <div className="mt-1 size-2 shrink-0 rounded-full bg-ink-soft" />
             <div>
-              <p className="text-[11px] text-[#969e9b]">Destino</p>
-              <p className="text-[13px] font-medium text-[#121715]">{job.request.destAddress}</p>
+              <p className="text-[11px] text-muted-foreground">Destino</p>
+              <p className="text-[13px] font-medium text-foreground">{job.request.destAddress}</p>
             </div>
           </div>
         </div>
@@ -177,13 +177,13 @@ function JobDetailPage() {
 
       {/* Details + price */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Precio acordado</p>
-          <p className="mt-1 text-[20px] font-bold text-[#121715]">{formatPrice(job.agreedPrice)}</p>
+        <div className="rounded-[12px] border border-border bg-white p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Precio acordado</p>
+          <p className="mt-1 text-[20px] font-bold text-foreground">{formatPrice(job.agreedPrice)}</p>
         </div>
-        <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Volumen</p>
-          <p className="mt-1 text-[14px] font-semibold text-[#121715]">
+        <div className="rounded-[12px] border border-border bg-white p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Volumen</p>
+          <p className="mt-1 text-[14px] font-semibold text-foreground">
             {volumeLabels[job.request.volumeCategory]}
           </p>
         </div>
@@ -191,30 +191,30 @@ function JobDetailPage() {
 
       {/* Items description */}
       {job.request.itemDescription && (
-        <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Qué se mueve</p>
-          <p className="text-[13px] text-[#485450]">{job.request.itemDescription}</p>
+        <div className="rounded-[12px] border border-border bg-white p-4">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Qué se mueve</p>
+          <p className="text-[13px] text-ink-soft">{job.request.itemDescription}</p>
           {job.request.notes && (
-            <p className="mt-2 text-[12px] text-[#969e9b]">{job.request.notes}</p>
+            <p className="mt-2 text-[12px] text-muted-foreground">{job.request.notes}</p>
           )}
         </div>
       )}
 
       {/* Other party contact */}
-      <div className="rounded-[12px] border border-[#EDEAE6] bg-white p-4">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">{otherLabel}</p>
+      <div className="rounded-[12px] border border-border bg-white p-4">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{otherLabel}</p>
         <div className="flex items-center gap-3">
           {otherParty.image ? (
             <img src={otherParty.image} alt={otherParty.name} className="size-10 rounded-full object-cover" />
           ) : (
-            <div className="flex size-10 items-center justify-center rounded-full bg-[#EDEAE6]">
-              <span className="text-[15px] font-semibold text-[#485450]">
+            <div className="flex size-10 items-center justify-center rounded-full bg-border">
+              <span className="text-[15px] font-semibold text-ink-soft">
                 {otherParty.name.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           <div className="flex-1">
-            <p className="text-[14px] font-semibold text-[#121715]">{otherParty.name}</p>
+            <p className="text-[14px] font-semibold text-foreground">{otherParty.name}</p>
             {otherParty.phone && (
               <a
                 href={`tel:${otherParty.phone}`}
@@ -253,7 +253,7 @@ function JobDetailPage() {
       <Link
         to="/requests/$id"
         params={{ id: job.requestId }}
-        className="block text-center text-[13px] text-[#969e9b] hover:text-[#485450]"
+        className="block text-center text-[13px] text-muted-foreground hover:text-ink-soft"
       >
         Ver solicitud original →
       </Link>

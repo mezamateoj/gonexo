@@ -10,7 +10,7 @@ export function AvailableRequestCard({ req }: { req: OpenRequest }) {
     <Link
       to="/available/$id"
       params={{ id: req.id }}
-      className="group flex flex-col rounded-[12px] border border-[#E9E7E3] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_3px_12px_rgba(0,0,0,0.08)]"
+      className="group flex flex-col rounded-[12px] border border-border bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_3px_12px_rgba(0,0,0,0.08)]"
     >
       {req.photos.length > 0 && (
         <img
@@ -23,41 +23,41 @@ export function AvailableRequestCard({ req }: { req: OpenRequest }) {
       <div className="flex flex-col gap-2.5">
         <div className="flex items-start gap-2">
           <span className="mt-0.5 size-[7px] shrink-0 rounded-full bg-primary" />
-          <span className="text-[13px] font-medium leading-snug text-[#121715] line-clamp-1">{req.originAddress}</span>
+          <span className="text-[13px] font-medium leading-snug text-foreground line-clamp-1">{req.originAddress}</span>
         </div>
         <div className="flex items-start gap-2">
-          <span className="mt-0.5 size-[7px] shrink-0 rounded-full bg-[#969e9b]" />
-          <span className="text-[13px] font-medium leading-snug text-[#121715] line-clamp-1">{req.destAddress}</span>
+          <span className="mt-0.5 size-[7px] shrink-0 rounded-full bg-muted-foreground" />
+          <span className="text-[13px] font-medium leading-snug text-foreground line-clamp-1">{req.destAddress}</span>
         </div>
       </div>
 
       {/* Suggested fair price — quick earnings signal from the feed */}
       <div className="mt-4 flex items-center justify-between rounded-[8px] bg-primary/[0.06] px-3 py-2">
-        <span className="text-[11px] font-medium text-[#485450]">Precio justo</span>
+        <span className="text-[11px] font-medium text-ink-soft">Precio justo</span>
         <span className="text-[14px] font-bold tabular-nums text-primary">≈ {formatCLP(req.fairPrice)}</span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[#F0EEE9] pt-3">
-        <div className="flex items-center gap-1.5 text-[#969e9b]">
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-surface-dim pt-3">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
           <Calendar className="size-3.5" />
           <span className="text-[12px]">{formatCompactDateTime(req.scheduledAt)}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-[#969e9b]">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
           <Package className="size-3.5" />
           <span className="text-[12px]">{volumeLabels[req.volumeCategory]}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-[#969e9b]">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
           <MapPin className="size-3.5" />
           <span className="text-[12px] tabular-nums">{distance}</span>
         </div>
-        <ArrowRight className="ml-auto size-4 text-[#B0ABA5] transition-transform group-hover:translate-x-0.5" />
+        <ArrowRight className="ml-auto size-4 text-ink-faint transition-transform group-hover:translate-x-0.5" />
       </div>
 
       <div className="mt-2.5 flex items-center gap-1.5">
         <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary">
           {initials(req.user.name)}
         </div>
-        <span className="text-[12px] text-[#969e9b]">{req.user.name}</span>
+        <span className="text-[12px] text-muted-foreground">{req.user.name}</span>
       </div>
     </Link>
   )
