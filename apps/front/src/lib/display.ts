@@ -62,18 +62,6 @@ export const jobStatusClasses: Record<JobStatus, string> = {
 
 export const jobStatusOrder: JobStatus[] = ["scheduled", "on_the_way", "arrived", "completed"]
 
-export const nextJobStatus: Partial<Record<JobStatus, "on_the_way" | "arrived" | "completed">> = {
-  scheduled: "on_the_way",
-  on_the_way: "arrived",
-  arrived: "completed",
-}
-
-export const nextJobStatusLabels: Partial<Record<JobStatus, string>> = {
-  scheduled: "Marcar en camino",
-  on_the_way: "Marcar llegué",
-  arrived: "Marcar completado",
-}
-
 export const vehicleLabels: Record<string, string> = {
   van: "Furgón",
   pickup: "Camioneta",
@@ -119,6 +107,17 @@ export function formatCompactDateTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+export function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })
+}
+
+export function formatConfirmTime(iso: string) {
+  const d = new Date(iso)
+  const isToday = d.toDateString() === new Date().toDateString()
+  const time = formatTime(iso)
+  return isToday ? `hoy ${time}` : `${d.toLocaleDateString("es-CL", { day: "numeric", month: "short" })} ${time}`
 }
 
 export function formatKm(meters: number) {

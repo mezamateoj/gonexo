@@ -1,4 +1,4 @@
-import type { RequestSummary, RequestStatus, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse } from "./types"
+import type { RequestSummary, RequestStatus, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -109,10 +109,10 @@ export const api = {
   jobs: {
     my: () => apiFetch<JobSummary[]>("/api/jobs/my"),
     get: (id: string) => apiFetch<JobDetail>(`/api/jobs/${id}`),
-    updateStatus: (id: string, status: "on_the_way" | "arrived" | "completed") =>
+    updateStatus: (id: string, body: JobStatusUpdate) =>
       apiFetch<{ status: string }>(`/api/jobs/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       }),
     confirm: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/jobs/${id}/confirm`, { method: "POST" }),
@@ -133,6 +133,7 @@ export const api = {
       ),
   },
   users: {
+    me: () => apiFetch<CurrentUser>("/api/users/me"),
     updateMe: (body: { name?: string; phone?: string }) =>
       apiFetch<{ ok: boolean }>("/api/users/me", {
         method: "PATCH",

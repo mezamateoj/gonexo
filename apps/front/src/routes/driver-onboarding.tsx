@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "@tanstack/react-form"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { z } from "zod"
 import { Lock } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -40,6 +40,11 @@ function DriverOnboardingPage() {
   const { setMode } = useAppMode()
   const [vehicleType, setVehicleType] = useState<VehicleType>("van")
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const { data: currentUser } = useQuery({
+    queryKey: queryKeys.users.me,
+    queryFn: api.users.me,
+  })
+  const accountPhone = currentUser?.phone ?? ""
 
   const form = useForm({
     defaultValues: { phone: "", plate: "", year: "" },
@@ -47,7 +52,7 @@ function DriverOnboardingPage() {
       setSubmitError(null)
       try {
         await api.drivers.upsertMe({
-          phone: value.phone,
+          phone: accountPhone || value.phone,
           vehicleType,
           vehiclePlate: value.plate.toUpperCase(),
         })
@@ -60,6 +65,10 @@ function DriverOnboardingPage() {
       }
     },
   })
+
+  useEffect(() => {
+    if (accountPhone) form.setFieldValue("phone", accountPhone)
+  }, [accountPhone, form])
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,33 +103,34 @@ function DriverOnboardingPage() {
             <h2 className="text-[18px] font-semibold text-foreground">Tu vehículo</h2>
 
             <FieldGroup>
-              {/* Phone */}
-              <form.Field
-                name="phone"
-                validators={{ onChange: phoneSchema, onBlur: phoneSchema }}
-              >
-                {(field) => {
-                  const isInvalid = field.state.meta.errors.length > 0 &&
-                    (field.state.meta.isTouched || form.state.submissionAttempts > 0)
-                  return (
-                    <Field data-invalid={isInvalid || undefined}>
-                      <label htmlFor={field.name} className="text-[13px] font-medium text-foreground">
-                        Teléfono de contacto
-                      </label>
-                      <Input
-                        id={field.name}
-                        type="tel"
-                        placeholder="+56 9 xxxx xxxx"
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        aria-invalid={isInvalid}
-                      />
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                    </Field>
-                  )
-                }}
-              </form.Field>
+              {!accountPhone && (
+                <form.Field
+                  name="phone"
+                  validators={{ onChange: phoneSchema, onBlur: phoneSchema }}
+                >
+                  {(field) => {
+                    const isInvalid = field.state.meta.errors.length > 0 &&
+                      (field.state.meta.isTouched || form.state.submissionAttempts > 0)
+                    return (
+                      <Field data-invalid={isInvalid || undefined}>
+                        <label htmlFor={field.name} className="text-[13px] font-medium text-foreground">
+                          Teléfono de contacto
+                        </label>
+                        <Input
+                          id={field.name}
+                          type="tel"
+                          placeholder="+56 9 xxxx xxxx"
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          aria-invalid={isInvalid}
+                        />
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      </Field>
+                    )
+                  }}
+                </form.Field>
+              )}
 
               {/* Vehicle type */}
               <div className="flex flex-col gap-2">

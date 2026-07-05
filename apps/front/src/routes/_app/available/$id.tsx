@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { useForm } from "@tanstack/react-form"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { z } from "zod"
 import { MapPin, ChevronLeft, Package, Calendar, MessageSquare, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -55,14 +56,15 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
           message: value.message || undefined,
         })
       } catch (err) {
-        if (err instanceof ApiError && err.status === 409) {
-          setSubmitError("Ya enviaste una cotización para esta solicitud.")
-        } else if (err instanceof ApiError && err.status === 400) {
-          // Backend returns a clear Spanish message (out-of-band or contact info).
-          setSubmitError(err.message)
-        } else {
-          setSubmitError(err instanceof Error ? err.message : "Error al enviar la cotización. Intenta de nuevo.")
-        }
+        const message =
+          err instanceof ApiError && err.status === 409
+            ? "Ya enviaste una cotización para esta solicitud."
+            : // Backend returns a clear Spanish message (out-of-band or contact info) for 400s.
+              err instanceof Error
+              ? err.message
+              : "Error al enviar la cotización. Intenta de nuevo."
+        setSubmitError(message)
+        toast.error("No se pudo enviar la cotización", { description: message })
       }
     },
   })
@@ -412,7 +414,7 @@ function DriverOpportunityPage() {
           {/* My existing quote */}
           {myQuote && (
             <div className={cn(
-              "rounded-[14px] border p-5",
+              "animate-in fade-in slide-in-from-bottom-2 rounded-[14px] border p-5 duration-300",
               myQuote.status === "accepted" ? "border-primary bg-accent" : "border-border bg-white"
             )}>
               <p className="mb-1 text-[13px] font-semibold text-foreground">Tu cotización</p>

@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from "../db/schema";
+import { normalizePhone } from "./normalizers";
 import type { Db } from "../db";
 
 export const createAuth = (db?: Db) =>
@@ -23,6 +24,22 @@ export const createAuth = (db?: Db) =>
           type: "string",
           required: false,
           input: true,
+        },
+      },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (data) => {
+            if (typeof data.phone !== "string" || !data.phone.trim()) return;
+            return { data: { phone: normalizePhone(data.phone) } };
+          },
+        },
+        update: {
+          before: async (data) => {
+            if (typeof data.phone !== "string" || !data.phone.trim()) return;
+            return { data: { phone: normalizePhone(data.phone) } };
+          },
         },
       },
     },

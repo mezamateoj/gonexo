@@ -1,6 +1,9 @@
 import type { AvailableQuery, RequestStatus } from "./types"
 
 export const queryKeys = {
+  users: {
+    me: ["users", "me"] as const,
+  },
   drivers: {
     me: ["drivers", "me"] as const,
   },

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm, useStore } from "@tanstack/react-form"
 import { useState, useRef, useMemo } from "react"
+import { toast } from "sonner"
 import { z } from "zod"
 import {
   Package, Boxes, Truck, Building2,
@@ -261,7 +262,15 @@ function NewRequestPage() {
     mutationFn: (draft: Draft) => api.requests.create(toCreateRequestInput(draft)),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
+      toast.success("Solicitud publicada", {
+        description: "Los transportistas ya pueden verla y enviarte cotizaciones.",
+      })
       navigate({ to: "/requests/$id", params: { id } })
+    },
+    onError: (error) => {
+      toast.error("No se pudo publicar la solicitud", {
+        description: error instanceof Error ? error.message : "Intenta de nuevo.",
+      })
     },
   })
 
@@ -766,7 +775,9 @@ function NewRequestPage() {
                 </div>
 
                 {mutationError && (
-                  <p className="text-[13px] text-destructive">{mutationError}</p>
+                  <p className="animate-in fade-in slide-in-from-top-1 rounded-[8px] bg-red-50 px-3 py-2.5 text-[13px] text-red-600">
+                    {mutationError}
+                  </p>
                 )}
               </div>
             )}

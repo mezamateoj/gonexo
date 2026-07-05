@@ -174,8 +174,6 @@ function CompetitionBadge({ n }: { n: number }) {
   )
 }
 
-// Column defs live at module scope so the table doesn't re-create them per render.
-// Sorting is server-side: only columns backed by an AVAILABLE_SORTS key are sortable.
 const columnHelper = createColumnHelper<OpenRequest>()
 
 const columns = [
@@ -271,7 +269,6 @@ const columns = [
   }),
 ]
 
-// URL `sort` is the single source of truth; table sorting state derives from it.
 const SORT_TO_SORTING: Record<AvailableSort, SortingState> = {
   recent: [],
   soonest: [{ id: "scheduledAt", desc: false }],
@@ -280,8 +277,6 @@ const SORT_TO_SORTING: Record<AvailableSort, SortingState> = {
 
 function sortingToSort(state: SortingState): AvailableSort {
   const col = state[0]
-  // The server only supports ascending for these columns, so a "desc" toggle
-  // (second header click) falls back to the default recent ordering.
   if (!col || col.desc) return "recent"
   if (col.id === "scheduledAt") return "soonest"
   if (col.id === "route") return "distance"
@@ -354,7 +349,6 @@ function AvailablePage() {
   const total = data?.total ?? 0
   const limit = data?.limit ?? 20
   const pageCount = Math.max(1, Math.ceil(total / limit))
-
   const sorting = SORT_TO_SORTING[search.sort]
   const pagination: PaginationState = { pageIndex: search.page - 1, pageSize: limit }
 
@@ -362,7 +356,6 @@ function AvailablePage() {
     data: rows,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    // Server drives everything; the table only maps state <-> URL.
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,

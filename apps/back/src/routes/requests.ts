@@ -162,12 +162,13 @@ requests.post(
 
 // Must be registered before /:id so "my" is not captured as a param.
 const REQUEST_STATUSES = ["open", "accepted", "in_progress", "completed", "cancelled"] as const;
+const requestStatusSet = new Set<string>(REQUEST_STATUSES);
 
 requests.get("/my", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const status = c.req.query("status");
-  if (status && !REQUEST_STATUSES.includes(status as (typeof REQUEST_STATUSES)[number]))
+  if (status && !requestStatusSet.has(status))
     throw badRequest("Estado inválido");
 
   const results = await db.query.request.findMany({

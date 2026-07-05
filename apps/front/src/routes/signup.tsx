@@ -3,7 +3,6 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { signUp, useSession } from "@/lib/auth-client";
-import { api } from "@/lib/api";
 import { useAppMode, type AppMode } from "@/lib/app-mode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +23,9 @@ export const Route = createFileRoute("/signup")({
 const firstNameSchema = z.string().min(1, "Requerido");
 const lastNameSchema = z.string().min(1, "Requerido");
 const emailSchema = z.email({ message: "Ingresa un correo válido" });
-// Optional, but if provided it must satisfy the backend's min-8-digit rule.
 const phoneSchema = z
   .string()
-  .refine((v) => v.trim() === "" || v.replace(/\D/g, "").length >= 8, {
+  .refine((v) => v.replace(/\D/g, "").length >= 8, {
     message: "Ingresa un teléfono válido (+56 9 ...)",
   });
 const passwordSchema = z.string().min(8, "Mínimo 8 caracteres");
@@ -154,6 +152,7 @@ function SignupPage() {
         name: `${value.firstName} ${value.lastName}`.trim(),
         email: value.email,
         password: value.password,
+        phone: value.phone,
       });
       if (error) {
         handlingSubmit.current = false;
@@ -161,11 +160,6 @@ function SignupPage() {
           "Error al crear la cuenta. Verifica tus datos e intenta de nuevo.",
         );
         return;
-      }
-      // The account exists at this point, so a failed phone save (e.g. phone
-      // already taken by another account) must not strand the user on signup.
-      if (value.phone.trim()) {
-        await api.users.updateMe({ phone: value.phone }).catch(() => {});
       }
       if (intent === "driver") {
         setMode("driver");
