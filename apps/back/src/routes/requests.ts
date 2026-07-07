@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, ne, asc, desc, inArray, exists, count, sql } from "drizzle-orm";
-import { request, requestPhoto, quote, driverProfile, user as userTable } from "../db/schema";
+import { request, requestPhoto, quote, driverProfile, user as userTable, job } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
@@ -183,11 +183,18 @@ requests.get("/my", requireAuth, async (c) => {
         columns: { url: true },
       },
       quotes: { columns: { id: true, status: true, price: true, priceMin: true, priceMax: true } },
-      job: { columns: { id: true, status: true } },
+      jobs: {
+        where: ne(job.status, "cancelled"),
+        limit: 1,
+        columns: { id: true, status: true },
+      },
     },
   });
 
-  return c.json(results);
+  return c.json(results.map(({ jobs, ...req }) => ({
+    ...req,
+    job: jobs[0] ?? null,
+  })));
 });
 
 // Available-feed sort options. Only real columns are sortable so paging stays
@@ -277,7 +284,11 @@ requests.get("/:id", requireAuth, async (c) => {
     with: {
       photos: { orderBy: [asc(requestPhoto.order)] },
       user: { columns: { id: true, name: true, image: true, phone: true } },
-      job: { columns: { id: true, status: true, driverId: true } },
+      jobs: {
+        where: ne(job.status, "cancelled"),
+        limit: 1,
+        columns: { id: true, status: true, driverId: true },
+      },
       quotes: {
         with: {
           driver: {
@@ -308,6 +319,7 @@ requests.get("/:id", requireAuth, async (c) => {
 
   const isOwner = result.userId === user.id;
   const myQuote = result.quotes.find((q) => q.driverId === user.id);
+  const activeJob = result.jobs[0] ?? null;
 
   // Access control: owners see their own request; everyone else must be a
   // driver, and may only inspect open requests or ones they personally quoted.
@@ -324,7 +336,7 @@ requests.get("/:id", requireAuth, async (c) => {
 
   // Exact address + coords are revealed only to the owner and the matched driver
   // (once their quote is accepted). Everyone else sees the masked zone.
-  const isMatchedDriver = !!result.job && result.job.driverId === user.id;
+  const isMatchedDriver = !!activeJob && activeJob.driverId === user.id;
   const canSeeExact = isOwner || isMatchedDriver;
 
   return c.json({
@@ -342,7 +354,8 @@ requests.get("/:id", requireAuth, async (c) => {
     quotes: isOwner ? result.quotes : myQuote ? [myQuote] : [],
     quoteCount,
     // driverId used only for the reveal check above — not exposed.
-    job: result.job ? { id: result.job.id, status: result.job.status } : null,
+    jobs: undefined,
+    job: activeJob ? { id: activeJob.id, status: activeJob.status } : null,
   });
 });
 

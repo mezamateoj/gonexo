@@ -1,5 +1,5 @@
 import { and, eq, ne } from "drizzle-orm";
-import { job, quote, request } from "../db/schema";
+import { job, jobEvent, quote, request } from "../db/schema";
 import type { Db } from "../db";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import { logger } from "../lib/logger";
@@ -52,6 +52,14 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
       platformFee,
       driverPayout,
       confirmCode,
+    }),
+
+    db.insert(jobEvent).values({
+      id: crypto.randomUUID(),
+      jobId,
+      type: "scheduled",
+      actorRole: "user",
+      meta: JSON.stringify({ quoteId, requestId: q.requestId }),
     }),
   ]);
 

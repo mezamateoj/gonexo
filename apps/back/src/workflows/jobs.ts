@@ -1,5 +1,5 @@
 import { and, eq, isNull, lt, sql } from "drizzle-orm";
-import { job, driverProfile, request } from "../db/schema";
+import { job, jobEvent, driverProfile, request } from "../db/schema";
 import type { Db } from "../db";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { logger } from "../lib/logger";
@@ -55,6 +55,12 @@ export async function advanceJob(db: Db, driverId: string, jobId: string, input:
       .update(request)
       .set({ status: requestStatus })
       .where(eq(request.id, j.requestId)),
+    db.insert(jobEvent).values({
+      id: crypto.randomUUID(),
+      jobId: j.id,
+      type: input.status,
+      actorRole: "driver",
+    }),
   ]);
 
   return input.status === "completed"
@@ -70,7 +76,12 @@ export async function advanceJob(db: Db, driverId: string, jobId: string, input:
     : { status: input.status, completed: false as const };
 }
 
-async function releaseCompletedJob(db: Db, j: { id: string; driverId: string; requestId: string }, now: Date) {
+async function releaseCompletedJob(
+  db: Db,
+  j: { id: string; driverId: string; requestId: string },
+  now: Date,
+  actorRole: "user" | "system",
+) {
   await db.batch([
     db
       .update(job)
@@ -84,6 +95,12 @@ async function releaseCompletedJob(db: Db, j: { id: string; driverId: string; re
       .update(driverProfile)
       .set({ totalJobs: sql`${driverProfile.totalJobs} + 1` })
       .where(eq(driverProfile.userId, j.driverId)),
+    db.insert(jobEvent).values({
+      id: crypto.randomUUID(),
+      jobId: j.id,
+      type: "confirmed",
+      actorRole,
+    }),
   ]);
 }
 
@@ -96,7 +113,7 @@ export async function confirmJob(db: Db, userId: string, jobId: string) {
   if (j.status !== "completed") throw conflict("Job not completed yet");
   if (j.confirmedAt) throw conflict("Already confirmed");
 
-  await releaseCompletedJob(db, j, new Date());
+  await releaseCompletedJob(db, j, new Date(), "user");
 }
 
 export async function autoConfirmOverdueJobs(db: Db, now = new Date()) {
@@ -111,7 +128,7 @@ export async function autoConfirmOverdueJobs(db: Db, now = new Date()) {
   if (overdue.length === 0) return 0;
 
   for (const j of overdue) {
-    await releaseCompletedJob(db, j, now);
+    await releaseCompletedJob(db, j, now, "system");
   }
 
   logger.info("Auto-confirmed {count} overdue job(s): {ids}", {

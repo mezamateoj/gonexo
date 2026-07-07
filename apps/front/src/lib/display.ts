@@ -35,6 +35,7 @@ export const quoteStatusLabels: Record<MyQuote["status"], string> = {
   accepted: "Aceptado",
   rejected: "No elegido",
   expired: "Expirado",
+  cancelled: "Cancelado",
 }
 
 export const quoteStatusClasses: Record<MyQuote["status"], string> = {
@@ -42,6 +43,7 @@ export const quoteStatusClasses: Record<MyQuote["status"], string> = {
   accepted: "bg-green-50 text-green-700",
   rejected: "bg-muted text-muted-foreground",
   expired: "bg-muted text-muted-foreground",
+  cancelled: "bg-red-50 text-red-600",
 }
 
 export const jobStatusLabels: Record<JobStatus, string> = {

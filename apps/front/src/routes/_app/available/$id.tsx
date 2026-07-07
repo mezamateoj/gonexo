@@ -434,6 +434,10 @@ function DriverOpportunityPage() {
                   `El cliente aceptó tu cotización por ${formatCLP(myQuote.price)}.`
                 ) : myQuote.status === "rejected" ? (
                   "El cliente eligió otro transportista."
+                ) : myQuote.status === "expired" ? (
+                  "Esta cotización expiró."
+                ) : myQuote.status === "cancelled" ? (
+                  "Esta cotización fue cancelada."
                 ) : (
                   <>
                     <Clock className="size-3.5 shrink-0" />

@@ -20,7 +20,18 @@ export type JobStatusUpdate =
 
 export type VehicleType = "van" | "pickup" | "truck_small" | "truck_large"
 
-export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired"
+export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired" | "cancelled"
+
+export type DriverDocumentKind = "license" | "papers" | "vehicle_photo"
+
+export interface DriverDocument {
+  id: string
+  driverProfileId: string
+  kind: DriverDocumentKind
+  key: string
+  order: number
+  createdAt: string
+}
 
 export interface CurrentUser {
   id: string
@@ -42,9 +53,7 @@ export interface DriverProfile {
   isAvailable: boolean
   avgRating: number | null
   totalJobs: number
-  licenseUrl: string | null
-  vehiclePhotos: string | null
-  papersUrl: string | null
+  documents: DriverDocument[]
   vehicleDescription: string | null
   vehicleCapacity: string | null
   documentsStatus: string
@@ -57,9 +66,7 @@ export interface UpsertDriverInput {
   vehiclePlate: string
   vehicleYear?: number
   bio?: string
-  licenseUrl?: string
-  vehiclePhotos?: string[]
-  papersUrl?: string
+  documents?: { kind: DriverDocumentKind; key: string; order: number }[]
   vehicleDescription?: string
   vehicleCapacity?: string
 }
@@ -233,6 +240,8 @@ export interface JobDetail {
   arrivedAt: string | null
   completedAt: string | null
   confirmedAt: string | null
+  cancelledAt: string | null
+  cancelledByRole: "user" | "driver" | null
   confirmCode?: string | null
   confirmCodeUsedAt: string | null
   autoConfirmAt: string | null

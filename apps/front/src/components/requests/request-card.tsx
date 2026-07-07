@@ -6,9 +6,10 @@ import type { RequestSummary } from "@/lib/types"
 
 export function RequestCard({ req }: { req: RequestSummary }) {
   const openQuotes = req.quotes.filter((q) => q.status === "pending")
+  const pricedQuotes = req.quotes.filter((q) => q.status !== "cancelled" && q.status !== "expired")
   // Cheapest by representative price (priceMax); shown as its own range when present.
-  const cheapest = req.quotes.length > 0
-    ? req.quotes.reduce((a, b) => (a.price <= b.price ? a : b))
+  const cheapest = pricedQuotes.length > 0
+    ? pricedQuotes.reduce((a, b) => (a.price <= b.price ? a : b))
     : null
 
   return (

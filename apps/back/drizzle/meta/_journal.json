@@ -43,6 +43,13 @@
       "when": 1782856248761,
       "tag": "0005_majestic_devos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1783394468486,
+      "tag": "0006_naive_riptide",
+      "breakpoints": true
     }
   ]
 }

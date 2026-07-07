@@ -72,7 +72,9 @@ function RequestDetailPage() {
 
   const acceptedQuote = req.quotes.find((q) => q.status === "accepted")
   const pendingQuotes = req.quotes.filter((q) => q.status === "pending")
-  const rejectedQuotes = req.quotes.filter((q) => q.status === "rejected")
+  const inactiveQuotes = req.quotes.filter((q) =>
+    q.status === "rejected" || q.status === "expired" || q.status === "cancelled"
+  )
   const job = req.job
 
   return (
@@ -249,7 +251,7 @@ function RequestDetailPage() {
                         accepting={acceptMutation.isPending && acceptMutation.variables === q.id}
                       />
                     ))}
-                    {rejectedQuotes.map((q) => (
+                    {inactiveQuotes.map((q) => (
                       <QuoteCard key={q.id} quote={q} />
                     ))}
                   </div>

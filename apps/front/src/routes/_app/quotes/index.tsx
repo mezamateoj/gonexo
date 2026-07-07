@@ -121,7 +121,7 @@ function QuotesPage() {
   }
 
   const active = quotes.filter((q) => q.status === "pending" || q.status === "accepted")
-  const past = quotes.filter((q) => q.status === "rejected" || q.status === "expired")
+  const past = quotes.filter((q) => q.status === "rejected" || q.status === "expired" || q.status === "cancelled")
 
   return (
     <div className="mx-auto max-w-[640px] space-y-6 px-4 py-6">
