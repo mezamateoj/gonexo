@@ -197,4 +197,6 @@ CREATE TABLE `job_report` (
 	CONSTRAINT "job_report_reporter_role_check" CHECK("job_report"."reporter_role" in ('user', 'driver'))
 );
 --> statement-breakpoint
-CREATE INDEX `job_report_jobId_idx` ON `job_report` (`job_id`);
+CREATE INDEX `job_report_jobId_idx` ON `job_report` (`job_id`);--> statement-breakpoint
+PRAGMA defer_foreign_keys=OFF;--> statement-breakpoint
+PRAGMA optimize;
