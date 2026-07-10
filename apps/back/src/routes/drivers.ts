@@ -61,10 +61,14 @@ drivers.post(
       body.vehiclePhotos?.length ||
       body.papersUrl
     );
-    const documentsStatus = hasDocuments ? "submitted" : "pending";
+    // Never downgrade: a plain profile edit must not reset submitted/verified
+    // (verified + non-verified status violates driver_profile_verified_status_check).
+    const currentStatus = existing?.documentsStatus ?? "pending";
+    const documentsStatus =
+      currentStatus === "pending" && hasDocuments ? "submitted" : currentStatus;
     const vehiclePhotosJson = body.vehiclePhotos
       ? JSON.stringify(body.vehiclePhotos)
-      : null;
+      : existing?.vehiclePhotos ?? null;
 
     if (existing) {
       await db.batch([
@@ -80,11 +84,11 @@ drivers.post(
             vehiclePlate,
             vehicleYear: body.vehicleYear ?? null,
             bio: body.bio ?? null,
-            licenseUrl: body.licenseUrl ?? null,
+            licenseUrl: body.licenseUrl ?? existing.licenseUrl,
             vehiclePhotos: vehiclePhotosJson,
-            papersUrl: body.papersUrl ?? null,
-            vehicleDescription: body.vehicleDescription ?? null,
-            vehicleCapacity: body.vehicleCapacity ?? null,
+            papersUrl: body.papersUrl ?? existing.papersUrl,
+            vehicleDescription: body.vehicleDescription ?? existing.vehicleDescription,
+            vehicleCapacity: body.vehicleCapacity ?? existing.vehicleCapacity,
             documentsStatus,
           })
           .where(eq(driverProfile.userId, user.id)),

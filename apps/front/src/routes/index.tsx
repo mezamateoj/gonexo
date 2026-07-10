@@ -80,7 +80,7 @@ function LandingPage() {
       <section className="flex w-full flex-col items-center gap-7 bg-background px-5 py-12 text-center md:flex-row md:gap-14 md:px-14 md:py-[72px] md:text-left">
         {/* Left */}
         <div className="flex w-full flex-col items-center gap-7 md:w-[540px] md:shrink-0 md:items-start">
-          <div className="flex w-fit items-center gap-2 rounded-full px-3 py-1.5" style={{ background: "#0c8c5e14" }}>
+          <div className="flex w-fit items-center gap-2 rounded-full px-3 py-1.5" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
             <div className="size-[7px] rounded-full bg-primary" />
             <span className="text-[12px] font-medium text-primary md:text-[13px]">Marketplace de fletes en Chile</span>
           </div>
@@ -105,7 +105,7 @@ function LandingPage() {
 
           {/* Status strip */}
           <div className="flex items-center justify-center gap-2 md:justify-start md:gap-2.5">
-            <div className="flex items-center gap-1.5 rounded-full px-3 py-[5px]" style={{ background: "#0c8c5e14" }}>
+            <div className="flex items-center gap-1.5 rounded-full px-3 py-[5px]" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
               <div className="size-[6px] rounded-full bg-primary" />
               <span className="text-xs font-medium text-primary">Publicado</span>
             </div>
@@ -129,7 +129,7 @@ function LandingPage() {
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-[0_4px_16px_#0000000f] md:gap-3.5 md:p-5">
               <div className="flex w-full items-center justify-between">
                 <span className="text-[14px] font-semibold text-foreground md:text-[15px]">Mudanza departamento 2D</span>
-                <div className="rounded-full px-[9px] py-[3px]" style={{ background: "#0c8c5e14" }}>
+                <div className="rounded-full px-[9px] py-[3px]" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
                   <span className="text-[11px] font-medium text-primary">Publicado</span>
                 </div>
               </div>
@@ -148,7 +148,7 @@ function LandingPage() {
             {/* Quotes card */}
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-[0_4px_16px_#0000000f] md:p-5">
               <span className="text-[14px] font-semibold text-foreground">3 cotizaciones recibidas</span>
-              <div className="flex items-center justify-between rounded-lg px-3 py-[10px]" style={{ background: "#0c8c5e0d", border: "1px solid #0c8c5e" }}>
+              <div className="flex items-center justify-between rounded-lg px-3 py-[10px]" style={{ background: "color-mix(in srgb, var(--primary) 5%, transparent)", border: "1px solid var(--primary)" }}>
                 <div className="flex items-center gap-3">
                   <div className="flex size-[34px] items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">C</div>
                   <div className="flex flex-col gap-0.5">
@@ -194,7 +194,7 @@ function LandingPage() {
               className="flex items-center gap-[14px] rounded-[12px] border border-border bg-background p-5 md:flex-col md:items-start md:gap-3.5 md:p-6"
             >
               {/* Icon box */}
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] md:size-[42px] md:rounded-[9px]" style={{ background: "#0c8c5e14" }}>
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] md:size-[42px] md:rounded-[9px]" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
                 <Icon className="size-5 text-primary" />
               </div>
               {/* Text */}
@@ -210,25 +210,25 @@ function LandingPage() {
       </section>
 
       {/* Driver Section */}
-      <section id="transportistas" className="flex w-full flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:gap-14 md:px-14 md:py-20" style={{ background: "#0a0b0f" }}>
+      <section id="transportistas" className="flex w-full flex-col gap-8 px-5 py-14 md:flex-row md:items-center md:gap-14 md:px-14 md:py-20" style={{ background: "var(--color-panel)" }}>
         {/* Text content */}
         <div className="flex w-full flex-col gap-6 md:w-[480px] md:shrink-0">
-          <div className="w-fit rounded-full px-3 py-1.5" style={{ background: "#18e2991a" }}>
-            <span className="text-[12px] font-medium md:text-[13px]" style={{ color: "#18e299" }}>Para transportistas</span>
+          <div className="w-fit rounded-full px-3 py-1.5" style={{ background: "color-mix(in srgb, var(--color-panel-accent) 10%, transparent)" }}>
+            <span className="text-[12px] font-medium md:text-[13px]" style={{ color: "var(--color-panel-accent)" }}>Para transportistas</span>
           </div>
-          <h2 className="text-[28px] font-bold leading-[1.15] tracking-[-0.8px] md:w-[460px] md:text-[34px] md:tracking-[-1px]" style={{ color: "#faf8f5" }}>
+          <h2 className="text-[28px] font-bold leading-[1.15] tracking-[-0.8px] md:w-[460px] md:text-[34px] md:tracking-[-1px]" style={{ color: "var(--color-surface)" }}>
             También puedes trabajar como transportista
           </h2>
-          <p className="text-[15px] leading-[1.6] md:w-[440px]" style={{ color: "#969e9b" }}>
+          <p className="text-[15px] leading-[1.6] md:w-[440px]" style={{ color: "var(--color-muted-foreground)" }}>
             Crea tu perfil, agrega tu vehículo y encuentra solicitudes disponibles cerca de ti.
           </p>
           <div className="flex flex-col gap-3">
             {DRIVER_BULLETS.map((bullet) => (
               <div key={bullet} className="flex items-center gap-2.5">
-                <div className="flex size-[22px] shrink-0 items-center justify-center rounded-full" style={{ background: "#18e2991a" }}>
-                  <Check className="size-3" style={{ color: "#18e299" }} />
+                <div className="flex size-[22px] shrink-0 items-center justify-center rounded-full" style={{ background: "color-mix(in srgb, var(--color-panel-accent) 10%, transparent)" }}>
+                  <Check className="size-3" style={{ color: "var(--color-panel-accent)" }} />
                 </div>
-                <span className="text-[15px]" style={{ color: "#d9d7d4" }}>{bullet}</span>
+                <span className="text-[15px]" style={{ color: "var(--color-panel-muted)" }}>{bullet}</span>
               </div>
             ))}
           </div>
@@ -239,19 +239,19 @@ function LandingPage() {
 
         {/* Jobs card */}
         <div className="flex w-full flex-1 items-center justify-center">
-          <div className="w-full overflow-hidden rounded-xl md:w-[520px]" style={{ background: "#121715", border: "1px solid #1e1f21" }}>
-            <div className="flex items-center justify-between px-[18px] py-4" style={{ borderBottom: "1px solid #1e1f21" }}>
-              <span className="text-[14px] font-semibold" style={{ color: "#faf8f5" }}>Solicitudes disponibles</span>
-              <span className="text-[12px]" style={{ color: "#969e9b" }}>12 cerca de ti</span>
+          <div className="w-full overflow-hidden rounded-xl md:w-[520px]" style={{ background: "var(--color-foreground)", border: "1px solid var(--color-panel-line)" }}>
+            <div className="flex items-center justify-between px-[18px] py-4" style={{ borderBottom: "1px solid var(--color-panel-line)" }}>
+              <span className="text-[14px] font-semibold" style={{ color: "var(--color-surface)" }}>Solicitudes disponibles</span>
+              <span className="text-[12px]" style={{ color: "var(--color-muted-foreground)" }}>12 cerca de ti</span>
             </div>
             {DRIVER_JOBS.map(({ route, meta }, i) => (
-              <div key={route} className="flex items-center justify-between px-[18px] py-3.5" style={{ borderBottom: i < DRIVER_JOBS.length - 1 ? "1px solid #1e1f21" : "none" }}>
+              <div key={route} className="flex items-center justify-between px-[18px] py-3.5" style={{ borderBottom: i < DRIVER_JOBS.length - 1 ? "1px solid var(--color-panel-line)" : "none" }}>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[13px] font-medium" style={{ color: "#faf8f5" }}>{route}</span>
-                  <span className="text-[11px]" style={{ color: "#969e9b" }}>{meta}</span>
+                  <span className="text-[13px] font-medium" style={{ color: "var(--color-surface)" }}>{route}</span>
+                  <span className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>{meta}</span>
                 </div>
-                <div className="rounded-[7px] px-3.5 py-1.5" style={{ background: "#18e2991a" }}>
-                  <span className="text-[12px] font-semibold" style={{ color: "#18e299" }}>Cotizar</span>
+                <div className="rounded-[7px] px-3.5 py-1.5" style={{ background: "color-mix(in srgb, var(--color-panel-accent) 10%, transparent)" }}>
+                  <span className="text-[12px] font-semibold" style={{ color: "var(--color-panel-accent)" }}>Cotizar</span>
                 </div>
               </div>
             ))}
@@ -277,7 +277,7 @@ function LandingPage() {
               key={title}
               className="flex items-center gap-4 rounded-[12px] border border-border bg-card p-[18px] md:flex-col md:items-start md:gap-3.5 md:p-7"
             >
-              <div className="flex size-[42px] shrink-0 items-center justify-center rounded-[10px] md:size-[46px]" style={{ background: "#0c8c5e14" }}>
+              <div className="flex size-[42px] shrink-0 items-center justify-center rounded-[10px] md:size-[46px]" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
                 <Icon className="size-5 text-primary md:size-[22px]" />
               </div>
               <div className="flex flex-1 flex-col gap-1 md:flex-none md:gap-2">
@@ -314,14 +314,14 @@ function LandingPage() {
             <div className="flex flex-col gap-2 rounded-[10px] border border-border bg-card p-4">
               <div className="flex w-full items-center justify-between">
                 <span className="text-[13px] font-semibold text-foreground">Mudanza 2D · Providencia → Ñuñoa</span>
-                <div className="rounded-full px-2 py-0.5" style={{ background: "#0c8c5e14" }}>
+                <div className="rounded-full px-2 py-0.5" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
                   <span className="text-[10px] font-medium text-primary">Publicado</span>
                 </div>
               </div>
               <span className="text-[11px] text-muted-foreground">Sáb 28 jun · 10–15 cajas · 3 fotos</span>
             </div>
             <span className="text-[12px] font-semibold text-muted-foreground">Cotizaciones recibidas</span>
-            <div className="flex items-center justify-between rounded-lg px-3.5 py-[10px]" style={{ background: "#0c8c5e0d", border: "1px solid #0c8c5e" }}>
+            <div className="flex items-center justify-between rounded-lg px-3.5 py-[10px]" style={{ background: "color-mix(in srgb, var(--primary) 5%, transparent)", border: "1px solid var(--primary)" }}>
               <span className="text-[13px] font-medium text-foreground">Carlos M. · Furgón</span>
               <span className="text-[14px] font-bold text-primary">$45.000</span>
             </div>
@@ -367,7 +367,7 @@ function LandingPage() {
       {/* FAQ */}
       <section id="faq" className="flex w-full flex-col gap-7 bg-background px-5 py-14 md:items-center md:gap-12 md:px-14 md:py-20">
         <div className="flex flex-col gap-3 md:w-[640px] md:items-center">
-          <div className="w-fit rounded-full px-3 py-[5px]" style={{ background: "#0c8c5e14" }}>
+          <div className="w-fit rounded-full px-3 py-[5px]" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
             <span className="text-[12px] font-medium text-primary md:text-[13px]">Preguntas frecuentes</span>
           </div>
           <h2 className="text-[26px] font-bold leading-tight tracking-[-0.8px] text-foreground md:text-center md:text-[36px] md:tracking-[-1px]">
@@ -390,12 +390,12 @@ function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="flex w-full flex-col items-center gap-6 px-5 py-16 md:gap-7 md:px-14 md:py-[88px]" style={{ background: "#0a0b0f" }}>
+      <section className="flex w-full flex-col items-center gap-6 px-5 py-16 md:gap-7 md:px-14 md:py-[88px]" style={{ background: "var(--color-panel)" }}>
         <div className="flex flex-col items-center gap-3 md:w-[680px] md:gap-4">
-          <h2 className="text-center text-[32px] font-bold leading-[1.1] tracking-[-1px] md:text-[42px] md:tracking-[-1.2px]" style={{ color: "#faf8f5" }}>
+          <h2 className="text-center text-[32px] font-bold leading-[1.1] tracking-[-1px] md:text-[42px] md:tracking-[-1.2px]" style={{ color: "var(--color-surface)" }}>
             ¿Listo para<br className="md:hidden" /> mover algo?
           </h2>
-          <p className="text-center text-[15px] leading-[1.5]" style={{ color: "#969e9b" }}>
+          <p className="text-center text-[15px] leading-[1.5]" style={{ color: "var(--color-muted-foreground)" }}>
             Publica tu solicitud y deja que los transportistas coticen.
           </p>
         </div>
@@ -404,7 +404,7 @@ function LandingPage() {
           <Button asChild className="w-full rounded-[9px] py-[15px] text-[15px] font-semibold md:w-auto md:px-[30px] md:py-[14px]">
             <Link to="/signup">Publicar un flete</Link>
           </Button>
-          <Button asChild variant="outline" className="w-full rounded-[9px] py-[15px] text-[15px] font-semibold md:w-auto md:px-[30px] md:py-[14px]" style={{ borderColor: "#485450", background: "transparent", color: "#faf8f5" }}>
+          <Button asChild variant="outline" className="w-full rounded-[9px] py-[15px] text-[15px] font-semibold md:w-auto md:px-[30px] md:py-[14px]" style={{ borderColor: "var(--color-ink-soft)", background: "transparent", color: "var(--color-surface)" }}>
             <Link to="/signup">Ver oportunidades como transportista</Link>
           </Button>
         </div>

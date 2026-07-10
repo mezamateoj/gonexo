@@ -48,6 +48,20 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+@theme {
+    --color-ink-soft: #485450;
+    --color-ink-muted: #717d79;
+    --color-ink-faint: #b0aba5;
+    --color-surface: #faf8f5;
+    --color-surface-dim: #f0ede9;
+    --color-panel: #0a0b0f;
+    --color-panel-card: #17191e;
+    --color-panel-border: #2a2c32;
+    --color-panel-line: #1e1f21;
+    --color-panel-muted: #d9d7d4;
+    --color-panel-accent: #18e299;
+}
+
 :root {
     /* Gonexo design tokens — Mintlify green brand */
     --background: #FAFAF8;
@@ -124,4 +138,22 @@
   html {
     @apply font-sans;
     }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shake,
+  .animate-ping {
+    animation: none;
+  }
 }

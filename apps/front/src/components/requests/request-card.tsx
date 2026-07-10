@@ -15,7 +15,7 @@ export function RequestCard({ req }: { req: RequestSummary }) {
     <Link
       to="/requests/$id"
       params={{ id: req.id }}
-      className="block rounded-[10px] border border-[#F0F0F0] bg-white p-[18px] shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)] transition-shadow"
+      className="block rounded-[10px] border border-surface-dim bg-white p-[18px] shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_12px_rgba(0,0,0,0.08)] transition-shadow"
     >
       <div className="flex items-center justify-between">
         <span
@@ -26,7 +26,7 @@ export function RequestCard({ req }: { req: RequestSummary }) {
         >
           {requestStatusLabels[req.status]}
         </span>
-        <span className="text-[13px] text-[#AAAAAA]">{formatCompactDateTime(req.scheduledAt)}</span>
+        <span className="text-[13px] text-ink-faint">{formatCompactDateTime(req.scheduledAt)}</span>
       </div>
 
       <div className="mt-[14px] flex flex-col gap-[8px]">
@@ -44,8 +44,8 @@ export function RequestCard({ req }: { req: RequestSummary }) {
         </div>
       </div>
 
-      <div className="mt-[14px] flex items-center justify-between border-t border-[#F5F5F5] pt-[12px]">
-        <div className="flex items-center gap-[6px] text-[#888888]">
+      <div className="mt-[14px] flex items-center justify-between border-t border-muted pt-[12px]">
+        <div className="flex items-center gap-[6px] text-ink-muted">
           <Package className="size-[12px]" />
           <span className="text-[12px]">{volumeLabels[req.volumeCategory]}</span>
         </div>

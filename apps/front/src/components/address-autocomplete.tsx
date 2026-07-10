@@ -83,7 +83,7 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#B0ABA5]" />
+        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-faint" />
         <input
           id={id}
           type="text"
@@ -92,28 +92,28 @@ export function AddressAutocomplete({ value, onChange, placeholder = "Busca una 
           placeholder={placeholder}
           onChange={(e) => handleInput(e.target.value)}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
-          className="h-10 w-full rounded-[8px] border border-[#E9E7E3] bg-white pl-9 pr-9 text-[14px] text-[#121715] placeholder:text-[#B0ABA5] outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
+          className="h-10 w-full rounded-[8px] border border-border bg-white pl-9 pr-9 text-[14px] text-foreground placeholder:text-ink-faint outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
         />
         {loading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-[#B0ABA5]" />
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-ink-faint" />
         )}
       </div>
 
       {open && (
-        <ul className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[10px] border border-[#E9E7E3] bg-white shadow-lg">
-          {suggestions.length === 0 && <li className="px-4 py-3 text-[13px] text-[#969e9b]">{emptyMessage}</li>}
+        <ul className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-[10px] border border-border bg-white shadow-lg">
+          {suggestions.length === 0 && <li className="px-4 py-3 text-[13px] text-muted-foreground">{emptyMessage}</li>}
           {suggestions.map((s) => (
             <li key={s.mapbox_id}>
               <button
                 type="button"
                 onMouseDown={(e) => { e.preventDefault(); handleSelect(s) }}
                 className={cn(
-                  "flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-[#F5F4F0]",
-                  "border-b border-[#F0EEE9] last:border-0"
+                  "flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors hover:bg-muted",
+                  "border-b border-surface-dim last:border-0"
                 )}
               >
-                <span className="text-[13px] font-medium text-[#121715]">{s.name}</span>
-                <span className="text-[12px] text-[#969e9b]">{s.place_formatted}</span>
+                <span className="text-[13px] font-medium text-foreground">{s.name}</span>
+                <span className="text-[12px] text-muted-foreground">{s.place_formatted}</span>
               </button>
             </li>
           ))}

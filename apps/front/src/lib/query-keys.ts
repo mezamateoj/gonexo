@@ -1,11 +1,16 @@
-import type { AvailableQuery } from "./types"
+import type { AvailableQuery, RequestStatus } from "./types"
 
 export const queryKeys = {
+  users: {
+    me: ["users", "me"] as const,
+  },
   drivers: {
     me: ["drivers", "me"] as const,
   },
   requests: {
-    my: ["requests", "my"] as const,
+    // Prefix for invalidating my-requests regardless of the status filter.
+    myAll: ["requests", "my"] as const,
+    my: (status?: RequestStatus) => ["requests", "my", status ?? "all"] as const,
     // Prefix for invalidating every available-feed query regardless of filters.
     availableAll: ["requests", "available"] as const,
     available: (query: AvailableQuery) =>

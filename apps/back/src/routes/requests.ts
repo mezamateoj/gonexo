@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, ne, asc, desc, inArray, exists, count, sql } from "drizzle-orm";
-import { request, requestPhoto, quote, driverProfile } from "../db/schema";
+import { request, requestPhoto, quote, driverProfile, user as userTable } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
@@ -19,6 +19,7 @@ import {
 import { mapboxDirections } from "../lib/directions";
 import { maskAddress } from "../lib/address";
 import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
+import { sendEmail, newQuoteEmail } from "../lib/email";
 
 const requests = new Hono<AppEnv>();
 
@@ -160,12 +161,20 @@ requests.post(
 );
 
 // Must be registered before /:id so "my" is not captured as a param.
+const REQUEST_STATUSES = ["open", "accepted", "in_progress", "completed", "cancelled"] as const;
+const requestStatusSet = new Set<string>(REQUEST_STATUSES);
+
 requests.get("/my", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
+  const status = c.req.query("status");
+  if (status && !requestStatusSet.has(status))
+    throw badRequest("Estado inválido");
 
   const results = await db.query.request.findMany({
-    where: eq(request.userId, user.id),
+    where: status
+      ? and(eq(request.userId, user.id), eq(request.status, status))
+      : eq(request.userId, user.id),
     orderBy: [desc(request.createdAt)],
     with: {
       photos: {
@@ -454,6 +463,26 @@ requests.post(
       priceMin: body.priceMin,
       priceMax: body.priceMax,
     });
+
+    c.executionCtx.waitUntil(
+      (async () => {
+        const owner = await db.query.user.findFirst({
+          where: eq(userTable.id, req.userId),
+          columns: { name: true, email: true },
+        });
+        if (!owner) return;
+        await sendEmail(c.env, owner.email, newQuoteEmail({
+          clientName: owner.name,
+          origin: req.originAddress,
+          dest: req.destAddress,
+          priceMin: body.priceMin,
+          priceMax: body.priceMax,
+          requestId,
+          frontendUrl: c.env.FRONTEND_URL,
+        }));
+      })(),
+    );
+
     return c.json({ id }, 201);
   }
 );

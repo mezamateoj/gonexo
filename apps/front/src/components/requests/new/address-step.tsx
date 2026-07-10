@@ -26,7 +26,7 @@ export function AddressStep({
   return (
     <FieldGroup>
       <Field data-invalid={addressInvalid}>
-        <FieldLabel className="text-[12px] font-medium text-[#485450]">Dirección</FieldLabel>
+        <FieldLabel className="text-[12px] font-medium text-ink-soft">Dirección</FieldLabel>
         <AddressAutocomplete
           value={value}
           onChange={onChange}
@@ -37,13 +37,13 @@ export function AddressStep({
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field>
-          <FieldLabel className="text-[12px] font-medium text-[#485450]">Piso <span className="text-[#B0ABA5]">(opcional)</span></FieldLabel>
+          <FieldLabel className="text-[12px] font-medium text-ink-soft">Piso <span className="text-ink-faint">(opcional)</span></FieldLabel>
           <Input type="number" placeholder="1" value={floor} onChange={(e) => onFloor(e.target.value)} />
         </Field>
         <Field>
-          <FieldLabel className="text-[12px] font-medium text-[#485450]">¿Hay ascensor?</FieldLabel>
-          <div className="flex h-10 items-center justify-between rounded-[8px] border border-[#E9E7E3] bg-white px-3">
-            <span className="text-[14px] text-[#121715]">{elevator ? "Sí" : "No"}</span>
+          <FieldLabel className="text-[12px] font-medium text-ink-soft">¿Hay ascensor?</FieldLabel>
+          <div className="flex h-10 items-center justify-between rounded-[8px] border border-border bg-white px-3">
+            <span className="text-[14px] text-foreground">{elevator ? "Sí" : "No"}</span>
             <Switch checked={elevator} onCheckedChange={onElevator} />
           </div>
         </Field>

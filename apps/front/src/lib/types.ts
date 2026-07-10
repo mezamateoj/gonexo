@@ -14,9 +14,21 @@ export type JobStatus =
   | "completed"
   | "cancelled"
 
+export type JobStatusUpdate =
+  | { status: "on_the_way" | "arrived" }
+  | { status: "completed"; confirmCode: string }
+
 export type VehicleType = "van" | "pickup" | "truck_small" | "truck_large"
 
 export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired"
+
+export interface CurrentUser {
+  id: string
+  name: string
+  email: string
+  image: string | null
+  phone: string | null
+}
 
 export interface DriverProfile {
   id: string
@@ -221,6 +233,9 @@ export interface JobDetail {
   arrivedAt: string | null
   completedAt: string | null
   confirmedAt: string | null
+  confirmCode?: string | null
+  confirmCodeUsedAt: string | null
+  autoConfirmAt: string | null
   createdAt: string
   request: {
     id: string

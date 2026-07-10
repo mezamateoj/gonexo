@@ -81,7 +81,7 @@ function RequestDetailPage() {
       <button
         type="button"
         onClick={() => navigate({ to: "/requests" })}
-        className="mb-5 flex items-center gap-1.5 text-[13px] text-[#969e9b] transition-colors hover:text-[#485450]"
+        className="mb-5 flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-ink-soft"
       >
         <ChevronLeft className="size-4" />
         Mis solicitudes
@@ -90,17 +90,17 @@ function RequestDetailPage() {
       {/* Page header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-[18px] font-bold text-[#121715] md:text-[20px]">
+          <h1 className="text-[18px] font-bold text-foreground md:text-[20px]">
             {volumeLabels[req.volumeCategory]} · {shortAddress(req.originAddress)} → {shortAddress(req.destAddress)}
           </h1>
           <span className={cn(
             "w-fit rounded-full px-3 py-1 text-[11px] font-semibold",
-            requestStatusClasses[req.status] ?? "bg-[#F5F4F0] text-[#969e9b]"
+            requestStatusClasses[req.status] ?? "bg-muted text-muted-foreground"
           )}>
             {requestStatusLabels[req.status] ?? req.status}
           </span>
         </div>
-        <span className="shrink-0 text-[12px] text-[#B0ABA5]">
+        <span className="shrink-0 text-[12px] text-ink-faint">
           {new Date(req.createdAt).toLocaleDateString("es-CL")}
         </span>
       </div>
@@ -110,7 +110,7 @@ function RequestDetailPage() {
         {/* Left: request detail */}
         <div className="flex flex-col gap-4">
           {/* Address + details card */}
-          <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-4 md:p-6">
+          <div className="rounded-[14px] border border-border bg-white p-4 md:p-6">
             {/* Route */}
             <div className="flex flex-col gap-3">
               <div className="flex items-start gap-3">
@@ -118,26 +118,26 @@ function RequestDetailPage() {
                   <MapPin className="size-3.5 text-white" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Origen</p>
-                  <p className="text-[14px] font-medium text-[#121715]">{req.originAddress}</p>
-                  <p className="text-[12px] text-[#969e9b]">{floorLine(req.originFloor, req.originHasElevator)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Origen</p>
+                  <p className="text-[14px] font-medium text-foreground">{req.originAddress}</p>
+                  <p className="text-[12px] text-muted-foreground">{floorLine(req.originFloor, req.originHasElevator)}</p>
                 </div>
               </div>
-              <div className="ml-3 h-5 w-px bg-[#E9E7E3]" />
+              <div className="ml-3 h-5 w-px bg-border" />
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#F5F4F0]">
-                  <MapPin className="size-3.5 text-[#969e9b]" />
+                <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <MapPin className="size-3.5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Destino</p>
-                  <p className="text-[14px] font-medium text-[#121715]">{req.destAddress}</p>
-                  <p className="text-[12px] text-[#969e9b]">{floorLine(req.destFloor, req.destHasElevator)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Destino</p>
+                  <p className="text-[14px] font-medium text-foreground">{req.destAddress}</p>
+                  <p className="text-[12px] text-muted-foreground">{floorLine(req.destFloor, req.destHasElevator)}</p>
                 </div>
               </div>
             </div>
 
             {/* Detail grid */}
-            <div className="mt-5 grid grid-cols-1 gap-4 border-t border-[#F0EEE9] pt-4 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-4 border-t border-surface-dim pt-4 sm:grid-cols-3">
               <DetailRow label="Fecha" value={formatLongDateTime(req.scheduledAt)} />
               <DetailRow label="Volumen" value={volumeLabels[req.volumeCategory]} />
               <DetailRow label="Artículos" value={req.itemDescription} />
@@ -152,7 +152,7 @@ function RequestDetailPage() {
                   </span>
                 )}
                 {req.helpersNeeded > 0 && (
-                  <span className="rounded-full bg-[#F0EEE9] px-2.5 py-1 text-[11px] font-medium text-[#485450]">
+                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">
                     +{req.helpersNeeded} ayudante{req.helpersNeeded > 1 ? "s" : ""}
                   </span>
                 )}
@@ -160,13 +160,13 @@ function RequestDetailPage() {
                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Frágil</span>
                 )}
                 {req.assemblyRequired && (
-                  <span className="rounded-full bg-[#F0EEE9] px-2.5 py-1 text-[11px] font-medium text-[#485450]">Sin armar</span>
+                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">Sin armar</span>
                 )}
                 {req.packingIncluded && (
-                  <span className="rounded-full bg-[#F0EEE9] px-2.5 py-1 text-[11px] font-medium text-[#485450]">Embalaje</span>
+                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">Embalaje</span>
                 )}
                 {req.longCarry && (
-                  <span className="rounded-full bg-[#F0EEE9] px-2.5 py-1 text-[11px] font-medium text-[#485450]">Acarreo largo</span>
+                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">Acarreo largo</span>
                 )}
                 {req.flexibleDate && (
                   <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">Fecha flexible</span>
@@ -175,17 +175,17 @@ function RequestDetailPage() {
             )}
 
             {req.notes && (
-              <div className="mt-4 rounded-[8px] bg-[#F5F4F0] px-3 py-2.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#B0ABA5]">Notas</p>
-                <p className="mt-0.5 text-[13px] text-[#485450]">{req.notes}</p>
+              <div className="mt-4 rounded-[8px] bg-muted px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Notas</p>
+                <p className="mt-0.5 text-[13px] text-ink-soft">{req.notes}</p>
               </div>
             )}
           </div>
 
           {/* Photos */}
           {req.photos.length > 0 && (
-            <div className="rounded-[14px] border border-[#E9E7E3] bg-white p-5">
-              <p className="mb-3 text-[13px] font-semibold text-[#121715]">Fotos</p>
+            <div className="rounded-[14px] border border-border bg-white p-5">
+              <p className="mb-3 text-[13px] font-semibold text-foreground">Fotos</p>
               <div className="flex flex-wrap gap-2">
                 {req.photos.map((p) => (
                   <img key={p.id} src={p.url} alt="" className="h-24 w-24 rounded-[8px] object-cover" />
@@ -199,9 +199,9 @@ function RequestDetailPage() {
         <div className="flex flex-col gap-3">
           {/* Accepted banner */}
           {req.status === "accepted" && acceptedQuote && (
-            <div className="rounded-[14px] border border-primary/20 bg-[#E7F4EE] p-4">
+            <div className="rounded-[14px] border border-primary/20 bg-accent p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Oferta aceptada</p>
-              <p className="mt-1.5 text-[14px] text-[#485450]">
+              <p className="mt-1.5 text-[14px] text-ink-soft">
                 Acordado con <strong>{acceptedQuote.driver.name}</strong> — precio acordado máximo:{" "}
                 <strong className="tabular-nums">{formatCLP(acceptedQuote.price)}</strong>.
               </p>
@@ -220,9 +220,9 @@ function RequestDetailPage() {
 
           {/* Quotes card */}
           {(req.status === "open" || req.status === "accepted") && (
-            <div className="rounded-[14px] border border-[#E9E7E3] bg-white">
-              <div className="flex items-center justify-between border-b border-[#F0EEE9] px-5 py-4">
-                <span className="text-[14px] font-semibold text-[#121715]">Ofertas recibidas</span>
+            <div className="rounded-[14px] border border-border bg-white">
+              <div className="flex items-center justify-between border-b border-surface-dim px-5 py-4">
+                <span className="text-[14px] font-semibold text-foreground">Ofertas recibidas</span>
                 {req.quoteCount > 0 && (
                   <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
                     {req.quoteCount}
@@ -233,8 +233,8 @@ function RequestDetailPage() {
               <div className="p-4">
                 {req.quoteCount === 0 ? (
                   <div className="py-6 text-center">
-                    <p className="text-[14px] font-medium text-[#121715]">Esperando cotizaciones</p>
-                    <p className="mt-1 text-[13px] text-[#969e9b]">Los transportistas verán tu solicitud pronto.</p>
+                    <p className="text-[14px] font-medium text-foreground">Esperando cotizaciones</p>
+                    <p className="mt-1 text-[13px] text-muted-foreground">Los transportistas verán tu solicitud pronto.</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
@@ -265,7 +265,7 @@ function RequestDetailPage() {
                 <button
                   type="button"
                   disabled={cancelMutation.isPending}
-                  className="mt-1 text-center text-[13px] text-[#969e9b] transition-colors hover:text-destructive disabled:opacity-50"
+                  className="mt-1 text-center text-[13px] text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
                 >
                   {cancelMutation.isPending ? "Cancelando…" : "Cancelar solicitud"}
                 </button>

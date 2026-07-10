@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm, useStore } from "@tanstack/react-form"
 import { useState, useRef, useMemo } from "react"
+import { toast } from "sonner"
 import { z } from "zod"
 import {
   Package, Boxes, Truck, Building2,
@@ -147,7 +148,7 @@ function SidebarStep({ n, label, sub, currentStep }: { n: Step; label: string; s
   return (
     <div className={cn(
       "flex items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] transition-colors",
-      isActive && "bg-[#0c8c5e0d]",
+      isActive && "bg-primary/5",
     )}>
       <div className={cn(
         "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold transition-colors",
@@ -175,7 +176,7 @@ function SectionHeader({ step }: { step: Step }) {
   const { title, sub } = SECTION_TITLES[step]
   return (
     <div className="flex items-center gap-[14px]">
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#0c8c5e14]">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/8">
         <Icon className="size-5 text-primary" />
       </div>
       <div className="flex flex-col gap-0.5">
@@ -197,7 +198,7 @@ function VolumeCard({ label, sub, Icon, active, onSelect }: {
       onClick={onSelect}
       className={cn(
         "flex items-center gap-3 rounded-[10px] border px-[18px] py-4 text-left transition-colors",
-        active ? "border-2 border-primary bg-[#0c8c5e0d]" : "border border-border bg-background",
+        active ? "border-2 border-primary bg-primary/5" : "border border-border bg-background",
       )}
     >
       <div className={cn(
@@ -226,7 +227,7 @@ function CharacteristicToggle({ value, onChange, label, sub, Icon }: {
       className={cn(
         "flex w-full items-center gap-[14px] rounded-[10px] px-4 py-[14px] text-left transition-colors",
         value
-          ? "border-2 border-primary bg-[#0c8c5e0d]"
+          ? "border-2 border-primary bg-primary/5"
           : "border border-border bg-background",
       )}
     >
@@ -260,8 +261,16 @@ function NewRequestPage() {
   const mutation = useMutation({
     mutationFn: (draft: Draft) => api.requests.create(toCreateRequestInput(draft)),
     onSuccess: async ({ id }) => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.requests.my })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
+      toast.success("Solicitud publicada", {
+        description: "Los transportistas ya pueden verla y enviarte cotizaciones.",
+      })
       navigate({ to: "/requests/$id", params: { id } })
+    },
+    onError: (error) => {
+      toast.error("No se pudo publicar la solicitud", {
+        description: error instanceof Error ? error.message : "Intenta de nuevo.",
+      })
     },
   })
 
@@ -371,7 +380,7 @@ function NewRequestPage() {
 
         {/* Mobile: step header */}
         <div className="flex items-center gap-3 px-[18px] pb-2 pt-5 md:hidden">
-          <div className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#0c8c5e14]">
+          <div className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-primary/8">
             <StepIcon className="size-[18px] text-primary" />
           </div>
           <div>
@@ -485,7 +494,7 @@ function NewRequestPage() {
                   onClick={() => form.setFieldValue("flexibleDate", !draft.flexibleDate)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-[8px] border px-4 py-3 text-left transition-colors",
-                    draft.flexibleDate ? "border-primary bg-[#0c8c5e0d]" : "border-border bg-card",
+                    draft.flexibleDate ? "border-primary bg-primary/5" : "border-border bg-card",
                   )}
                 >
                   <div className={cn(
@@ -608,7 +617,7 @@ function NewRequestPage() {
                         className={cn(
                           "flex flex-1 flex-col items-center gap-1.5 rounded-[10px] py-[14px] px-3 transition-colors",
                           draft.helpersNeeded === n
-                            ? "border-2 border-primary bg-[#0c8c5e0d]"
+                            ? "border-2 border-primary bg-primary/5"
                             : "border border-border bg-background",
                         )}
                       >
@@ -653,7 +662,7 @@ function NewRequestPage() {
                         className={cn(
                           "flex w-full items-center gap-[14px] rounded-[10px] px-4 py-[14px] text-left transition-colors",
                           active
-                            ? "border-2 border-primary bg-[#0c8c5e0d]"
+                            ? "border-2 border-primary bg-primary/5"
                             : "border border-border bg-background",
                         )}
                       >
@@ -680,7 +689,7 @@ function NewRequestPage() {
             {step === 6 && (
               <div className="flex flex-col gap-4">
                 {/* Banner */}
-                <div className="flex items-center gap-[10px] rounded-[8px] bg-[#0c8c5e0d] px-4 py-3">
+                <div className="flex items-center gap-[10px] rounded-[8px] bg-primary/5 px-4 py-3">
                   <CircleCheck className="size-[18px] shrink-0 text-primary" />
                   <p className="text-[14px] font-medium text-primary">
                     Todo listo. Revisa los detalles y publica tu solicitud.
@@ -766,7 +775,9 @@ function NewRequestPage() {
                 </div>
 
                 {mutationError && (
-                  <p className="text-[13px] text-destructive">{mutationError}</p>
+                  <p className="animate-in fade-in slide-in-from-top-1 rounded-[8px] bg-red-50 px-3 py-2.5 text-[13px] text-red-600">
+                    {mutationError}
+                  </p>
                 )}
               </div>
             )}

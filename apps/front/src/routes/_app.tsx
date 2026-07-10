@@ -41,7 +41,7 @@ function TopBar() {
 
   return (
     <header className={cn(
-      "flex h-[52px] shrink-0 items-center justify-between border-b border-[#EEEEEE] bg-white px-6",
+      "flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-white px-6",
       isWizard && "hidden md:flex",
     )}>
       <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="min-w-0 bg-[#FAFAFA]">
+      <SidebarInset className="min-w-0 bg-background">
         <TopBar />
         <main className="min-w-0 flex-1 overflow-auto">
           <Outlet />

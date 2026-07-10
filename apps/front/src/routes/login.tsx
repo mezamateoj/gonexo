@@ -50,37 +50,37 @@ const STATS = [
 ];
 
 const ACTIVITY = [
-  { initials: "C", name: "Carlos R.", info: "Nueva cotización recibida", when: "Hace 2 min", bg: "#0c8c5e" },
-  { initials: "A", name: "Ana P.", info: "Solicitud confirmada", when: "Hace 5 min", bg: "#717d79" },
-  { initials: "D", name: "Diego M.", info: "Flete en camino", when: "Hace 9 min", bg: "#485450" },
+  { initials: "C", name: "Carlos R.", info: "Nueva cotización recibida", when: "Hace 2 min", bg: "var(--primary)" },
+  { initials: "A", name: "Ana P.", info: "Solicitud confirmada", when: "Hace 5 min", bg: "var(--color-ink-muted)" },
+  { initials: "D", name: "Diego M.", info: "Flete en camino", when: "Hace 9 min", bg: "var(--color-ink-soft)" },
 ];
 
 // Mobile-only dark header replaces the desktop left panel
 function LoginMobileHeader() {
   return (
-    <div className="flex flex-col gap-[14px] bg-[#0a0b0f] px-6 pb-8 pt-10 md:hidden">
+    <div className="flex flex-col gap-[14px] bg-panel px-6 pb-8 pt-10 md:hidden">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
+        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
-      <h2 className="text-[28px] font-bold leading-[1.1] tracking-[-0.8px] text-[#faf8f5]">
+      <h2 className="text-[28px] font-bold leading-[1.1] tracking-[-0.8px] text-surface">
         Bienvenido<br />de vuelta.
       </h2>
-      <p className="text-[14px] leading-[1.5] text-[#717d79]">
+      <p className="text-[14px] leading-[1.5] text-ink-muted">
         Revisa tus solicitudes y cotizaciones pendientes.
       </p>
       {/* Compact activity card */}
-      <div className="overflow-hidden rounded-[10px] border border-[#2a2c32] bg-[#17191e]">
-        <div className="border-b border-[#2a2c32] px-[14px] py-3">
-          <span className="text-[11px] font-semibold tracking-[0.8px] text-[#485450]">ACTIVIDAD RECIENTE</span>
+      <div className="overflow-hidden rounded-[10px] border border-panel-border bg-panel-card">
+        <div className="border-b border-panel-border px-[14px] py-3">
+          <span className="text-[11px] font-semibold tracking-[0.8px] text-ink-soft">ACTIVIDAD RECIENTE</span>
         </div>
         {ACTIVITY_MOBILE.map(({ route, meta }) => (
-          <div key={route} className="flex items-center justify-between border-b border-[#2a2c32] px-[14px] py-3">
+          <div key={route} className="flex items-center justify-between border-b border-panel-border px-[14px] py-3">
             <div className="flex flex-col gap-0.5">
-              <span className="text-[13px] font-medium text-[#faf8f5]">{route}</span>
-              <span className="text-[11px] text-[#485450]">{meta}</span>
+              <span className="text-[13px] font-medium text-surface">{route}</span>
+              <span className="text-[11px] text-ink-soft">{meta}</span>
             </div>
-            <div className="rounded-full px-2.5 py-1" style={{ background: "#18e2991a" }}>
-              <span className="text-[11px] font-medium" style={{ color: "#18e299" }}>Activo</span>
+            <div className="rounded-full px-2.5 py-1" style={{ background: "color-mix(in srgb, var(--color-panel-accent) 10%, transparent)" }}>
+              <span className="text-[11px] font-medium" style={{ color: "var(--color-panel-accent)" }}>Activo</span>
             </div>
           </div>
         ))}
@@ -88,8 +88,8 @@ function LoginMobileHeader() {
         <div className="flex items-center justify-between px-[14px] py-3">
           {STATS.map((s) => (
             <div key={s.label} className="flex flex-col gap-0.5">
-              <span className="text-[15px] font-bold text-[#faf8f5]">{s.value}</span>
-              <span className="text-[11px] text-[#717d79]">{s.label}</span>
+              <span className="text-[15px] font-bold text-surface">{s.value}</span>
+              <span className="text-[11px] text-ink-muted">{s.label}</span>
             </div>
           ))}
         </div>
@@ -101,32 +101,32 @@ function LoginMobileHeader() {
 // Desktop-only left panel
 function LoginLeftPanel() {
   return (
-    <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-[#0a0b0f] px-12 py-10 md:flex">
+    <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-panel px-12 py-10 md:flex">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-[#faf8f5]" />
+        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
 
       <div className="flex flex-col gap-7">
         <div className="flex flex-col gap-7">
-          <h2 className="text-[44px] font-bold leading-[1.1] tracking-[-1.2px] text-[#faf8f5]">
+          <h2 className="text-[44px] font-bold leading-[1.1] tracking-[-1.2px] text-surface">
             Bienvenido<br />de vuelta.
           </h2>
-          <p className="w-[420px] text-[15px] leading-[1.6] text-[#717d79]">
+          <p className="w-[420px] text-[15px] leading-[1.6] text-ink-muted">
             Revisa tus solicitudes activas, cotizaciones pendientes y el estado
             de tus fletes en curso.
           </p>
         </div>
 
-        <div className="w-[464px] overflow-hidden rounded-xl border border-[#2a2c32] bg-[#17191e]">
+        <div className="w-[464px] overflow-hidden rounded-xl border border-panel-border bg-panel-card">
           <div className="px-[18px] py-[14px]">
-            <span className="text-[11px] font-semibold tracking-[0.8px] text-[#485450]">
+            <span className="text-[11px] font-semibold tracking-[0.8px] text-ink-soft">
               ACTIVIDAD RECIENTE
             </span>
           </div>
           {ACTIVITY.map((item) => (
             <div
               key={item.name}
-              className="flex items-center gap-3 border-t border-[#2a2c32] px-[18px] py-3"
+              className="flex items-center gap-3 border-t border-panel-border px-[18px] py-3"
             >
               <div
                 className="flex size-[34px] shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white"
@@ -135,10 +135,10 @@ function LoginLeftPanel() {
                 {item.initials}
               </div>
               <div className="flex flex-1 flex-col gap-0.5">
-                <span className="text-[13px] font-medium text-[#faf8f5]">{item.name}</span>
-                <span className="text-[12px] text-[#485450]">{item.info}</span>
+                <span className="text-[13px] font-medium text-surface">{item.name}</span>
+                <span className="text-[12px] text-ink-soft">{item.info}</span>
               </div>
-              <span className="text-[11px] text-[#485450]">{item.when}</span>
+              <span className="text-[11px] text-ink-soft">{item.when}</span>
             </div>
           ))}
         </div>
@@ -148,10 +148,10 @@ function LoginLeftPanel() {
         {STATS.map((s) => (
           <div
             key={s.label}
-            className="flex flex-1 flex-col gap-1 rounded-[10px] border border-[#2a2c32] bg-[#17191e] px-4 py-[14px]"
+            className="flex flex-1 flex-col gap-1 rounded-[10px] border border-panel-border bg-panel-card px-4 py-[14px]"
           >
-            <span className="text-[20px] font-bold text-[#faf8f5]">{s.value}</span>
-            <span className="text-[12px] text-[#717d79]">{s.label}</span>
+            <span className="text-[20px] font-bold text-surface">{s.value}</span>
+            <span className="text-[12px] text-ink-muted">{s.label}</span>
           </div>
         ))}
       </div>

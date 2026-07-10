@@ -26,7 +26,7 @@ function JobsPage() {
     return (
       <div className="mx-auto max-w-[600px] space-y-3 px-4 py-6">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-[12px] bg-[#F0EDE9]" />
+          <div key={i} className="h-24 animate-pulse rounded-[12px] bg-surface-dim" />
         ))}
       </div>
     )
@@ -40,8 +40,8 @@ function JobsPage() {
     const isDriver = mode === "driver"
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
-        <p className="text-[15px] font-semibold text-[#121715]">Sin trabajos aún</p>
-        <p className="text-[13px] text-[#969e9b]">
+        <p className="text-[15px] font-semibold text-foreground">Sin trabajos aún</p>
+        <p className="text-[13px] text-muted-foreground">
           {isDriver
             ? "Los trabajos aparecen aquí cuando aceptan una cotización tuya."
             : "Los trabajos aparecen aquí cuando aceptas una cotización."}
@@ -63,7 +63,7 @@ function JobsPage() {
     <div className="mx-auto max-w-[600px] space-y-6 px-4 py-6">
       {active.length > 0 && (
         <section>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">En curso</p>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">En curso</p>
           <div className="space-y-3">
             {active.map((job) => {
               const isClient = userId === job.user.id
@@ -74,7 +74,7 @@ function JobsPage() {
                   key={job.id}
                   to="/jobs/$id"
                   params={{ id: job.id }}
-                  className="block rounded-[12px] border border-[#EDEAE6] bg-white p-4 transition-shadow hover:shadow-sm"
+                  className="block rounded-[12px] border border-border bg-white p-4 transition-shadow hover:shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -85,20 +85,20 @@ function JobsPage() {
                         )}>
                           {jobStatusLabels[job.status]}
                         </span>
-                        <span className="text-[11px] text-[#969e9b]">{formatShortDate(job.request.scheduledAt)}</span>
+                        <span className="text-[11px] text-muted-foreground">{formatShortDate(job.request.scheduledAt)}</span>
                       </div>
-                      <p className="mt-2 truncate text-[13px] font-medium text-[#121715]">
+                      <p className="mt-2 truncate text-[13px] font-medium text-foreground">
                         {job.request.originAddress}
                       </p>
-                      <p className="truncate text-[12px] text-[#969e9b]">→ {job.request.destAddress}</p>
+                      <p className="truncate text-[12px] text-muted-foreground">→ {job.request.destAddress}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-3">
                         <span className="text-[13px] font-semibold text-primary">{formatPrice(job.agreedPrice)}</span>
-                        <span className="text-[11px] text-[#969e9b]">{volumeLabels[job.request.volumeCategory]}</span>
+                        <span className="text-[11px] text-muted-foreground">{volumeLabels[job.request.volumeCategory]}</span>
                         {!isClient && (
-                          <span className="rounded-full bg-[#F0EDE9] px-2 py-0.5 text-[10px] font-medium text-[#485450]">Cliente: {otherParty.name}</span>
+                          <span className="rounded-full bg-surface-dim px-2 py-0.5 text-[10px] font-medium text-ink-soft">Cliente: {otherParty.name}</span>
                         )}
                         {isClient && (
-                          <span className="rounded-full bg-[#F0EDE9] px-2 py-0.5 text-[10px] font-medium text-[#485450]">Conductor: {otherParty.name}</span>
+                          <span className="rounded-full bg-surface-dim px-2 py-0.5 text-[10px] font-medium text-ink-soft">Conductor: {otherParty.name}</span>
                         )}
                       </div>
                     </div>
@@ -119,7 +119,7 @@ function JobsPage() {
 
       {past.length > 0 && (
         <section>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">Historial</p>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Historial</p>
           <div className="space-y-3">
             {past.map((job) => {
               const isClient = userId === job.user.id
@@ -131,7 +131,7 @@ function JobsPage() {
                   key={job.id}
                   to="/jobs/$id"
                   params={{ id: job.id }}
-                  className="block rounded-[12px] border border-[#EDEAE6] bg-white p-4 opacity-80 transition-shadow hover:opacity-100 hover:shadow-sm"
+                  className="block rounded-[12px] border border-border bg-white p-4 opacity-80 transition-shadow hover:opacity-100 hover:shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -142,21 +142,21 @@ function JobsPage() {
                         )}>
                           {jobStatusLabels[job.status]}
                         </span>
-                        <span className="text-[11px] text-[#969e9b]">{formatShortDate(job.request.scheduledAt)}</span>
+                        <span className="text-[11px] text-muted-foreground">{formatShortDate(job.request.scheduledAt)}</span>
                         {!hasReviewed && job.status === "completed" && (
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                             Pendiente reseña
                           </span>
                         )}
                       </div>
-                      <p className="mt-2 truncate text-[13px] font-medium text-[#121715]">
+                      <p className="mt-2 truncate text-[13px] font-medium text-foreground">
                         {job.request.originAddress}
                       </p>
-                      <p className="truncate text-[12px] text-[#969e9b]">→ {job.request.destAddress}</p>
+                      <p className="truncate text-[12px] text-muted-foreground">→ {job.request.destAddress}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <span className="text-[13px] font-semibold text-[#485450]">{formatPrice(job.agreedPrice)}</span>
-                        <span className="text-[11px] text-[#969e9b]">{volumeLabels[job.request.volumeCategory]}</span>
-                        <span className="rounded-full bg-[#F0EDE9] px-2 py-0.5 text-[10px] font-medium text-[#485450]">{otherParty.name}</span>
+                        <span className="text-[13px] font-semibold text-ink-soft">{formatPrice(job.agreedPrice)}</span>
+                        <span className="text-[11px] text-muted-foreground">{volumeLabels[job.request.volumeCategory]}</span>
+                        <span className="rounded-full bg-surface-dim px-2 py-0.5 text-[10px] font-medium text-ink-soft">{otherParty.name}</span>
                       </div>
                     </div>
                     {job.request.photos[0] && (

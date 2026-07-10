@@ -3,8 +3,8 @@ import { Link } from "@tanstack/react-router"
 export function EmptyState({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="col-span-full flex flex-col items-center justify-center rounded-[10px] border border-dashed border-[#E9E7E3] bg-white py-12 text-center">
-        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-[#F5F4F0] text-2xl leading-none">
+      <div className="col-span-full flex flex-col items-center justify-center rounded-[10px] border border-dashed border-border bg-white py-12 text-center">
+        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-2xl leading-none">
           📦
         </div>
         <p className="text-[14px] font-medium text-foreground">Sin solicitudes en esta categoría</p>
@@ -16,27 +16,27 @@ export function EmptyState({ filtered }: { filtered: boolean }) {
   return (
     <div className="flex flex-col items-center gap-8 text-center">
       {/* Icon circle — 96×96, fully rounded, #0c8c5e0d fill */}
-      <div className="flex size-24 items-center justify-center rounded-full bg-[#0c8c5e0d] text-[44px] leading-none">
+      <div className="flex size-24 items-center justify-center rounded-full bg-primary/5 text-[44px] leading-none">
         📦
       </div>
 
       {/* Text block — gap 10 */}
       <div className="flex flex-col items-center gap-2.5">
-        <h2 className="text-[22px] font-bold tracking-[-0.5px] text-[#121715] md:text-[28px]">
+        <h2 className="text-[22px] font-bold tracking-[-0.5px] text-foreground md:text-[28px]">
           Aún no tienes envíos
         </h2>
-        <p className="w-full max-w-[400px] px-4 text-[15px] leading-[1.6] text-[#717d79]">
+        <p className="w-full max-w-[400px] px-4 text-[15px] leading-[1.6] text-ink-muted">
           Publica tu primer flete y recibe ofertas de transportistas verificados.
         </p>
       </div>
 
       {/* Steps row */}
       <div className="flex items-center gap-2 text-[13px]">
-        <span className="font-medium text-[#121715]">1. Publica</span>
-        <span className="text-[#717d79]">·</span>
-        <span className="font-medium text-[#121715]">2. Recibe ofertas</span>
-        <span className="text-[#717d79]">·</span>
-        <span className="font-medium text-[#121715]">3. Elige y listo</span>
+        <span className="font-medium text-foreground">1. Publica</span>
+        <span className="text-ink-muted">·</span>
+        <span className="font-medium text-foreground">2. Recibe ofertas</span>
+        <span className="text-ink-muted">·</span>
+        <span className="font-medium text-foreground">3. Elige y listo</span>
       </div>
 
       {/* CTA group — gap 16, vertical, centered */}
@@ -49,7 +49,7 @@ export function EmptyState({ filtered }: { filtered: boolean }) {
         </Link>
         <Link
           to="/driver-onboarding"
-          className="text-[13px] text-[#717d79] transition-colors hover:text-foreground"
+          className="text-[13px] text-ink-muted transition-colors hover:text-foreground"
         >
           ¿Eres transportista? Encuentra solicitudes
         </Link>

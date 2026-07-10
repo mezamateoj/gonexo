@@ -1,4 +1,4 @@
-import type { RequestSummary, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse } from "./types"
+import type { RequestSummary, RequestStatus, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -78,7 +78,8 @@ export async function uploadFile(file: File): Promise<string> {
 
 export const api = {
   requests: {
-    my: () => apiFetch<RequestSummary[]>("/api/requests/my"),
+    my: (status?: RequestStatus) =>
+      apiFetch<RequestSummary[]>(`/api/requests/my${status ? `?status=${status}` : ""}`),
     list: (query: AvailableQuery) => {
       const params = new URLSearchParams({ page: String(query.page), sort: query.sort })
       if (query.volume?.length) params.set("volume", query.volume.join(","))
@@ -108,10 +109,10 @@ export const api = {
   jobs: {
     my: () => apiFetch<JobSummary[]>("/api/jobs/my"),
     get: (id: string) => apiFetch<JobDetail>(`/api/jobs/${id}`),
-    updateStatus: (id: string, status: "on_the_way" | "arrived" | "completed") =>
+    updateStatus: (id: string, body: JobStatusUpdate) =>
       apiFetch<{ status: string }>(`/api/jobs/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       }),
     confirm: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/jobs/${id}/confirm`, { method: "POST" }),
@@ -130,6 +131,14 @@ export const api = {
       apiFetch<{ features: { geometry: { coordinates: [number, number] }; properties: { full_address: string } }[] }>(
         `/api/geo/retrieve?id=${encodeURIComponent(id)}&session=${session}`
       ),
+  },
+  users: {
+    me: () => apiFetch<CurrentUser>("/api/users/me"),
+    updateMe: (body: { name?: string; phone?: string }) =>
+      apiFetch<{ ok: boolean }>("/api/users/me", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
   },
   drivers: {
     me: () => apiFetch<DriverProfile | null>("/api/drivers/me"),

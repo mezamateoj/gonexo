@@ -12,6 +12,11 @@
   "compatibility_date": "2026-06-16",
   "vars": {
     "BETTER_AUTH_URL": "https://gonexo-back.mezamateoj.workers.dev",
+    "FRONTEND_URL": "https://gonexo-front.mezamateoj.workers.dev",
+  },
+  // Hourly sweep: auto-confirm delivered jobs past their 24h window.
+  "triggers": {
+    "crons": ["0 * * * *"],
   },
   "r2_buckets": [
     {

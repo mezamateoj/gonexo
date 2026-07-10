@@ -19,7 +19,7 @@ function QuoteRow({ q }: { q: MyQuote }) {
       to="/available/$id"
       params={{ id: q.request.id }}
       className={cn(
-        "flex items-start gap-4 rounded-[12px] border border-[#EDEAE6] bg-white p-4 transition-shadow hover:shadow-sm",
+        "flex items-start gap-4 rounded-[12px] border border-border bg-white p-4 transition-shadow hover:shadow-sm",
         !isActive && "opacity-70"
       )}
     >
@@ -30,16 +30,16 @@ function QuoteRow({ q }: { q: MyQuote }) {
           className="size-14 shrink-0 rounded-[8px] object-cover"
         />
       ) : (
-        <div className="flex size-14 shrink-0 items-center justify-center rounded-[8px] bg-[#F0EDE9]">
-          <MapPin className="size-5 text-[#C4C0BA]" />
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-[8px] bg-surface-dim">
+          <MapPin className="size-5 text-ink-faint" />
         </div>
       )}
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium text-[#121715]">{q.request.originAddress}</p>
-            <p className="truncate text-[12px] text-[#969e9b]">→ {q.request.destAddress}</p>
+            <p className="truncate text-[13px] font-medium text-foreground">{q.request.originAddress}</p>
+            <p className="truncate text-[12px] text-muted-foreground">→ {q.request.destAddress}</p>
           </div>
           <span className={cn(
             "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
@@ -53,12 +53,12 @@ function QuoteRow({ q }: { q: MyQuote }) {
           <span className="text-[14px] font-bold tabular-nums text-primary">
             {q.priceMin != null && q.priceMax != null ? formatCLPRange(q.priceMin, q.priceMax) : formatCLP(q.price)}
           </span>
-          <span className="text-[11px] text-[#969e9b]">{volumeLabels[q.request.volumeCategory]}</span>
-          <span className="text-[11px] text-[#969e9b]">{formatShortDate(q.request.scheduledAt)}</span>
+          <span className="text-[11px] text-muted-foreground">{volumeLabels[q.request.volumeCategory]}</span>
+          <span className="text-[11px] text-muted-foreground">{formatShortDate(q.request.scheduledAt)}</span>
         </div>
 
         {q.message && (
-          <div className="mt-2 flex items-start gap-1.5 text-[11px] text-[#969e9b]">
+          <div className="mt-2 flex items-start gap-1.5 text-[11px] text-muted-foreground">
             <MessageSquare className="mt-px size-3 shrink-0" />
             <span className="line-clamp-1">{q.message}</span>
           </div>
@@ -78,7 +78,7 @@ function QuotesPage() {
     return (
       <div className="mx-auto max-w-[640px] space-y-3 px-4 py-6">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-[12px] bg-[#F0EDE9]" />
+          <div key={i} className="h-20 animate-pulse rounded-[12px] bg-surface-dim" />
         ))}
       </div>
     )
@@ -88,25 +88,25 @@ function QuotesPage() {
     return (
       <div className="flex min-h-full items-center justify-center">
         <div className="flex flex-col items-center gap-8 text-center">
-          <div className="flex size-24 items-center justify-center rounded-full bg-[#0c8c5e0d] text-[44px] leading-none">
+          <div className="flex size-24 items-center justify-center rounded-full bg-primary/5 text-[44px] leading-none">
             💬
           </div>
 
           <div className="flex flex-col items-center gap-2.5">
-            <h2 className="text-[28px] font-bold tracking-[-0.5px] text-[#121715]">
+            <h2 className="text-[28px] font-bold tracking-[-0.5px] text-foreground">
               Aún no tienes cotizaciones
             </h2>
-            <p className="w-[400px] text-[15px] leading-[1.6] text-[#717d79]">
+            <p className="w-[400px] text-[15px] leading-[1.6] text-ink-muted">
               Explora las solicitudes disponibles y envía tu primera oferta para conseguir fletes.
             </p>
           </div>
 
           <div className="flex items-center gap-2 text-[13px]">
-            <span className="font-medium text-[#121715]">1. Explora</span>
-            <span className="text-[#717d79]">·</span>
-            <span className="font-medium text-[#121715]">2. Cotiza</span>
-            <span className="text-[#717d79]">·</span>
-            <span className="font-medium text-[#121715]">3. Consigue el flete</span>
+            <span className="font-medium text-foreground">1. Explora</span>
+            <span className="text-ink-muted">·</span>
+            <span className="font-medium text-foreground">2. Cotiza</span>
+            <span className="text-ink-muted">·</span>
+            <span className="font-medium text-foreground">3. Consigue el flete</span>
           </div>
 
           <Link
@@ -127,7 +127,7 @@ function QuotesPage() {
     <div className="mx-auto max-w-[640px] space-y-6 px-4 py-6">
       {active.length > 0 && (
         <section>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Activas
           </p>
           <div className="space-y-3">
@@ -138,7 +138,7 @@ function QuotesPage() {
 
       {past.length > 0 && (
         <section>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-[#969e9b]">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Historial
           </p>
           <div className="space-y-3">

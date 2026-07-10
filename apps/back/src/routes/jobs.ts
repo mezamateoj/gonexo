@@ -1,20 +1,15 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, sql, or, desc } from "drizzle-orm";
+import { eq, sql, or, desc } from "drizzle-orm";
 import { job, review, driverProfile } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
+import { sendEmail, confirmReminderEmail } from "../lib/email";
+import { advanceJob, confirmJob } from "../workflows/jobs";
 
 const jobs = new Hono<AppEnv>();
-
-// Valid driver-side status progression
-const STATUS_TRANSITIONS: Record<string, string> = {
-  scheduled: "on_the_way",
-  on_the_way: "arrived",
-  arrived: "completed",
-};
 
 // Must be before /:id.
 jobs.get("/my", requireAuth, async (c) => {
@@ -67,11 +62,17 @@ jobs.get("/:id", requireAuth, async (c) => {
   if (j.userId !== userId && j.driverId !== userId)
     throw forbidden();
 
+  // The handoff code belongs to the client — the driver must get it in person.
+  if (userId !== j.userId) {
+    const { confirmCode: _confirmCode, ...withoutCode } = j;
+    return c.json(withoutCode);
+  }
   return c.json(j);
 });
 
 const updateStatusSchema = z.object({
   status: z.enum(["on_the_way", "arrived", "completed"]),
+  confirmCode: z.string().optional(),
 });
 
 jobs.patch(
@@ -81,37 +82,28 @@ jobs.patch(
   async (c) => {
     const db = c.get("db");
     const driver = c.get("user")!;
-    const { status: nextStatus } = c.req.valid("json");
+    const { status: nextStatus, confirmCode } = c.req.valid("json");
 
-    const j = await db.query.job.findFirst({
-      where: and(eq(job.id, c.req.param("id")), eq(job.driverId, driver.id)),
-    });
-    if (!j) throw notFound("Job not found");
-
-    if (STATUS_TRANSITIONS[j.status] !== nextStatus) {
-      throw conflict(`Cannot transition from '${j.status}' to '${nextStatus}'`);
-    }
-
-    const now = new Date();
-    const timestampUpdates =
-      nextStatus === "on_the_way"
-        ? { onTheWayAt: now }
-        : nextStatus === "arrived"
-          ? { arrivedAt: now }
-          : { completedAt: now };
-
-    const extra =
+    const result = await advanceJob(
+      db,
+      driver.id,
+      c.req.param("id"),
       nextStatus === "completed"
-        ? {
-            // TODO: schedule Upstash QStash job with delay=86400s → POST /api/jobs/:id/confirm
-            autoConfirmAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
-          }
-        : {};
+        ? { status: nextStatus, confirmCode }
+        : { status: nextStatus },
+    );
 
-    await db
-      .update(job)
-      .set({ status: nextStatus, ...timestampUpdates, ...extra })
-      .where(eq(job.id, j.id));
+    if (result.completed) {
+      c.executionCtx.waitUntil(
+        sendEmail(c.env, result.job.user.email, confirmReminderEmail({
+          clientName: result.job.user.name,
+          origin: result.job.request.originAddress,
+          dest: result.job.request.destAddress,
+          jobId: result.job.id,
+          frontendUrl: c.env.FRONTEND_URL,
+        })),
+      );
+    }
 
     return c.json({ status: nextStatus });
   }
@@ -121,25 +113,7 @@ jobs.post("/:id/confirm", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
 
-  const j = await db.query.job.findFirst({
-    where: and(eq(job.id, c.req.param("id")), eq(job.userId, user.id)),
-  });
-  if (!j) throw notFound("Job not found");
-  if (j.status !== "completed")
-    throw conflict("Job not completed yet");
-  if (j.confirmedAt) throw conflict("Already confirmed");
-
-  await db.batch([
-    db
-      .update(job)
-      .set({ confirmedAt: new Date(), paymentStatus: "released" })
-      .where(eq(job.id, j.id)),
-
-    db
-      .update(driverProfile)
-      .set({ totalJobs: sql`${driverProfile.totalJobs} + 1` })
-      .where(eq(driverProfile.userId, j.driverId)),
-  ]);
+  await confirmJob(db, user.id, c.req.param("id"));
 
   return c.json({ ok: true });
 });

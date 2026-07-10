@@ -22,10 +22,10 @@ export function FairPriceBar({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
-        <span className="text-[10px] font-semibold tracking-wide text-[#B0ABA5]">
+        <span className="text-[10px] font-semibold tracking-wide text-ink-faint">
           PRECIO JUSTO SUGERIDO
         </span>
-        <span className="text-[15px] font-bold tabular-nums text-[#121715]">
+        <span className="text-[15px] font-bold tabular-nums text-foreground">
           {formatCLPRange(fair.min, fair.max)}
         </span>
       </div>
@@ -47,7 +47,7 @@ export function FairPriceBar({
         />
       </div>
 
-      <div className="flex items-center justify-between text-[10px] tabular-nums text-[#B0ABA5]">
+      <div className="flex items-center justify-between text-[10px] tabular-nums text-ink-faint">
         <span>{formatCLP(fair.acceptableMin)}</span>
         <span>{formatCLP(fair.acceptableMax)}</span>
       </div>
