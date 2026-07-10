@@ -56,6 +56,7 @@
 - Root dev/deploy shortcuts: `pnpm dev:back`, `pnpm dev:front`, `pnpm deploy:back`, `pnpm deploy:front`.
 - Backend local D1 migration flow: run `pnpm run db:local` in `apps/back` after Drizzle schema or migration changes. It generates SQL and applies it to Wrangler's local D1 store.
 - Worker deploys do not apply D1 migrations. Production D1 migration is separate: run `pnpm run migrate` in `apps/back` with the required `CLOUDFLARE_*` env vars.
+- Production migrations use Drizzle's D1 HTTP driver, which executes each `--> statement-breakpoint` section as a separate request. When a generated table rebuild relies on `PRAGMA defer_foreign_keys`, remove every statement breakpoint so the full migration runs as one D1 batch. Verify it with related parent/child rows, and inspect `__drizzle_migrations` plus `__new_*` tables before retrying any failed migration.
 
 ## Backend: Cloudflare Workers, Hono, D1
 

@@ -1,21 +1,20 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import type { JobStatusUpdate } from "@/lib/types"
 
+// Navigation is intentionally left to the caller so it can show the celebration
+// dialog first and route from its CTA (see requests/$id.tsx).
 export function useAcceptQuote(requestId: string) {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (quoteId: string) => api.quotes.accept(quoteId),
-    onSuccess: ({ jobId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
-      navigate({ to: "/jobs/$id", params: { id: jobId } })
     },
   })
 }

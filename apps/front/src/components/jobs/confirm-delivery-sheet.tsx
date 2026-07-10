@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { Check, CircleAlert, Lock } from "lucide-react"
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { cn } from "@/lib/utils"
+import { fireConfetti, warmConfetti } from "@/lib/celebrate"
 import { useAdvanceJobStatus } from "@/hooks/use-request-mutations"
 
 type Phase = "idle" | "error" | "success"
@@ -29,6 +30,10 @@ export function ConfirmDeliverySheet({ jobId }: { jobId: string }) {
   const [phase, setPhase] = useState<Phase>("idle")
   const [showEscape, setShowEscape] = useState(false)
   const advance = useAdvanceJobStatus(jobId)
+  // Warm the confetti worker on mount so the success burst is hitch-free.
+  useEffect(() => {
+    warmConfetti()
+  }, [])
   const deliveryForm = useForm({
     defaultValues: { confirmCode: "" },
     validators: { onSubmit: deliveryCodeSchema },
@@ -51,6 +56,7 @@ export function ConfirmDeliverySheet({ jobId }: { jobId: string }) {
       {
         onSuccess: () => {
           setPhase("success")
+          fireConfetti()
           setTimeout(() => handleOpenChange(false), 800)
         },
         onError: () => {

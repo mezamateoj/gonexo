@@ -192,6 +192,8 @@ async function releaseCompletedJob(
           jobId: job.id,
           type: sql<string>`'confirmed'`.as("type"),
           actorRole: sql<string>`${actorRole}`.as("actor_role"),
+          meta: sql<string | null>`null`.as("meta"),
+          createdAt: sql<Date>`cast(unixepoch('subsecond') * 1000 as integer)`.as("created_at"),
         })
         .from(job)
         .where(and(eq(job.id, j.id), eq(job.paymentStatus, "held"))),
