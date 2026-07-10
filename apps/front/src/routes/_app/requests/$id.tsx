@@ -14,8 +14,10 @@ import {
   volumeLabels,
 } from "@/lib/display"
 import { useAcceptQuote, useCancelRequest } from "@/hooks/use-request-mutations"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,11 +26,13 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { DetailRow } from "@/components/requests/detail-row"
 import { QuoteCard } from "@/components/requests/quote-card"
+import { RequestCancelledBanner } from "@/components/requests/request-cancelled-banner"
 
 export const Route = createFileRoute("/_app/requests/$id")({
   component: RequestDetailPage,
@@ -80,14 +84,15 @@ function RequestDetailPage() {
   return (
     <div className="p-4 md:p-8">
       {/* Breadcrumb */}
-      <button
+      <Button
         type="button"
+        variant="link"
         onClick={() => navigate({ to: "/requests" })}
-        className="mb-5 flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-ink-soft"
+        className="mb-5 h-auto justify-start p-0 text-[13px] text-muted-foreground"
       >
-        <ChevronLeft className="size-4" />
-        Mis solicitudes
-      </button>
+        <ChevronLeft data-icon="inline-start" />
+        Mis fletes
+      </Button>
 
       {/* Page header */}
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -95,12 +100,9 @@ function RequestDetailPage() {
           <h1 className="text-[18px] font-bold text-foreground md:text-[20px]">
             {volumeLabels[req.volumeCategory]} · {shortAddress(req.originAddress)} → {shortAddress(req.destAddress)}
           </h1>
-          <span className={cn(
-            "w-fit rounded-full px-3 py-1 text-[11px] font-semibold",
-            requestStatusClasses[req.status] ?? "bg-muted text-muted-foreground"
-          )}>
+          <Badge className={cn("w-fit", requestStatusClasses[req.status] ?? "bg-muted text-muted-foreground")}>
             {requestStatusLabels[req.status] ?? req.status}
-          </span>
+          </Badge>
         </div>
         <span className="shrink-0 text-[12px] text-ink-faint">
           {new Date(req.createdAt).toLocaleDateString("es-CL")}
@@ -139,7 +141,8 @@ function RequestDetailPage() {
             </div>
 
             {/* Detail grid */}
-            <div className="mt-5 grid grid-cols-1 gap-4 border-t border-surface-dim pt-4 sm:grid-cols-3">
+            <Separator className="my-4" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <DetailRow label="Fecha" value={formatLongDateTime(req.scheduledAt)} />
               <DetailRow label="Volumen" value={volumeLabels[req.volumeCategory]} />
               <DetailRow label="Artículos" value={req.itemDescription} />
@@ -149,29 +152,29 @@ function RequestDetailPage() {
             {(req.budgetMax || req.helpersNeeded > 0 || req.hasFragileItems || req.assemblyRequired || req.packingIncluded || req.longCarry || req.flexibleDate) && (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {req.budgetMax && (
-                  <span className="rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-medium text-green-700">
+                  <Badge variant="secondary">
                     Presupuesto: {formatCLP(req.budgetMax)}
-                  </span>
+                  </Badge>
                 )}
                 {req.helpersNeeded > 0 && (
-                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">
+                  <Badge variant="secondary">
                     +{req.helpersNeeded} ayudante{req.helpersNeeded > 1 ? "s" : ""}
-                  </span>
+                  </Badge>
                 )}
                 {req.hasFragileItems && (
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Frágil</span>
+                  <Badge variant="outline">Frágil</Badge>
                 )}
                 {req.assemblyRequired && (
-                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">Sin armar</span>
+                  <Badge variant="secondary">Sin armar</Badge>
                 )}
                 {req.packingIncluded && (
-                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">Embalaje</span>
+                  <Badge variant="secondary">Embalaje</Badge>
                 )}
                 {req.longCarry && (
-                  <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">Acarreo largo</span>
+                  <Badge variant="secondary">Acarreo largo</Badge>
                 )}
                 {req.flexibleDate && (
-                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">Fecha flexible</span>
+                  <Badge variant="outline">Fecha flexible</Badge>
                 )}
               </div>
             )}
@@ -214,10 +217,24 @@ function RequestDetailPage() {
                   onClick={() => navigate({ to: "/jobs/$id", params: { id: job.id } })}
                 >
                   Ver trabajo
-                  <ArrowRight className="size-4" />
+                  <ArrowRight data-icon="inline-end" />
                 </Button>
               )}
             </div>
+          )}
+
+          {req.status === "cancelled" && (
+            <>
+              <RequestCancelledBanner requestId={req.id} />
+              {inactiveQuotes.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Historial de ofertas
+                  </p>
+                  {inactiveQuotes.map((q) => <QuoteCard key={q.id} quote={q} />)}
+                </div>
+              )}
+            </>
           )}
 
           {/* Quotes card */}
@@ -226,16 +243,14 @@ function RequestDetailPage() {
               <div className="flex items-center justify-between border-b border-surface-dim px-5 py-4">
                 <span className="text-[14px] font-semibold text-foreground">Ofertas recibidas</span>
                 {req.quoteCount > 0 && (
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
-                    {req.quoteCount}
-                  </span>
+                  <Badge>{req.quoteCount}</Badge>
                 )}
               </div>
 
               <div className="p-4">
                 {req.quoteCount === 0 ? (
                   <div className="py-6 text-center">
-                    <p className="text-[14px] font-medium text-foreground">Esperando cotizaciones</p>
+                    <p className="text-[14px] font-medium text-foreground">Esperando ofertas</p>
                     <p className="mt-1 text-[13px] text-muted-foreground">Los transportistas verán tu solicitud pronto.</p>
                   </div>
                 ) : (
@@ -264,21 +279,20 @@ function RequestDetailPage() {
           {req.status === "open" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   disabled={cancelMutation.isPending}
-                  className="mt-1 text-center text-[13px] text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                  className="mt-1 text-destructive"
                 >
                   {cancelMutation.isPending ? "Cancelando…" : "Cancelar solicitud"}
-                </button>
+                </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
-                <div className="mb-2 flex justify-center">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-red-50">
-                    <TriangleAlert className="size-6 text-destructive" />
-                  </div>
-                </div>
                 <AlertDialogHeader>
+                  <AlertDialogMedia>
+                    <TriangleAlert className="text-destructive" />
+                  </AlertDialogMedia>
                   <AlertDialogTitle>Cancelar esta solicitud</AlertDialogTitle>
                   <AlertDialogDescription>
                     Si cancelas, los transportistas que enviaron oferta serán notificados y las ofertas recibidas se eliminarán. Esta acción no se puede deshacer.
@@ -287,7 +301,7 @@ function RequestDetailPage() {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Mantener solicitud</AlertDialogCancel>
                   <AlertDialogAction
-                    className="bg-destructive text-white hover:bg-destructive/90"
+                    variant="destructive"
                     onClick={() => cancelMutation.mutate()}
                   >
                     Cancelar solicitud

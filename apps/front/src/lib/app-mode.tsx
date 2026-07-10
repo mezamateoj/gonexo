@@ -1,29 +1,74 @@
-import { createContext, useContext, useState, useCallback, useMemo } from "react"
+import { createContext, useCallback, useContext, useMemo, useState } from "react"
 import type { ReactNode } from "react"
+import { useSession } from "@/lib/auth-client"
+import { useDriverProfile } from "@/hooks/use-driver-profile-gate"
 
 export type AppMode = "client" | "driver"
 
-function parseAppMode(value: string | null): AppMode {
-  return value === "driver" ? "driver" : "client"
+type ModeSelection = {
+  userId: string
+  mode: AppMode
 }
 
-const AppModeContext = createContext<{
+type AppModeContextValue = {
   mode: AppMode
-  setMode: (m: AppMode) => void
-}>({ mode: "client", setMode: () => {} })
+  setMode: (mode: AppMode, userId?: string) => void
+  clearMode: (userId?: string) => void
+  hasSelectedMode: boolean
+  hasDriverProfile: boolean
+  isPending: boolean
+}
+
+const AppModeContext = createContext<AppModeContextValue | null>(null)
+
+function modeStorageKey(userId: string) {
+  return `gonexo:mode:${userId}`
+}
+
+export function getStoredAppMode(userId: string): AppMode | null {
+  const value = sessionStorage.getItem(modeStorageKey(userId))
+  return value === "client" || value === "driver" ? value : null
+}
 
 export function AppModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<AppMode>(() => {
-    if (typeof window === "undefined") return "client"
-    return parseAppMode(localStorage.getItem("gonexo:mode"))
-  })
+  const { data: session, isPending: sessionPending } = useSession()
+  const driverProfile = useDriverProfile()
+  const [selection, setSelection] = useState<ModeSelection | null>(null)
+  const userId = session?.user.id
+  const selectedMode = selection && selection.userId === userId ? selection.mode : null
+  const storedMode = userId ? getStoredAppMode(userId) : null
+  const mode = selectedMode ?? storedMode ?? "client"
 
-  const setMode = useCallback((m: AppMode) => {
-    localStorage.setItem("gonexo:mode", m)
-    setModeState(m)
-  }, [])
+  const setMode = useCallback((nextMode: AppMode, accountId = userId) => {
+    if (!accountId) return
+    sessionStorage.setItem(modeStorageKey(accountId), nextMode)
+    setSelection({ userId: accountId, mode: nextMode })
+  }, [userId])
 
-  const contextValue = useMemo(() => ({ mode, setMode }), [mode, setMode])
+  const clearMode = useCallback((accountId = userId) => {
+    if (!accountId) return
+    sessionStorage.removeItem(modeStorageKey(accountId))
+    setSelection((current) => current?.userId === accountId ? null : current)
+  }, [userId])
+
+  const contextValue = useMemo<AppModeContextValue>(() => ({
+    mode,
+    setMode,
+    clearMode,
+    hasSelectedMode: !!(selectedMode ?? storedMode),
+    hasDriverProfile: !!driverProfile.data,
+    isPending: sessionPending || (!!userId && driverProfile.isPending),
+  }), [
+    clearMode,
+    driverProfile.data,
+    driverProfile.isPending,
+    mode,
+    selectedMode,
+    sessionPending,
+    setMode,
+    storedMode,
+    userId,
+  ])
 
   return (
     <AppModeContext.Provider value={contextValue}>
@@ -33,5 +78,7 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAppMode() {
-  return useContext(AppModeContext)
+  const context = useContext(AppModeContext)
+  if (!context) throw new Error("useAppMode must be used within AppModeProvider")
+  return context
 }

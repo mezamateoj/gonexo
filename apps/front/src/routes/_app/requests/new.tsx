@@ -106,7 +106,7 @@ const STEP_META: { n: Step; label: string; sub: string }[] = [
   { n: 2, label: "Destino", sub: "¿Adónde lo llevas?" },
   { n: 3, label: "Cuándo", sub: "Fecha y hora" },
   { n: 4, label: "Qué", sub: "Lo que vas a mover" },
-  { n: 5, label: "Detalles", sub: "Info extra para cotizar" },
+  { n: 5, label: "Detalles", sub: "Info extra para ofertar" },
   { n: 6, label: "Confirmar", sub: "Revisa y publica" },
 ]
 
@@ -119,7 +119,7 @@ const SECTION_TITLES: Record<Step, { title: string; sub: string }> = {
   2: { title: "Destino", sub: "¿Adónde lo llevas?" },
   3: { title: "Cuándo", sub: "Fecha y hora" },
   4: { title: "Qué", sub: "Lo que vas a mover" },
-  5: { title: "Detalles", sub: "Info extra para cotizar" },
+  5: { title: "Detalles", sub: "Info extra para ofertar" },
   6: { title: "Confirmar", sub: "Revisa y publica" },
 }
 
@@ -263,7 +263,7 @@ function NewRequestPage() {
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       toast.success("Solicitud publicada", {
-        description: "Los transportistas ya pueden verla y enviarte cotizaciones.",
+        description: "Los transportistas ya pueden verla y enviarte ofertas.",
       })
       navigate({ to: "/requests/$id", params: { id } })
     },
@@ -374,7 +374,7 @@ function NewRequestPage() {
         <div className="hidden border-b border-border bg-background px-8 py-[22px] md:block">
           <h1 className="text-[26px] font-bold tracking-[-0.5px] text-foreground">Nueva solicitud</h1>
           <p className="mt-1 text-[14px] text-muted-foreground">
-            Completa los pasos y recibe cotizaciones de transportistas.
+            Completa los pasos y recibe ofertas de transportistas.
           </p>
         </div>
 
@@ -561,7 +561,7 @@ function NewRequestPage() {
                 <div className="rounded-[10px] border border-primary/20 bg-primary/5 p-3">
                   <p className="text-[13px] font-medium text-foreground">Las fotos son opcionales, pero ayudan bastante.</p>
                   <p className="mt-1 text-[12px] text-muted-foreground">
-                    Con fotos, los transportistas suelen cotizar con menos preguntas y con precios más ajustados.
+                    Con fotos, los transportistas suelen ofertar con menos preguntas y con precios más ajustados.
                   </p>
                 </div>
 
@@ -573,7 +573,7 @@ function NewRequestPage() {
               <div className="flex flex-col gap-5">
                 <div className="flex items-center justify-between gap-3 rounded-[8px] bg-secondary px-[14px] py-3">
                   <p className="text-[13px] text-muted-foreground">
-                    Estos datos ayudan a los transportistas a cotizar con más precisión. Todos son opcionales.
+                    Estos datos ayudan a los transportistas a ofertar con más precisión. Todos son opcionales.
                   </p>
                   <button
                     type="button"

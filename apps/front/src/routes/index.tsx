@@ -18,14 +18,14 @@ const NAV_LINKS = [
 
 const STEPS = [
   { icon: FilePlus2, num: "01", title: "Publica tu solicitud", desc: "Origen, destino, fecha, fotos y detalles de lo que necesitas mover." },
-  { icon: Inbox, num: "02", title: "Recibe cotizaciones", desc: "Transportistas disponibles te envían sus ofertas." },
+  { icon: Inbox, num: "02", title: "Recibe ofertas", desc: "Transportistas disponibles te envían sus ofertas." },
   { icon: CircleCheck, num: "03", title: "Compara y acepta", desc: "Revisa precio, vehículo, perfil y mensaje antes de elegir." },
   { icon: Truck, num: "04", title: "Coordina el trabajo", desc: "Sigue el estado del flete hasta la entrega final." },
 ]
 
 const TRUST_CARDS = [
-  { icon: Lock, title: "Contacto protegido hasta que hay match", desc: "No se muestran teléfonos antes de aceptar una cotización." },
-  { icon: Image, title: "Fotos y detalles antes de cotizar", desc: "Menos sorpresas para el conductor y precios más certeros." },
+  { icon: Lock, title: "Contacto protegido hasta que hay match", desc: "No se muestran teléfonos antes de aceptar una oferta." },
+  { icon: Image, title: "Fotos y detalles antes de ofertar", desc: "Menos sorpresas para el conductor y precios más certeros." },
   { icon: ListChecks, title: "Estados claros del trabajo", desc: "Agendado, en camino, llegó y entregado, siempre visible." },
 ]
 
@@ -42,11 +42,11 @@ const DRIVER_JOBS = [
 ]
 
 const FAQ_ITEMS = [
-  { q: "¿Cuánto cuesta publicar un flete?", a: "Publicar una solicitud es completamente gratis. Gonexo no cobra comisiones a clientes por recibir cotizaciones." },
-  { q: "¿Cómo elijo al transportista?", a: "Revisa el precio, vehículo, perfil y mensaje de cada cotización. Solo tú decides quién hace el trabajo." },
-  { q: "¿Puedo ser cliente y transportista con la misma cuenta?", a: "Sí, puedes publicar solicitudes y también cotizar trabajos con la misma cuenta." },
-  { q: "¿Qué necesito para cotizar como transportista?", a: "Necesitas crear un perfil con los datos de tu vehículo (tipo, patente, fotos) y tu información de contacto." },
-  { q: "¿Cuándo veo el teléfono de la otra persona?", a: "Solo después de aceptar una cotización. El contacto queda protegido hasta que hay un match." },
+  { q: "¿Cuánto cuesta publicar un flete?", a: "Publicar una solicitud es completamente gratis. Gonexo no cobra comisiones a clientes por recibir ofertas." },
+  { q: "¿Cómo elijo al transportista?", a: "Revisa el precio, vehículo, perfil y mensaje de cada oferta. Solo tú decides quién hace el trabajo." },
+  { q: "¿Puedo ser cliente y transportista con la misma cuenta?", a: "Sí, puedes publicar solicitudes y también ofertar por fletes con la misma cuenta." },
+  { q: "¿Qué necesito para ofertar como transportista?", a: "Necesitas crear un perfil con los datos de tu vehículo (tipo, patente, fotos) y tu información de contacto." },
+  { q: "¿Cuándo veo el teléfono de la otra persona?", a: "Solo después de aceptar una oferta. El contacto queda protegido hasta que hay un match." },
   { q: "¿Qué pasa si el transportista no aparece?", a: "Puedes contactarnos para resolver el problema. Estamos trabajando en un sistema de garantías para estos casos." },
 ]
 
@@ -90,7 +90,7 @@ function LandingPage() {
           </h1>
 
           <p className="text-[15px] leading-[1.6] text-muted-foreground md:w-[480px] md:text-[17px]">
-            Describe qué necesitas mover, agrega origen y destino, y recibe cotizaciones de transportistas disponibles. Tú comparas y eliges.
+            Describe qué necesitas mover, agrega origen y destino, y recibe ofertas de transportistas disponibles. Tú comparas y eliges.
           </p>
 
           {/* CTAs — stacked on mobile, row on desktop */}
@@ -147,7 +147,7 @@ function LandingPage() {
 
             {/* Quotes card */}
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-[0_4px_16px_#0000000f] md:p-5">
-              <span className="text-[14px] font-semibold text-foreground">3 cotizaciones recibidas</span>
+              <span className="text-[14px] font-semibold text-foreground">3 ofertas recibidas</span>
               <div className="flex items-center justify-between rounded-lg px-3 py-[10px]" style={{ background: "color-mix(in srgb, var(--primary) 5%, transparent)", border: "1px solid var(--primary)" }}>
                 <div className="flex items-center gap-3">
                   <div className="flex size-[34px] items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">C</div>
@@ -220,7 +220,7 @@ function LandingPage() {
             También puedes trabajar como transportista
           </h2>
           <p className="text-[15px] leading-[1.6] md:w-[440px]" style={{ color: "var(--color-muted-foreground)" }}>
-            Crea tu perfil, agrega tu vehículo y encuentra solicitudes disponibles cerca de ti.
+            Crea tu perfil, agrega tu vehículo y encuentra fletes disponibles cerca de ti.
           </p>
           <div className="flex flex-col gap-3">
             {DRIVER_BULLETS.map((bullet) => (
@@ -241,7 +241,7 @@ function LandingPage() {
         <div className="flex w-full flex-1 items-center justify-center">
           <div className="w-full overflow-hidden rounded-xl md:w-[520px]" style={{ background: "var(--color-foreground)", border: "1px solid var(--color-panel-line)" }}>
             <div className="flex items-center justify-between px-[18px] py-4" style={{ borderBottom: "1px solid var(--color-panel-line)" }}>
-              <span className="text-[14px] font-semibold" style={{ color: "var(--color-surface)" }}>Solicitudes disponibles</span>
+              <span className="text-[14px] font-semibold" style={{ color: "var(--color-surface)" }}>Fletes disponibles</span>
               <span className="text-[12px]" style={{ color: "var(--color-muted-foreground)" }}>12 cerca de ti</span>
             </div>
             {DRIVER_JOBS.map(({ route, meta }, i) => (
@@ -251,7 +251,7 @@ function LandingPage() {
                   <span className="text-[11px]" style={{ color: "var(--color-muted-foreground)" }}>{meta}</span>
                 </div>
                 <div className="rounded-[7px] px-3.5 py-1.5" style={{ background: "color-mix(in srgb, var(--color-panel-accent) 10%, transparent)" }}>
-                  <span className="text-[12px] font-semibold" style={{ color: "var(--color-panel-accent)" }}>Cotizar</span>
+                  <span className="text-[12px] font-semibold" style={{ color: "var(--color-panel-accent)" }}>Ofertar</span>
                 </div>
               </div>
             ))}
@@ -320,7 +320,7 @@ function LandingPage() {
               </div>
               <span className="text-[11px] text-muted-foreground">Sáb 28 jun · 10–15 cajas · 3 fotos</span>
             </div>
-            <span className="text-[12px] font-semibold text-muted-foreground">Cotizaciones recibidas</span>
+            <span className="text-[12px] font-semibold text-muted-foreground">Ofertas recibidas</span>
             <div className="flex items-center justify-between rounded-lg px-3.5 py-[10px]" style={{ background: "color-mix(in srgb, var(--primary) 5%, transparent)", border: "1px solid var(--primary)" }}>
               <span className="text-[13px] font-medium text-foreground">Carlos M. · Furgón</span>
               <span className="text-[14px] font-bold text-primary">$45.000</span>
@@ -330,7 +330,7 @@ function LandingPage() {
               <span className="text-[14px] font-bold text-foreground">$52.000</span>
             </div>
             <button className="w-full rounded-lg bg-primary py-[11px] text-[13px] font-semibold text-white">
-              Aceptar cotización
+              Aceptar oferta
             </button>
           </div>
 
@@ -351,13 +351,13 @@ function LandingPage() {
               </div>
             ))}
             <div className="flex flex-col gap-2 rounded-[10px] border border-border bg-card p-3.5">
-              <span className="text-[12px] font-semibold text-foreground">Tu cotización</span>
+              <span className="text-[12px] font-semibold text-foreground">Tu oferta</span>
               <div className="flex items-center justify-between rounded-[7px] border border-input bg-background px-3 py-[9px]">
                 <span className="text-[14px] font-semibold text-foreground">$48.000</span>
                 <span className="text-[12px] text-muted-foreground">CLP</span>
               </div>
               <button className="w-full rounded-lg bg-primary py-[10px] text-[13px] font-semibold text-white">
-                Enviar cotización
+                Enviar oferta
               </button>
             </div>
           </div>

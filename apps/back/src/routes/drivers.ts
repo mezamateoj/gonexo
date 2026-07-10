@@ -13,19 +13,25 @@ import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
 
 const drivers = new Hono<AppEnv>();
 
+const driverDocumentSchema = z.object({
+  kind: z.enum(["license", "papers", "vehicle_photo"]),
+  key: z.string().min(1),
+  order: z.number().int().min(0).default(0),
+});
+
 const upsertDriverSchema = z.object({
   phone: z.string().min(8),
   vehicleType: z.enum(["van", "pickup", "truck_small", "truck_large"]),
   vehiclePlate: z.string().min(4).max(10).toUpperCase(),
   vehicleYear: z.number().int().min(1990).max(2030).optional(),
   bio: z.string().max(500).optional(),
-  documents: z.array(z.object({
-    kind: z.enum(["license", "papers", "vehicle_photo"]),
-    key: z.string().min(1),
-    order: z.number().int().min(0).default(0),
-  })).optional(),
+  documents: z.array(driverDocumentSchema).optional(),
   vehicleDescription: z.string().max(500).optional(),
   vehicleCapacity: z.string().max(200).optional(),
+});
+
+const replaceDocumentsSchema = z.object({
+  documents: z.array(driverDocumentSchema).max(12),
 });
 
 const enrichSchema = z.object({
@@ -59,12 +65,13 @@ drivers.post(
       where: eq(driverProfile.userId, user.id),
     });
 
+    const documentsChanged = body.documents !== undefined;
     const hasDocuments = !!body.documents?.length;
-    // Never downgrade: a plain profile edit must not reset submitted/verified
-    // (verified + non-verified status violates driver_profile_verified_status_check).
+    // Plain profile edits preserve verification; document changes require re-review.
     const currentStatus = existing?.documentsStatus ?? "pending";
-    const documentsStatus =
-      currentStatus === "pending" && hasDocuments ? "submitted" : currentStatus;
+    const documentsStatus = documentsChanged
+      ? hasDocuments ? "submitted" : "pending"
+      : currentStatus;
     if (existing) {
       const updateUser = db
         .update(userTable)
@@ -81,6 +88,7 @@ drivers.post(
           vehicleDescription: body.vehicleDescription ?? existing.vehicleDescription,
           vehicleCapacity: body.vehicleCapacity ?? existing.vehicleCapacity,
           documentsStatus,
+          isVerified: documentsChanged ? false : existing.isVerified,
         })
         .where(eq(driverProfile.userId, user.id));
 
@@ -158,6 +166,69 @@ drivers.post(
       documentsStatus,
     });
     return c.json({ id }, 201);
+  },
+);
+
+drivers.get("/me/documents", requireAuth, async (c) => {
+  const db = c.get("db");
+  const user = c.get("user")!;
+  const profile = await db.query.driverProfile.findFirst({
+    where: eq(driverProfile.userId, user.id),
+    columns: { id: true },
+  });
+  if (!profile) throw notFound("Driver profile not found");
+
+  const documents = await db.query.driverDocument.findMany({
+    where: eq(driverDocument.driverProfileId, profile.id),
+    orderBy: [asc(driverDocument.order)],
+  });
+  return c.json(documents);
+});
+
+drivers.put(
+  "/me/documents",
+  requireAuth,
+  zValidator("json", replaceDocumentsSchema),
+  async (c) => {
+    const db = c.get("db");
+    const user = c.get("user")!;
+    const { documents } = c.req.valid("json");
+    const profile = await db.query.driverProfile.findFirst({
+      where: eq(driverProfile.userId, user.id),
+      columns: { id: true },
+    });
+    if (!profile) throw notFound("Driver profile not found");
+
+    const replaceDocuments = db
+      .delete(driverDocument)
+      .where(eq(driverDocument.driverProfileId, profile.id));
+    const updateProfile = db
+      .update(driverProfile)
+      .set({
+        documentsStatus: documents.length > 0 ? "submitted" : "pending",
+        isVerified: false,
+      })
+      .where(eq(driverProfile.id, profile.id));
+
+    if (documents.length > 0) {
+      await db.batch([
+        replaceDocuments,
+        db.insert(driverDocument).values(
+          documents.map((document) => ({
+            id: crypto.randomUUID(),
+            driverProfileId: profile.id,
+            kind: document.kind,
+            key: document.key,
+            order: document.order,
+          })),
+        ),
+        updateProfile,
+      ]);
+    } else {
+      await db.batch([replaceDocuments, updateProfile]);
+    }
+
+    return c.json({ ok: true });
   },
 );
 

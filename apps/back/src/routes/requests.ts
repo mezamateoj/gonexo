@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, ne, asc, desc, inArray, exists, count, sql } from "drizzle-orm";
+import { eq, and, ne, or, asc, desc, like, inArray, exists, count, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
 import { request, requestPhoto, quote, driverProfile, user as userTable, job } from "../db/schema";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
@@ -161,40 +161,96 @@ requests.post(
 );
 
 // Must be registered before /:id so "my" is not captured as a param.
-const REQUEST_STATUSES = ["open", "accepted", "in_progress", "completed", "cancelled"] as const;
-const requestStatusSet = new Set<string>(REQUEST_STATUSES);
+const MY_REQUEST_BUCKETS = ["offers", "active", "history"] as const;
+const myRequestBucketSet = new Set<string>(MY_REQUEST_BUCKETS);
 
+// Sortable via table headers: scheduled date asc/desc; default is newest first.
+const MY_REQUEST_SORTS = {
+  recent: [desc(request.createdAt)],
+  sched_asc: [asc(request.scheduledAt)],
+  sched_desc: [desc(request.scheduledAt)],
+} as const;
+type MyRequestSort = keyof typeof MY_REQUEST_SORTS;
+
+// Client "Mis fletes" list. Paginated per lifecycle bucket so it scales to
+// hundreds of rows (never fetch the whole set to render one tab). Omitting
+// `bucket` returns every request the caller owns.
 requests.get("/my", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
-  const status = c.req.query("status");
-  if (status && !requestStatusSet.has(status))
-    throw badRequest("Estado inválido");
 
-  const results = await db.query.request.findMany({
-    where: status
-      ? and(eq(request.userId, user.id), eq(request.status, status))
-      : eq(request.userId, user.id),
-    orderBy: [desc(request.createdAt)],
-    with: {
-      photos: {
-        limit: 1,
-        orderBy: [asc(requestPhoto.order)],
-        columns: { url: true },
-      },
-      quotes: { columns: { id: true, status: true, price: true, priceMin: true, priceMax: true } },
-      jobs: {
-        where: ne(job.status, "cancelled"),
-        limit: 1,
-        columns: { id: true, status: true },
-      },
-    },
-  });
+  const bucket = c.req.query("bucket");
+  if (bucket && !myRequestBucketSet.has(bucket)) throw badRequest("Filtro inválido");
 
-  return c.json(results.map(({ jobs, ...req }) => ({
-    ...req,
-    job: jobs[0] ?? null,
-  })));
+  const page = Math.max(1, parseInt(c.req.query("page") ?? "1"));
+  const limit = Math.min(50, Math.max(1, parseInt(c.req.query("limit") ?? "20")));
+  const offset = (page - 1) * limit;
+
+  const q = c.req.query("q")?.trim();
+  const volumeParam = c.req.query("volume");
+  const orderBy = MY_REQUEST_SORTS[(c.req.query("sort") ?? "recent") as MyRequestSort] ?? MY_REQUEST_SORTS.recent;
+
+  // active/history depend on the request's live (non-cancelled) job:
+  // active = still running (no confirmedAt), history = confirmed delivery.
+  const hasJob = (...extra: SQL[]) =>
+    exists(
+      db
+        .select({ x: sql`1` })
+        .from(job)
+        .where(and(eq(job.requestId, request.id), ...extra)),
+    );
+
+  const conditions = [eq(request.userId, user.id)];
+  if (bucket === "offers") {
+    conditions.push(eq(request.status, "open"));
+  } else if (bucket === "active") {
+    conditions.push(
+      ne(request.status, "cancelled"),
+      hasJob(ne(job.status, "cancelled"), isNull(job.confirmedAt)),
+    );
+  } else if (bucket === "history") {
+    const cond = or(eq(request.status, "cancelled"), hasJob(isNotNull(job.confirmedAt)));
+    if (cond) conditions.push(cond);
+  }
+
+  if (q) {
+    const search = or(like(request.originAddress, `%${q}%`), like(request.destAddress, `%${q}%`));
+    if (search) conditions.push(search);
+  }
+  if (volumeParam) {
+    const volumes = volumeParam
+      .split(",")
+      .filter((v): v is VolumeCategory => VOLUME_CATEGORIES.includes(v as VolumeCategory));
+    if (volumes.length > 0) conditions.push(inArray(request.volumeCategory, volumes));
+  }
+
+  const where = and(...conditions);
+
+  const [rows, countRows] = await Promise.all([
+    db.query.request.findMany({
+      where,
+      orderBy: [...orderBy],
+      limit,
+      offset,
+      with: {
+        photos: {
+          limit: 1,
+          orderBy: [asc(requestPhoto.order)],
+          columns: { url: true },
+        },
+        quotes: { columns: { id: true, status: true, price: true, priceMin: true, priceMax: true } },
+        jobs: {
+          where: ne(job.status, "cancelled"),
+          limit: 1,
+          columns: { id: true, status: true, confirmedAt: true },
+        },
+      },
+    }),
+    db.select({ n: count() }).from(request).where(where),
+  ]);
+
+  const data = rows.map(({ jobs, ...req }) => ({ ...req, job: jobs[0] ?? null }));
+  return c.json({ data, page, limit, total: countRows[0]?.n ?? 0 });
 });
 
 // Available-feed sort options. Only real columns are sortable so paging stays
@@ -253,7 +309,9 @@ requests.get("/", requireAuth, async (c) => {
       with: {
         photos: { orderBy: [asc(requestPhoto.order)], columns: { url: true } },
         user: { columns: { name: true, image: true } },
-        quotes: { columns: { id: true } },
+        quotes: {
+          columns: { id: true, driverId: true, status: true },
+        },
       },
     }),
     db.select({ n: count() }).from(request).where(where),
@@ -261,8 +319,12 @@ requests.get("/", requireAuth, async (c) => {
 
   // Browsing drivers see only the zone + a distance, never the exact address or
   // coordinates. Fair price is included so they can gauge earnings from the feed.
-  const data = rows.map((r) => ({
+  const data = rows.map(({ quotes, ...r }) => ({
     ...r,
+    quotes: quotes.map(({ id }) => ({ id })),
+    quoteCount: quotes.length,
+    myQuoteStatus:
+      quotes.find((item) => item.driverId === user.id)?.status ?? null,
     originAddress: maskAddress(r.originAddress),
     destAddress: maskAddress(r.destAddress),
     originLat: null,
@@ -287,7 +349,7 @@ requests.get("/:id", requireAuth, async (c) => {
       jobs: {
         where: ne(job.status, "cancelled"),
         limit: 1,
-        columns: { id: true, status: true, driverId: true },
+          columns: { id: true, status: true, driverId: true, confirmedAt: true },
       },
       quotes: {
         with: {
@@ -355,7 +417,9 @@ requests.get("/:id", requireAuth, async (c) => {
     quoteCount,
     // driverId used only for the reveal check above — not exposed.
     jobs: undefined,
-    job: activeJob ? { id: activeJob.id, status: activeJob.status } : null,
+    job: activeJob
+      ? { id: activeJob.id, status: activeJob.status, confirmedAt: activeJob.confirmedAt }
+      : null,
   });
 });
 
@@ -436,7 +500,7 @@ requests.post(
     const { min: floor, max: ceiling } = quoteAcceptableWindow(fair);
     if (body.priceMin < floor || body.priceMax > ceiling) {
       throw badRequest(
-        `Tu cotización está fuera del rango permitido (${floor.toLocaleString("es-CL")}–${ceiling.toLocaleString("es-CL")} CLP para esta solicitud).`,
+        `Tu oferta está fuera del rango permitido (${floor.toLocaleString("es-CL")}–${ceiling.toLocaleString("es-CL")} CLP para esta solicitud).`,
       );
     }
 
@@ -511,12 +575,63 @@ requests.patch("/:id/cancel", requireAuth, async (c) => {
   if (req.status !== "open")
     throw conflict("Only open requests can be cancelled");
 
-  await db
-    .update(request)
-    .set({ status: "cancelled" })
-    .where(eq(request.id, req.id));
+  await db.batch([
+    db
+      .update(request)
+      .set({ status: "cancelled" })
+      .where(eq(request.id, req.id)),
+    db
+      .update(quote)
+      .set({ status: "cancelled" })
+      .where(and(eq(quote.requestId, req.id), eq(quote.status, "pending"))),
+  ]);
 
   logger.info("Request cancelled: {requestId} by user {userId}", {
+    requestId: req.id,
+    userId: user.id,
+  });
+  return c.json({ ok: true });
+});
+
+requests.patch("/:id/reopen", requireAuth, async (c) => {
+  const db = c.get("db");
+  const user = c.get("user")!;
+  const requestId = c.req.param("id");
+
+  const req = await db.query.request.findFirst({
+    where: and(eq(request.id, requestId), eq(request.userId, user.id)),
+    columns: { id: true, status: true },
+  });
+  if (!req) throw notFound();
+  if (req.status !== "cancelled") throw conflict("Only cancelled requests can be reopened");
+
+  const activeJob = await db.query.job.findFirst({
+    where: and(eq(job.requestId, requestId), ne(job.status, "cancelled")),
+    columns: { id: true },
+  });
+  if (activeJob) throw conflict("Request has an active job");
+
+  const now = new Date();
+  await db.batch([
+    db
+      .update(request)
+      .set({ status: "open" })
+      .where(eq(request.id, req.id)),
+    db
+      .update(quote)
+      .set({ status: "pending" })
+      .where(and(
+        eq(quote.requestId, req.id),
+        inArray(quote.status, ["cancelled", "rejected"]),
+        sql`${quote.expiresAt} > ${now}`,
+        sql`not exists (
+          select 1 from ${job}
+          where ${job.quoteId} = ${quote.id}
+        )`,
+      )),
+  ]);
+
+  logger.info("Request reopened: {requestId} by user {userId}", {
     requestId: req.id,
     userId: user.id,
   });

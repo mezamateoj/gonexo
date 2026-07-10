@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { ArrowRight, Calendar, MapPin, Package } from "lucide-react"
 import { formatCLP, formatCompactDateTime, initials, volumeLabels } from "@/lib/display"
 import type { OpenRequest } from "@/lib/types"
+import { Badge } from "@/components/ui/badge"
 
 export function AvailableRequestCard({ req }: { req: OpenRequest }) {
   const distance = `${req.distanceKm} km`
@@ -12,6 +13,11 @@ export function AvailableRequestCard({ req }: { req: OpenRequest }) {
       params={{ id: req.id }}
       className="group flex flex-col rounded-[12px] border border-border bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_3px_12px_rgba(0,0,0,0.08)]"
     >
+      {req.myQuoteStatus && (
+        <Badge variant="secondary" className="mb-3 w-fit">
+          Oferta enviada
+        </Badge>
+      )}
       {req.photos.length > 0 && (
         <img
           src={req.photos[0].url}

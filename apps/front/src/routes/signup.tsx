@@ -40,7 +40,7 @@ const formSchema = z.object({
 
 const BULLETS = [
   "Publica tu solicitud en minutos",
-  "Recibe cotizaciones reales de transportistas",
+  "Recibe ofertas reales de transportistas",
   "Compara, elige y coordina desde la plataforma",
 ];
 
@@ -57,7 +57,7 @@ function SignupMobileHeader() {
         chileno de fletes.
       </h2>
       <p className="text-[13px] leading-[1.5] text-ink-muted">
-        Recibe cotizaciones, compara y elige tranquilo.
+        Recibe ofertas, compara y elige tranquilo.
       </p>
     </div>
   );
@@ -94,7 +94,7 @@ function SignupLeftPanel() {
 
       <div className="flex flex-col gap-4 rounded-xl border border-panel-border bg-panel-card p-5">
         <p className="w-[416px] text-[14px] leading-[1.65] text-panel-muted">
-          "Publiqué mi mudanza y en menos de una hora ya tenía tres cotizaciones
+          "Publiqué mi mudanza y en menos de una hora ya tenía tres ofertas
           distintas. Elegí la que más me acomodó sin presiones."
         </p>
         <div className="flex items-center gap-3">
@@ -220,7 +220,7 @@ function SignupPage() {
                     icon: Package,
                     label: "Enviar algo",
                     description:
-                      "Necesitas mover cosas y quieres recibir cotizaciones",
+                      "Necesitas mover cosas y quieres recibir ofertas",
                   },
                   {
                     key: "driver" as AppMode,

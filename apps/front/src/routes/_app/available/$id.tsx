@@ -12,8 +12,10 @@ import { useSession } from "@/lib/auth-client"
 import { floorLine, formatCLP, formatCLPRange, formatLongDateTime, initials, volumeLabels } from "@/lib/display"
 import { useSubmitQuote } from "@/hooks/use-request-mutations"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Separator } from "@/components/ui/separator"
 import { Field, FieldError, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
 import { FairPriceBar } from "@/components/requests/fair-price-bar"
 import type { PriceRange } from "@/lib/types"
@@ -58,20 +60,20 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
       } catch (err) {
         const message =
           err instanceof ApiError && err.status === 409
-            ? "Ya enviaste una cotización para esta solicitud."
+            ? "Ya enviaste una oferta para esta solicitud."
             : // Backend returns a clear Spanish message (out-of-band or contact info) for 400s.
               err instanceof Error
               ? err.message
-              : "Error al enviar la cotización. Intenta de nuevo."
+              : "Error al enviar la oferta. Intenta de nuevo."
         setSubmitError(message)
-        toast.error("No se pudo enviar la cotización", { description: message })
+        toast.error("No se pudo enviar la oferta", { description: message })
       }
     },
   })
 
   return (
     <div className="rounded-[14px] border border-border bg-white p-5">
-      <h3 className="mb-1 text-[14px] font-semibold text-foreground">Enviar cotización</h3>
+      <h3 className="mb-1 text-[14px] font-semibold text-foreground">Enviar oferta</h3>
       <p className="mb-4 text-[12px] text-muted-foreground">El cliente verá tu rango y tu mensaje.</p>
 
       <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }} className="flex flex-col gap-4">
@@ -185,7 +187,7 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
         <form.Subscribe selector={(s) => s.isSubmitting}>
           {(isSubmitting) => (
             <Button type="submit" disabled={isSubmitting} className="active:scale-[0.96] transition-[scale,opacity]">
-              {isSubmitting ? "Enviando…" : "Enviar cotización"}
+              {isSubmitting ? "Enviando…" : "Enviar oferta"}
             </Button>
           )}
         </form.Subscribe>
@@ -252,7 +254,7 @@ function DriverOpportunityPage() {
       <div className="p-4 md:p-8">
         <Skeleton className="mb-6 h-5 w-40" />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px]">
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             <Skeleton className="h-52 w-full rounded-[14px]" />
           </div>
           <Skeleton className="h-48 rounded-[14px]" />
@@ -282,7 +284,7 @@ function DriverOpportunityPage() {
         className="mb-6 flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-ink-soft"
       >
         <ChevronLeft className="size-4" />
-        Solicitudes disponibles
+        Buscar fletes
       </button>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px] md:items-start">
@@ -330,13 +332,15 @@ function DriverOpportunityPage() {
               </div>
             </div>
 
-            <div className="mt-5 border-t border-surface-dim pt-4">
+            <Separator className="my-4" />
+            <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Qué se mueve</p>
               <p className="mt-1 text-[13px] text-foreground">{req.itemDescription}</p>
             </div>
 
             {/* Service details */}
-            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-surface-dim pt-4">
+            <Separator className="my-4" />
+            <div className="grid grid-cols-2 gap-2">
               {req.budgetMax && (
                 <div className="col-span-2 rounded-[8px] bg-green-50 px-3 py-2">
                   <p className="text-[11px] font-semibold text-green-700">
@@ -361,11 +365,11 @@ function DriverOpportunityPage() {
             </div>
             {(req.hasFragileItems || req.assemblyRequired || req.packingIncluded || req.longCarry || req.flexibleDate) && (
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {req.hasFragileItems && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">⚠ Artículos frágiles</span>}
-                {req.assemblyRequired && <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">🔧 Desarme requerido</span>}
-                {req.packingIncluded && <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">📦 Incluye embalaje</span>}
-                {req.longCarry && <span className="rounded-full bg-surface-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">↔ Acarreo largo</span>}
-                {req.flexibleDate && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">📅 Fecha flexible</span>}
+                {req.hasFragileItems && <Badge variant="secondary" className="bg-amber-50 text-amber-700">Artículos frágiles</Badge>}
+                {req.assemblyRequired && <Badge variant="secondary">Desarme requerido</Badge>}
+                {req.packingIncluded && <Badge variant="secondary">Incluye embalaje</Badge>}
+                {req.longCarry && <Badge variant="secondary">Acarreo largo</Badge>}
+                {req.flexibleDate && <Badge variant="secondary" className="bg-blue-50 text-blue-700">Fecha flexible</Badge>}
               </div>
             )}
 
@@ -417,7 +421,7 @@ function DriverOpportunityPage() {
               "animate-in fade-in slide-in-from-bottom-2 rounded-[14px] border p-5 duration-300",
               myQuote.status === "accepted" ? "border-primary bg-accent" : "border-border bg-white"
             )}>
-              <p className="mb-1 text-[13px] font-semibold text-foreground">Tu cotización</p>
+              <p className="mb-1 text-[13px] font-semibold text-foreground">Tu oferta</p>
               <p className="text-[24px] font-bold tabular-nums text-primary">
                 {myQuote.priceMin != null && myQuote.priceMax != null
                   ? formatCLPRange(myQuote.priceMin, myQuote.priceMax)
@@ -431,13 +435,13 @@ function DriverOpportunityPage() {
               )}
               <p className="mt-3 flex items-center gap-1.5 text-[12px] text-muted-foreground">
                 {myQuote.status === "accepted" ? (
-                  `El cliente aceptó tu cotización por ${formatCLP(myQuote.price)}.`
+                  `El cliente aceptó tu oferta por ${formatCLP(myQuote.price)}.`
                 ) : myQuote.status === "rejected" ? (
                   "El cliente eligió otro transportista."
                 ) : myQuote.status === "expired" ? (
-                  "Esta cotización expiró."
+                  "Esta oferta expiró."
                 ) : myQuote.status === "cancelled" ? (
-                  "Esta cotización fue cancelada."
+                  "Esta oferta fue cancelada."
                 ) : (
                   <>
                     <Clock className="size-3.5 shrink-0" />

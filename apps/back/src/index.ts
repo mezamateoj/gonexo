@@ -43,7 +43,7 @@ app.use("*", (c, next) =>
   cors({
     origin: (origin) => (allowedOrigins.includes(origin) ? origin : null),
     allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   })(c, next),
 );

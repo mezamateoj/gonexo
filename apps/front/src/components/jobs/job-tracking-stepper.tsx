@@ -55,7 +55,19 @@ export function JobTrackingStepper({ job, isDriver }: { job: JobDetail; isDriver
     {
       status: "scheduled",
       label: "Agendado",
-      meta: <p className="text-[12px] tabular-nums text-muted-foreground">{formatTime(job.request.scheduledAt)}</p>,
+      meta:
+        currentIdx === 0 && isDriver ? (
+          <div className="flex flex-col items-start gap-1">
+            <p className="text-[12px] tabular-nums text-muted-foreground">
+              {formatTime(job.request.scheduledAt)}
+            </p>
+            <AdvanceButton jobId={job.id} label="Iniciar viaje" next="on_the_way" />
+          </div>
+        ) : (
+          <p className="text-[12px] tabular-nums text-muted-foreground">
+            {formatTime(job.request.scheduledAt)}
+          </p>
+        ),
     },
     {
       status: "on_the_way",

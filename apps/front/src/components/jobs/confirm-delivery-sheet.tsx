@@ -36,12 +36,12 @@ export function ConfirmDeliverySheet({ jobId }: { jobId: string }) {
   })
 
   function handleOpenChange(next: boolean) {
-    setOpen(next)
     if (!next) {
       deliveryForm.reset()
       setPhase("idle")
       setShowEscape(false)
     }
+    setOpen(next)
   }
 
   function submit(value: string) {
@@ -64,35 +64,34 @@ export function ConfirmDeliverySheet({ jobId }: { jobId: string }) {
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button type="button" className="h-[38px] w-[200px] text-[13px] font-semibold active:scale-[0.97]">
-          <Lock className="size-3.5" data-icon="inline-start" />
+        <Button type="button" className="h-[38px] w-[200px] text-[13px] font-semibold transition-transform active:scale-[0.96]">
+          <Lock data-icon="inline-start" />
           Confirmar entrega
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+      <SheetContent
+        side="bottom"
+        className="rounded-t-2xl px-4 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+      >
         <form
           onSubmit={(event) => {
             event.preventDefault()
             void deliveryForm.handleSubmit()
           }}
-          className="flex flex-col gap-4"
+          className="mx-auto flex w-full max-w-md flex-col gap-5"
         >
-          <SheetHeader className="p-0">
-            <SheetTitle className="text-[20px] font-bold tracking-tight text-foreground">
+          <SheetHeader className="items-center gap-1.5 px-8 py-0 text-center">
+            <SheetTitle className="text-balance text-[20px] font-bold text-foreground">
               Confirmar entrega
             </SheetTitle>
-            <SheetDescription className="text-[14px] leading-relaxed">
+            <SheetDescription className="text-pretty text-[14px] leading-relaxed">
               Pídele al cliente su código de 4 dígitos para confirmar.
             </SheetDescription>
           </SheetHeader>
 
           <deliveryForm.Field
             name="confirmCode"
-            validators={{
-              onChange: deliveryCodeSchema.shape.confirmCode,
-              onBlur: deliveryCodeSchema.shape.confirmCode,
-            }}
           >
             {(field) => {
               const isInvalid =
@@ -102,35 +101,33 @@ export function ConfirmDeliverySheet({ jobId }: { jobId: string }) {
 
               return (
                 <>
-                  <Field data-invalid={isInvalid || undefined} className="items-center gap-3">
+                  <Field data-invalid={isInvalid || undefined} className="items-center gap-2">
                     <FieldLabel htmlFor={field.name} className="sr-only">
                       Código de entrega
                     </FieldLabel>
-                    <div className={cn("flex justify-center py-2", phase === "error" && "animate-shake")}>
+                    <div className={cn("flex justify-center py-1", phase === "error" && "animate-shake")}>
                       <InputOTP
                         id={field.name}
                         maxLength={4}
                         pattern={REGEXP_ONLY_DIGITS}
                         value={field.state.value}
-                        onBlur={field.handleBlur}
                         onChange={(value) => {
                           field.handleChange(value)
                           if (phase === "error") setPhase("idle")
                         }}
-                        onComplete={submit}
                         autoFocus
                         disabled={advance.isPending || phase === "success"}
                       >
-                        <InputOTPGroup className="gap-3">
+                        <InputOTPGroup className="gap-2 sm:gap-3">
                           {[0, 1, 2, 3].map((i) => (
                             <InputOTPSlot
                               key={i}
                               index={i}
                               aria-invalid={isInvalid}
                               className={cn(
-                                "size-[68px] rounded-xl border text-[32px] font-bold first:rounded-xl last:rounded-xl",
+                                "size-14 rounded-lg border text-[28px] font-bold tabular-nums first:rounded-lg last:rounded-lg sm:size-16 sm:rounded-xl sm:text-[32px] sm:first:rounded-xl sm:last:rounded-xl",
                                 phase === "error" && "border-destructive bg-destructive/5",
-                                phase === "success" && "border-green-600 bg-green-50 text-green-600"
+                                phase === "success" && "border-primary bg-primary/5 text-primary"
                               )}
                             />
                           ))}
@@ -141,11 +138,11 @@ export function ConfirmDeliverySheet({ jobId }: { jobId: string }) {
                   </Field>
 
                   {phase !== "success" && (
-                    <SheetFooter className="p-0">
+                    <SheetFooter className="mt-0 gap-1.5 p-0">
                       <Button
                         type="submit"
                         disabled={field.state.value.length < 4 || advance.isPending}
-                        className="h-[50px] w-full text-[16px] font-semibold"
+                        className="h-11 w-full text-[15px] font-semibold transition-transform active:scale-[0.96]"
                       >
                         {advance.isPending ? "Confirmando…" : "Confirmar entrega"}
                       </Button>
@@ -171,10 +168,10 @@ export function ConfirmDeliverySheet({ jobId }: { jobId: string }) {
 
           {phase === "success" && (
             <div className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-2">
-              <div className="flex size-12 items-center justify-center rounded-full bg-green-600">
-                <Check className="size-6 text-white" />
+              <div className="flex size-12 items-center justify-center rounded-full bg-primary">
+                <Check className="size-6 text-primary-foreground" />
               </div>
-              <p className="text-[14px] font-semibold text-green-600">¡Código correcto!</p>
+              <p className="text-[14px] font-semibold text-primary">¡Código correcto!</p>
             </div>
           )}
 
