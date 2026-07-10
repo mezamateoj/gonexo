@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Field, FieldError, FieldGroup } from "@/components/ui/field"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
+import { useSession } from "@/lib/auth-client"
 import { useAppMode } from "@/lib/app-mode"
 import { queryKeys } from "@/lib/query-keys"
 import { GonexoLogo } from "@/components/gonexo-logo"
@@ -37,12 +38,15 @@ const plateSchema = z.string().min(4, "Ingresa una patente válida").max(10, "Pa
 function DriverOnboardingPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { data: session } = useSession()
   const { setMode } = useAppMode()
   const [vehicleType, setVehicleType] = useState<VehicleType>("van")
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const userId = session?.user.id
   const { data: currentUser } = useQuery({
-    queryKey: queryKeys.users.me,
+    queryKey: queryKeys.users.me(userId ?? "anonymous"),
     queryFn: api.users.me,
+    enabled: !!userId,
   })
   const accountPhone = currentUser?.phone ?? ""
 
@@ -57,7 +61,9 @@ function DriverOnboardingPage() {
           vehiclePlate: value.plate.toUpperCase(),
         })
         const profile = await api.drivers.me()
-        queryClient.setQueryData(queryKeys.drivers.me, profile)
+        if (profile) {
+          queryClient.setQueryData(queryKeys.drivers.me(profile.userId), profile)
+        }
         setMode("driver")
         navigate({ to: "/available" })
       } catch (err) {

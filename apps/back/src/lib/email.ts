@@ -85,14 +85,14 @@ export function newQuoteEmail(p: {
   frontendUrl: string;
 }): EmailContent {
   return {
-    subject: `Nueva cotización: ${clp(p.priceMin)}–${clp(p.priceMax)} por tu flete`,
+    subject: `Nueva oferta: ${clp(p.priceMin)}–${clp(p.priceMax)} por tu flete`,
     html: layout(`
-      <h1 style="font-size:18px;margin:0">Hola ${escapeHtml(p.clientName)}, recibiste una cotización</h1>
+      <h1 style="font-size:18px;margin:0">Hola ${escapeHtml(p.clientName)}, recibiste una oferta</h1>
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
         Un transportista ofreció <strong>${clp(p.priceMin)}–${clp(p.priceMax)}</strong> por tu solicitud.
       </p>
       ${routeLine(p.origin, p.dest)}
-      ${button(`${p.frontendUrl}/requests/${p.requestId}`, "Ver cotización")}
+      ${button(`${p.frontendUrl}/requests/${p.requestId}`, "Ver oferta")}
     `),
   };
 }
@@ -106,11 +106,11 @@ export function quoteAcceptedEmail(p: {
   frontendUrl: string;
 }): EmailContent {
   return {
-    subject: `¡Aceptaron tu cotización! Flete por ${clp(p.agreedPrice)}`,
+    subject: `¡Aceptaron tu oferta! Flete por ${clp(p.agreedPrice)}`,
     html: layout(`
       <h1 style="font-size:18px;margin:0">¡Felicitaciones ${escapeHtml(p.driverName)}!</h1>
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
-        El cliente aceptó tu cotización por <strong>${clp(p.agreedPrice)}</strong>.
+        El cliente aceptó tu oferta por <strong>${clp(p.agreedPrice)}</strong>.
         Revisa los detalles y coordina el flete desde la plataforma.
       </p>
       ${routeLine(p.origin, p.dest)}

@@ -1,5 +1,5 @@
 import { and, eq, ne } from "drizzle-orm";
-import { job, quote, request } from "../db/schema";
+import { job, jobEvent, quote, request } from "../db/schema";
 import type { Db } from "../db";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import { logger } from "../lib/logger";
@@ -14,6 +14,19 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
   if (!q) throw notFound("Quote not found or not pending");
   if (q.request.userId !== userId) throw forbidden();
   if (q.request.status !== "open") throw conflict("Request no longer open");
+  if (q.expiresAt <= new Date()) {
+    await db
+      .update(quote)
+      .set({ status: "expired" })
+      .where(and(eq(quote.id, quoteId), eq(quote.status, "pending")));
+    throw conflict("Quote has expired");
+  }
+
+  const activeJob = await db.query.job.findFirst({
+    where: and(eq(job.requestId, q.requestId), ne(job.status, "cancelled")),
+    columns: { id: true },
+  });
+  if (activeJob) throw conflict("Request already has an active job");
 
   const agreedPrice = q.price;
   const platformFee = Math.round(agreedPrice * PLATFORM_FEE_RATE);
@@ -52,6 +65,14 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
       platformFee,
       driverPayout,
       confirmCode,
+    }),
+
+    db.insert(jobEvent).values({
+      id: crypto.randomUUID(),
+      jobId,
+      type: "scheduled",
+      actorRole: "user",
+      meta: JSON.stringify({ quoteId, requestId: q.requestId }),
     }),
   ]);
 

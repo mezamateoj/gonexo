@@ -1,4 +1,4 @@
-import type { RequestSummary, RequestStatus, VolumeCategory, DriverProfile, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, JobSummary, MyQuote, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -78,8 +78,13 @@ export async function uploadFile(file: File): Promise<string> {
 
 export const api = {
   requests: {
-    my: (status?: RequestStatus) =>
-      apiFetch<RequestSummary[]>(`/api/requests/my${status ? `?status=${status}` : ""}`),
+    my: (query: MyRequestsQuery) => {
+      const params = new URLSearchParams({ bucket: query.bucket, page: String(query.page) })
+      if (query.q) params.set("q", query.q)
+      if (query.volume?.length) params.set("volume", query.volume.join(","))
+      if (query.sort && query.sort !== "recent") params.set("sort", query.sort)
+      return apiFetch<MyRequestsResponse>(`/api/requests/my?${params.toString()}`)
+    },
     list: (query: AvailableQuery) => {
       const params = new URLSearchParams({ page: String(query.page), sort: query.sort })
       if (query.volume?.length) params.set("volume", query.volume.join(","))
@@ -100,14 +105,21 @@ export const api = {
       }),
     cancel: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/requests/${id}/cancel`, { method: "PATCH" }),
+    reopen: (id: string) =>
+      apiFetch<{ ok: boolean }>(`/api/requests/${id}/reopen`, { method: "PATCH" }),
   },
   quotes: {
-    my: () => apiFetch<MyQuote[]>("/api/quotes/my"),
     accept: (quoteId: string) =>
       apiFetch<{ jobId: string }>(`/api/quotes/${quoteId}/accept`, { method: "POST" }),
   },
   jobs: {
-    my: () => apiFetch<JobSummary[]>("/api/jobs/my"),
+    my: (query: MyJobsQuery) => {
+      const params = new URLSearchParams({ role: query.role, bucket: query.bucket, page: String(query.page) })
+      if (query.q) params.set("q", query.q)
+      if (query.volume?.length) params.set("volume", query.volume.join(","))
+      if (query.sort && query.sort !== "recent") params.set("sort", query.sort)
+      return apiFetch<MyJobsResponse>(`/api/jobs/my?${params.toString()}`)
+    },
     get: (id: string) => apiFetch<JobDetail>(`/api/jobs/${id}`),
     updateStatus: (id: string, body: JobStatusUpdate) =>
       apiFetch<{ status: string }>(`/api/jobs/${id}/status`, {
@@ -116,6 +128,8 @@ export const api = {
       }),
     confirm: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/jobs/${id}/confirm`, { method: "POST" }),
+    cancel: (id: string) =>
+      apiFetch<{ ok: boolean }>(`/api/jobs/${id}/cancel`, { method: "PATCH" }),
     review: (id: string, body: { rating: number; comment?: string }) =>
       apiFetch<{ ok: boolean }>(`/api/jobs/${id}/reviews`, {
         method: "POST",
@@ -146,6 +160,12 @@ export const api = {
       apiFetch<{ id: string }>("/api/drivers/me", {
         method: "POST",
         body: JSON.stringify(body),
+      }),
+    documents: () => apiFetch<DriverDocument[]>("/api/drivers/me/documents"),
+    replaceDocuments: (documents: { kind: DriverDocumentKind; key: string; order: number }[]) =>
+      apiFetch<{ ok: boolean }>("/api/drivers/me/documents", {
+        method: "PUT",
+        body: JSON.stringify({ documents }),
       }),
     enrich: (body: { photoUrls: string[]; papersUrl?: string }) =>
       apiFetch<EnrichVehicleResult>("/api/drivers/enrich", {

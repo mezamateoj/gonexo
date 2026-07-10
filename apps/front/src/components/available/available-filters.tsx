@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -48,7 +49,7 @@ export function AvailableFilters({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-1.5">
-            <ArrowDownWideNarrow className="size-3.5 text-muted-foreground" />
+            <ArrowDownWideNarrow data-icon="inline-start" />
             {SORT_LABELS[sort]}
           </Button>
         </DropdownMenuTrigger>
@@ -66,7 +67,7 @@ export function AvailableFilters({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-1.5">
-            <SlidersHorizontal className="size-3.5 text-muted-foreground" />
+            <SlidersHorizontal data-icon="inline-start" />
             Carga
             {volume.length > 0 && (
               <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold tabular-nums text-white">
@@ -90,13 +91,11 @@ export function AvailableFilters({
           {volume.length > 0 && (
             <>
               <DropdownMenuSeparator />
-              <button
-                type="button"
+              <DropdownMenuItem
                 onClick={() => onChange({ volume: [] })}
-                className="w-full px-2 py-1.5 text-left text-[12px] text-muted-foreground hover:text-foreground"
               >
                 Limpiar carga
-              </button>
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
@@ -114,19 +113,20 @@ export function AvailableFilters({
           hasPhotos && "border-primary bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
         )}
       >
-        {hasPhotos ? <Check className="size-3.5" /> : <ImageIcon className="size-3.5 text-muted-foreground" />}
+        {hasPhotos ? <Check data-icon="inline-start" /> : <ImageIcon data-icon="inline-start" />}
         Con fotos
       </Button>
 
       {hasFilters && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onReset}
-          className="flex items-center gap-1 px-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
         >
-          <X className="size-3.5" />
+          <X data-icon="inline-start" />
           Limpiar
-        </button>
+        </Button>
       )}
     </div>
   )

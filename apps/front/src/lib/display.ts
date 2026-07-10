@@ -1,4 +1,4 @@
-import type { JobStatus, MyQuote, VolumeCategory } from "@/lib/types"
+import type { JobStatus, VolumeCategory } from "@/lib/types"
 
 export const volumeLabels: Record<VolumeCategory, string> = {
   small: "Pequeño",
@@ -30,20 +30,6 @@ export const requestStatusClasses: Record<string, string> = {
   cancelled: "bg-[#FEF2F2] text-destructive",
 }
 
-export const quoteStatusLabels: Record<MyQuote["status"], string> = {
-  pending: "Esperando",
-  accepted: "Aceptado",
-  rejected: "No elegido",
-  expired: "Expirado",
-}
-
-export const quoteStatusClasses: Record<MyQuote["status"], string> = {
-  pending: "bg-amber-50 text-amber-700",
-  accepted: "bg-green-50 text-green-700",
-  rejected: "bg-muted text-muted-foreground",
-  expired: "bg-muted text-muted-foreground",
-}
-
 export const jobStatusLabels: Record<JobStatus, string> = {
   scheduled: "Agendado",
   on_the_way: "En camino",
@@ -61,6 +47,11 @@ export const jobStatusClasses: Record<JobStatus, string> = {
 }
 
 export const jobStatusOrder: JobStatus[] = ["scheduled", "on_the_way", "arrived", "completed"]
+
+export const cancelledByRoleLabels: Record<"user" | "driver", string> = {
+  user: "el cliente",
+  driver: "el transportista",
+}
 
 export const vehicleLabels: Record<string, string> = {
   van: "Furgón",

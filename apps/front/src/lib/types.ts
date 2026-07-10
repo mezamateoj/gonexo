@@ -14,13 +14,26 @@ export type JobStatus =
   | "completed"
   | "cancelled"
 
+export type JobRole = "client" | "driver"
+
 export type JobStatusUpdate =
   | { status: "on_the_way" | "arrived" }
   | { status: "completed"; confirmCode: string }
 
 export type VehicleType = "van" | "pickup" | "truck_small" | "truck_large"
 
-export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired"
+export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired" | "cancelled"
+
+export type DriverDocumentKind = "license" | "papers" | "vehicle_photo"
+
+export interface DriverDocument {
+  id: string
+  driverProfileId: string
+  kind: DriverDocumentKind
+  key: string
+  order: number
+  createdAt: string
+}
 
 export interface CurrentUser {
   id: string
@@ -42,9 +55,7 @@ export interface DriverProfile {
   isAvailable: boolean
   avgRating: number | null
   totalJobs: number
-  licenseUrl: string | null
-  vehiclePhotos: string | null
-  papersUrl: string | null
+  documents: DriverDocument[]
   vehicleDescription: string | null
   vehicleCapacity: string | null
   documentsStatus: string
@@ -57,9 +68,7 @@ export interface UpsertDriverInput {
   vehiclePlate: string
   vehicleYear?: number
   bio?: string
-  licenseUrl?: string
-  vehiclePhotos?: string[]
-  papersUrl?: string
+  documents?: { kind: DriverDocumentKind; key: string; order: number }[]
   vehicleDescription?: string
   vehicleCapacity?: string
 }
@@ -148,7 +157,7 @@ export interface RequestDetail {
   user: { id: string; name: string; image: string | null; phone: string | null }
   quotes: QuoteWithDriver[]
   quoteCount: number
-  job: { id: string; status: JobStatus } | null
+  job: { id: string; status: JobStatus; confirmedAt: string | null } | null
 }
 
 export interface OpenRequest {
@@ -169,6 +178,8 @@ export interface OpenRequest {
   photos: { url: string }[]
   user: { name: string; image: string | null }
   quotes: { id: string }[]
+  quoteCount: number
+  myQuoteStatus: QuoteStatus | null
   budgetMax: number | null
   helpersNeeded: number
   hasFragileItems: boolean
@@ -199,27 +210,6 @@ export interface AvailableResponse {
   total: number
 }
 
-export interface MyQuote {
-  id: string
-  requestId: string
-  price: number
-  priceMin: number | null
-  priceMax: number | null
-  message: string | null
-  status: QuoteStatus
-  createdAt: string
-  expiresAt: string
-  request: {
-    id: string
-    originAddress: string
-    destAddress: string
-    scheduledAt: string
-    volumeCategory: VolumeCategory
-    status: string
-    photos: { url: string }[]
-  }
-}
-
 export interface JobDetail {
   id: string
   requestId: string
@@ -233,6 +223,8 @@ export interface JobDetail {
   arrivedAt: string | null
   completedAt: string | null
   confirmedAt: string | null
+  cancelledAt: string | null
+  cancelledByRole: "user" | "driver" | null
   confirmCode?: string | null
   confirmCodeUsedAt: string | null
   autoConfirmAt: string | null
@@ -256,6 +248,8 @@ export interface JobSummary {
   id: string
   status: JobStatus
   agreedPrice: number
+  cancelledAt: string | null
+  cancelledByRole: "user" | "driver" | null
   createdAt: string
   request: {
     id: string
@@ -282,5 +276,44 @@ export interface RequestSummary {
   createdAt: string
   photos: { url: string }[]
   quotes: { id: string; status: string; price: number; priceMin: number | null; priceMax: number | null }[]
-  job: { id: string; status: JobStatus } | null
+  job: { id: string; status: JobStatus; confirmedAt: string | null } | null
+}
+
+// Lifecycle buckets for the paginated "Mis fletes" lists.
+export type RequestBucket = "offers" | "active" | "history"
+export type JobBucket = "active" | "history"
+
+// Sort keys map to sortable table columns (default "recent" = newest first).
+export type RequestSort = "recent" | "sched_asc" | "sched_desc"
+export type JobSort = "recent" | "price_asc" | "price_desc"
+
+export interface MyRequestsQuery {
+  bucket: RequestBucket
+  page: number
+  q?: string
+  volume?: VolumeCategory[]
+  sort?: RequestSort
+}
+
+export interface MyJobsQuery {
+  role: JobRole
+  bucket: JobBucket
+  page: number
+  q?: string
+  volume?: VolumeCategory[]
+  sort?: JobSort
+}
+
+export interface MyRequestsResponse {
+  data: RequestSummary[]
+  page: number
+  limit: number
+  total: number
+}
+
+export interface MyJobsResponse {
+  data: JobSummary[]
+  page: number
+  limit: number
+  total: number
 }

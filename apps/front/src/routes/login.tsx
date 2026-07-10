@@ -1,10 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { GonexoLogo } from "@/components/gonexo-logo";
 import { useForm } from "@tanstack/react-form";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { signIn, useSession } from "@/lib/auth-client";
+import { getSession, signIn, useSession } from "@/lib/auth-client";
 import { useAppMode } from "@/lib/app-mode";
+import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +42,7 @@ function GoogleIcon() {
 }
 
 const ACTIVITY_MOBILE = [
-  { route: "Providencia → Ñuñoa", meta: "Nueva cotización · Hace 2 min" },
+  { route: "Providencia → Ñuñoa", meta: "Nueva oferta · Hace 2 min" },
   { route: "Las Condes → Vitacura", meta: "Flete en camino · Hace 9 min" },
 ];
 
@@ -50,7 +53,7 @@ const STATS = [
 ];
 
 const ACTIVITY = [
-  { initials: "C", name: "Carlos R.", info: "Nueva cotización recibida", when: "Hace 2 min", bg: "var(--primary)" },
+  { initials: "C", name: "Carlos R.", info: "Nueva oferta recibida", when: "Hace 2 min", bg: "var(--primary)" },
   { initials: "A", name: "Ana P.", info: "Solicitud confirmada", when: "Hace 5 min", bg: "var(--color-ink-muted)" },
   { initials: "D", name: "Diego M.", info: "Flete en camino", when: "Hace 9 min", bg: "var(--color-ink-soft)" },
 ];
@@ -66,7 +69,7 @@ function LoginMobileHeader() {
         Bienvenido<br />de vuelta.
       </h2>
       <p className="text-[14px] leading-[1.5] text-ink-muted">
-        Revisa tus solicitudes y cotizaciones pendientes.
+        Revisa tus fletes y ofertas pendientes.
       </p>
       {/* Compact activity card */}
       <div className="overflow-hidden rounded-[10px] border border-panel-border bg-panel-card">
@@ -112,7 +115,7 @@ function LoginLeftPanel() {
             Bienvenido<br />de vuelta.
           </h2>
           <p className="w-[420px] text-[15px] leading-[1.6] text-ink-muted">
-            Revisa tus solicitudes activas, cotizaciones pendientes y el estado
+            Revisa tus fletes activos, ofertas pendientes y el estado
             de tus fletes en curso.
           </p>
         </div>
@@ -161,18 +164,33 @@ function LoginLeftPanel() {
 
 function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: session } = useSession();
-  const { mode } = useAppMode();
+  const { clearMode, setMode } = useAppMode();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const handlingSubmit = useRef(false);
 
+  const openAccountHome = useCallback(async (userId: string) => {
+    const profile = await queryClient.fetchQuery({
+      queryKey: queryKeys.drivers.me(userId),
+      queryFn: api.drivers.me,
+    });
+    clearMode(userId);
+    if (profile) {
+      navigate({ to: "/choose-mode" });
+      return;
+    }
+    setMode("client", userId);
+    navigate({ to: "/requests" });
+  }, [clearMode, navigate, queryClient, setMode]);
+
   useEffect(() => {
     if (session && !handlingSubmit.current) {
-      navigate({ to: mode === "driver" ? "/available" : "/requests" });
+      void openAccountHome(session.user.id);
     }
-  }, [session, navigate, mode]);
+  }, [session, openAccountHome]);
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
@@ -189,7 +207,14 @@ function LoginPage() {
         setSubmitError("Correo o contraseña incorrectos.");
         return;
       }
-      navigate({ to: mode === "driver" ? "/available" : "/requests" });
+      queryClient.clear();
+      const authenticatedSession = await getSession();
+      if (!authenticatedSession.data) {
+        handlingSubmit.current = false;
+        setSubmitError("No se pudo cargar tu sesión.");
+        return;
+      }
+      await openAccountHome(authenticatedSession.data.user.id);
     },
   });
 

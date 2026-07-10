@@ -1,48 +1,126 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, sql, or, desc } from "drizzle-orm";
-import { job, review, driverProfile } from "../db/schema";
+import { eq, and, sql, or, asc, desc, like, exists, count, inArray, notInArray, type SQL } from "drizzle-orm";
+import { job, review, driverProfile, request, user as userTable } from "../db/schema";
+import type { VolumeCategory } from "../lib/pricing";
 import { requireAuth, requireDriver } from "../middleware/auth";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { sendEmail, confirmReminderEmail } from "../lib/email";
-import { advanceJob, confirmJob } from "../workflows/jobs";
+import { advanceJob, cancelScheduledJob, confirmJob } from "../workflows/jobs";
 
 const jobs = new Hono<AppEnv>();
 
-// Must be before /:id.
-jobs.get("/my", requireAuth, async (c) => {
-  const db = c.get("db");
-  const userId = c.get("user")!.id;
-
-  const results = await db.query.job.findMany({
-    where: or(eq(job.userId, userId), eq(job.driverId, userId)),
-    orderBy: [desc(job.createdAt)],
-    with: {
-      request: {
-        columns: {
-          id: true,
-          originAddress: true,
-          destAddress: true,
-          scheduledAt: true,
-          volumeCategory: true,
-        },
-        with: {
-          photos: {
-            limit: 1,
-            columns: { url: true },
-          },
-        },
-      },
-      user: { columns: { id: true, name: true, image: true } },
-      driver: { columns: { id: true, name: true, image: true } },
-      reviews: { columns: { reviewerId: true } },
-    },
-  });
-
-  return c.json(results);
+const myJobsQuerySchema = z.object({
+  role: z.enum(["client", "driver"]).optional(),
+  bucket: z.enum(["active", "history"]).optional(),
+  page: z.coerce.number().int().positive().catch(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).catch(20).default(20),
+  q: z.string().optional(),
+  volume: z.string().optional(),
+  sort: z.enum(["recent", "price_asc", "price_desc"]).catch("recent").default("recent"),
 });
+
+const VOLUME_CATEGORIES: VolumeCategory[] = ["small", "medium", "large", "full_move"];
+
+// Sortable via the price header; default is newest first.
+const MY_JOB_SORTS = {
+  recent: [desc(job.createdAt)],
+  price_asc: [asc(job.agreedPrice)],
+  price_desc: [desc(job.agreedPrice)],
+} as const;
+
+// Jobs list for either role. Paginated per bucket (active = running, history =
+// completed/cancelled) so it scales; omitting `role`/`bucket` returns the
+// caller's full combined set.
+jobs.get(
+  "/my",
+  requireAuth,
+  zValidator("query", myJobsQuerySchema),
+  async (c) => {
+    const db = c.get("db");
+    const userId = c.get("user")!.id;
+    const { role, bucket, page, limit, q, volume, sort } = c.req.valid("query");
+    const offset = (page - 1) * limit;
+    const orderBy = MY_JOB_SORTS[sort] ?? MY_JOB_SORTS.recent;
+
+    const conditions: SQL[] = [];
+    const roleCond =
+      role === "client"
+        ? eq(job.userId, userId)
+        : role === "driver"
+          ? eq(job.driverId, userId)
+          : or(eq(job.userId, userId), eq(job.driverId, userId));
+    if (roleCond) conditions.push(roleCond);
+    if (bucket === "active") conditions.push(notInArray(job.status, ["completed", "cancelled"]));
+    else if (bucket === "history") conditions.push(inArray(job.status, ["completed", "cancelled"]));
+
+    // request/counterpart live on related tables — match them via exists subqueries.
+    const trimmed = q?.trim();
+    if (trimmed) {
+      const pattern = `%${trimmed}%`;
+      const search = or(
+        exists(
+          db.select({ x: sql`1` }).from(request).where(
+            and(eq(request.id, job.requestId), or(like(request.originAddress, pattern), like(request.destAddress, pattern))),
+          ),
+        ),
+        exists(db.select({ x: sql`1` }).from(userTable).where(and(eq(userTable.id, job.userId), like(userTable.name, pattern)))),
+        exists(db.select({ x: sql`1` }).from(userTable).where(and(eq(userTable.id, job.driverId), like(userTable.name, pattern)))),
+      );
+      if (search) conditions.push(search);
+    }
+    if (volume) {
+      const volumes = volume
+        .split(",")
+        .filter((v): v is VolumeCategory => VOLUME_CATEGORIES.includes(v as VolumeCategory));
+      if (volumes.length > 0) {
+        conditions.push(
+          exists(
+            db.select({ x: sql`1` }).from(request).where(
+              and(eq(request.id, job.requestId), inArray(request.volumeCategory, volumes)),
+            ),
+          ),
+        );
+      }
+    }
+
+    const where = and(...conditions);
+
+    const [results, countRows] = await Promise.all([
+      db.query.job.findMany({
+        where,
+        orderBy: [...orderBy],
+        limit,
+        offset,
+        with: {
+          request: {
+            columns: {
+              id: true,
+              originAddress: true,
+              destAddress: true,
+              scheduledAt: true,
+              volumeCategory: true,
+            },
+            with: {
+              photos: {
+                limit: 1,
+                columns: { url: true },
+              },
+            },
+          },
+          user: { columns: { id: true, name: true, image: true } },
+          driver: { columns: { id: true, name: true, image: true } },
+          reviews: { columns: { reviewerId: true } },
+        },
+      }),
+      db.select({ n: count() }).from(job).where(where),
+    ]);
+
+    return c.json({ data: results, page, limit, total: countRows[0]?.n ?? 0 });
+  },
+);
 
 jobs.get("/:id", requireAuth, async (c) => {
   const db = c.get("db");
@@ -114,6 +192,15 @@ jobs.post("/:id/confirm", requireAuth, async (c) => {
   const user = c.get("user")!;
 
   await confirmJob(db, user.id, c.req.param("id"));
+
+  return c.json({ ok: true });
+});
+
+jobs.patch("/:id/cancel", requireAuth, async (c) => {
+  const db = c.get("db");
+  const user = c.get("user")!;
+
+  await cancelScheduledJob(db, user.id, c.req.param("id"));
 
   return c.json({ ok: true });
 });

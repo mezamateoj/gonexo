@@ -14,7 +14,7 @@ export function useAcceptQuote(requestId: string) {
     onSuccess: ({ jobId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
       navigate({ to: "/jobs/$id", params: { id: jobId } })
     },
   })
@@ -33,6 +33,18 @@ export function useCancelRequest(requestId: string) {
   })
 }
 
+export function useReopenRequest(requestId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => api.requests.reopen(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
+    },
+  })
+}
+
 export function useSubmitQuote(requestId: string, onSuccess?: () => void) {
   const queryClient = useQueryClient()
 
@@ -41,8 +53,8 @@ export function useSubmitQuote(requestId: string, onSuccess?: () => void) {
       api.requests.submitQuote(requestId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.quotes.my })
-      toast.success("Cotización enviada", {
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
+      toast.success("Oferta enviada", {
         description: "Te avisaremos cuando el cliente responda.",
       })
       onSuccess?.()
@@ -57,7 +69,26 @@ export function useAdvanceJobStatus(jobId: string) {
     mutationFn: (body: JobStatusUpdate) => api.jobs.updateStatus(jobId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+    },
+    onError: (error) => {
+      toast.error("No pudimos actualizar el estado", {
+        description: error.message,
+      })
+    },
+  })
+}
+
+export function useCancelJob(jobId: string, requestId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => api.jobs.cancel(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
     },
   })
 }
@@ -69,7 +100,7 @@ export function useConfirmJob(jobId: string) {
     mutationFn: () => api.jobs.confirm(jobId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
     },
   })
 }
@@ -81,7 +112,7 @@ export function useSubmitReview(jobId: string) {
     mutationFn: (body: { rating: number; comment?: string }) => api.jobs.review(jobId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.my })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
     },
   })
 }

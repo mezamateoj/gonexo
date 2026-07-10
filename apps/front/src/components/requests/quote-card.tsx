@@ -1,5 +1,8 @@
 import { Check, MessageSquare, ShieldCheck, Star } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { formatCLP, formatCLPRange, vehicleLabels } from "@/lib/display"
 import type { PublicDriverProfile, QuoteWithDriver } from "@/lib/types"
@@ -9,23 +12,16 @@ import type { PublicDriverProfile, QuoteWithDriver } from "@/lib/types"
 function TrustBadge({ profile }: { profile: PublicDriverProfile }) {
   if (profile.isVerified && profile.documentsStatus === "verified") {
     return (
-      <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
-        <ShieldCheck className="size-2.5" /> Verificado
-      </span>
+      <Badge className="shrink-0" variant="secondary">
+        <ShieldCheck data-icon="inline-start" />
+        Verificado
+      </Badge>
     )
   }
   if (profile.documentsStatus === "submitted") {
-    return (
-      <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-        Documentos en revisión
-      </span>
-    )
+    return <Badge className="shrink-0" variant="outline">Documentos en revisión</Badge>
   }
-  return (
-    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      Sin verificar
-    </span>
-  )
+  return <Badge className="shrink-0" variant="secondary">Sin verificar</Badge>
 }
 
 export function QuoteCard({
@@ -42,14 +38,17 @@ export function QuoteCard({
   const driverInitials = driver.name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "?"
   const isAccepted = quote.status === "accepted"
   const isRejected = quote.status === "rejected"
+  const isExpired = quote.status === "expired"
+  const isCancelled = quote.status === "cancelled"
+  const isInactive = isRejected || isExpired || isCancelled
 
   return (
-    <div className={cn(
-      "rounded-[12px] border p-4 transition-colors",
-      isAccepted ? "border-primary bg-accent" :
-      isRejected ? "border-border bg-surface opacity-60" :
-      "border-border bg-white"
+    <Card className={cn(
+      "p-0 transition-colors",
+      isAccepted && "border-primary bg-accent",
+      isInactive && "opacity-60",
     )}>
+      <CardContent className="p-4">
       <div className="flex items-start gap-3">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[12px] font-bold text-primary">
           {driverInitials}
@@ -83,21 +82,32 @@ export function QuoteCard({
       </div>
 
       {/* Own row, not squeezed beside the name/badge — a range string can run wide */}
-      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-black/[0.04] pt-2.5">
+      <Separator className="my-2.5" />
+      <div className="flex items-center justify-between gap-2">
         <div className={cn(
           "text-[18px] font-bold tabular-nums",
-          isRejected ? "text-muted-foreground" : "text-foreground"
+          isInactive ? "text-muted-foreground" : "text-foreground"
         )}>
           {quote.priceMin != null && quote.priceMax != null
             ? formatCLPRange(quote.priceMin, quote.priceMax)
             : formatCLP(quote.price)}
         </div>
         {isAccepted && (
-          <div className="flex items-center gap-1 text-[11px] font-semibold text-primary">
-            <Check className="size-3" strokeWidth={3} /> Aceptado
-          </div>
+          <Badge>
+            <Check data-icon="inline-start" strokeWidth={3} />
+            Aceptado
+          </Badge>
         )}
       </div>
+
+      {isExpired && (
+        <p className="mt-2 text-[12px] text-muted-foreground">Esta oferta expiró y ya no está disponible.</p>
+      )}
+      {isCancelled && (
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          El transportista canceló el trabajo vinculado a esta oferta.
+        </p>
+      )}
 
       {quote.message && (
         <div className="mt-3 flex gap-2 rounded-[8px] bg-muted px-3 py-2">
@@ -122,6 +132,7 @@ export function QuoteCard({
           </Button>
         </>
       )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }

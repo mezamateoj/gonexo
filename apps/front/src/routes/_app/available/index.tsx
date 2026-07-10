@@ -17,6 +17,9 @@ import {
 import { api } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -60,14 +63,15 @@ function DetailPopover({ req }: { req: OpenRequest }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => setOpen(false)}
-          className="flex size-6 items-center justify-center rounded-full text-ink-faint hover:bg-surface-dim hover:text-ink-soft"
         >
-          <Info className="size-3.5" />
-        </button>
+          <Info />
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         side="right"
@@ -81,7 +85,7 @@ function DetailPopover({ req }: { req: OpenRequest }) {
             Ruta · {routeKm(req)}
             {req.routeDurationS != null && <> · {formatDurationMin(req.routeDurationS)}</>}
           </p>
-          <div className="mb-3 space-y-2">
+          <div className="mb-3 flex flex-col gap-2">
             <div className="flex items-start gap-2">
               <div className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
               <div>
@@ -99,7 +103,8 @@ function DetailPopover({ req }: { req: OpenRequest }) {
             </div>
           </div>
 
-          <div className="border-t border-border pt-3">
+          <Separator className="mb-3" />
+          <div>
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Qué se mueve</p>
             <p className="text-[12px] text-ink-soft">{req.itemDescription}</p>
           </div>
@@ -113,29 +118,19 @@ function DetailPopover({ req }: { req: OpenRequest }) {
           {(req.helpersNeeded > 0 || req.hasFragileItems || req.assemblyRequired || req.packingIncluded || req.longCarry) && (
             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-3">
               {req.helpersNeeded > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-surface-dim px-2 py-0.5 text-[10px] text-ink-soft">
-                  <Users className="size-2.5" /> +{req.helpersNeeded} ayudante{req.helpersNeeded > 1 ? "s" : ""}
-                </span>
+                <Badge variant="secondary"><Users /> +{req.helpersNeeded} ayudante{req.helpersNeeded > 1 ? "s" : ""}</Badge>
               )}
               {req.hasFragileItems && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
-                  <AlertTriangle className="size-2.5" /> Frágil
-                </span>
+                <Badge variant="secondary" className="bg-amber-50 text-amber-700"><AlertTriangle /> Frágil</Badge>
               )}
               {req.assemblyRequired && (
-                <span className="flex items-center gap-1 rounded-full bg-surface-dim px-2 py-0.5 text-[10px] text-ink-soft">
-                  <Wrench className="size-2.5" /> Desarme
-                </span>
+                <Badge variant="secondary"><Wrench /> Desarme</Badge>
               )}
               {req.packingIncluded && (
-                <span className="flex items-center gap-1 rounded-full bg-surface-dim px-2 py-0.5 text-[10px] text-ink-soft">
-                  <Box className="size-2.5" /> Embalaje
-                </span>
+                <Badge variant="secondary"><Box /> Embalaje</Badge>
               )}
               {req.longCarry && (
-                <span className="flex items-center gap-1 rounded-full bg-surface-dim px-2 py-0.5 text-[10px] text-ink-soft">
-                  <MoveRight className="size-2.5" /> Acarreo largo
-                </span>
+                <Badge variant="secondary"><MoveRight /> Acarreo largo</Badge>
               )}
             </div>
           )}
@@ -168,9 +163,9 @@ function CompetitionBadge({ n }: { n: number }) {
     n <= 2 ? "bg-amber-50 text-amber-700" :
     "bg-red-50 text-red-700"
   return (
-    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", cls)}>
+    <Badge variant="secondary" className={cls}>
       {n === 0 ? "Sin ofertas" : `${n} oferta${n !== 1 ? "s" : ""}`}
-    </span>
+    </Badge>
   )
 }
 
@@ -243,7 +238,7 @@ const columns = [
   columnHelper.display({
     id: "competition",
     header: "Competencia",
-    cell: ({ row }) => <CompetitionBadge n={row.original.quotes.length} />,
+    cell: ({ row }) => <CompetitionBadge n={row.original.quoteCount} />,
   }),
   columnHelper.display({
     id: "fairPrice",
@@ -257,15 +252,18 @@ const columns = [
   columnHelper.display({
     id: "actions",
     header: "",
-    cell: ({ row }) => (
-      <div className="text-right">
-        <Link to="/available/$id" params={{ id: row.original.id }}>
-          <Button size="sm" className="whitespace-nowrap text-[12px] active:scale-[0.96] transition-[scale,opacity]">
-            Cotizar →
-          </Button>
-        </Link>
-      </div>
-    ),
+    cell: ({ row }) =>
+      row.original.myQuoteStatus ? (
+        <Badge variant="secondary">Oferta enviada</Badge>
+      ) : (
+        <div className="text-right">
+          <Link to="/available/$id" params={{ id: row.original.id }}>
+            <Button size="sm" className="whitespace-nowrap text-[12px] active:scale-[0.96] transition-[scale,opacity]">
+              Ofertar →
+            </Button>
+          </Link>
+        </div>
+      ),
   }),
 ]
 
@@ -382,7 +380,7 @@ function AvailablePage() {
     <div className="p-4 md:p-8">
       <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-[22px] font-bold text-foreground">Solicitudes disponibles</h1>
+          <h1 className="text-[22px] font-bold text-foreground">Buscar fletes</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {total > 0
               ? `${total} solicitud${total !== 1 ? "es" : ""} abierta${total !== 1 ? "s" : ""}`
@@ -399,9 +397,9 @@ function AvailablePage() {
       </div>
 
       {isError && (
-        <div className="mb-4 rounded-[10px] border border-red-100 bg-red-50 p-4 text-sm text-red-600">
-          No se pudieron cargar las solicitudes. Intenta de nuevo.
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>No se pudieron cargar las solicitudes. Intenta de nuevo.</AlertDescription>
+        </Alert>
       )}
 
       {requestsLoading ? (
@@ -413,13 +411,14 @@ function AvailablePage() {
               <SearchX className="mb-3 size-9 text-ink-faint" />
               <p className="text-[15px] font-medium text-foreground">Sin resultados con estos filtros</p>
               <p className="mt-1 text-[13px] text-muted-foreground">Prueba quitar algún filtro.</p>
-              <button
+              <Button
                 type="button"
+                variant="link"
                 onClick={() => navigate({ replace: true, search: {} })}
-                className="mt-3 text-[13px] font-medium text-primary"
+                className="mt-3"
               >
                 Limpiar filtros
-              </button>
+              </Button>
             </>
           ) : (
             <>

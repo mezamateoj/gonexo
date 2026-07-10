@@ -140,10 +140,7 @@ export const driverProfile = sqliteTable(
     avgRating: real("avg_rating"),         // cached, updated after every review
     totalJobs: integer("total_jobs").default(0).notNull(),
 
-    // Verification docs + LLM-enriched vehicle profile
-    licenseUrl: text("license_url"),
-    vehiclePhotos: text("vehicle_photos"),       // JSON array of R2 URLs
-    papersUrl: text("papers_url"),
+    // LLM-enriched vehicle profile. Verification files live in driver_document.
     vehicleDescription: text("vehicle_description"), // LLM-generated, editable
     vehicleCapacity: text("vehicle_capacity"),       // LLM-generated, editable
     documentsStatus: text("documents_status").notNull().default("pending"),
@@ -167,8 +164,37 @@ export const driverProfile = sqliteTable(
   ],
 );
 
-export const driverProfileRelations = relations(driverProfile, ({ one }) => ({
+export const driverProfileRelations = relations(driverProfile, ({ one, many }) => ({
   user: one(user, { fields: [driverProfile.userId], references: [user.id] }),
+  documents: many(driverDocument),
+}));
+
+export const driverDocument = sqliteTable(
+  "driver_document",
+  {
+    id: text("id").primaryKey(),
+    driverProfileId: text("driver_profile_id")
+      .notNull()
+      .references(() => driverProfile.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    key: text("key").notNull(),
+    order: integer("order").default(0).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (t) => [
+    index("driver_document_driverProfileId_idx").on(t.driverProfileId),
+    uniqueIndex("driver_document_key_unique").on(t.key),
+    check("driver_document_kind_check", sql`${t.kind} in ('license', 'papers', 'vehicle_photo')`),
+  ],
+);
+
+export const driverDocumentRelations = relations(driverDocument, ({ one }) => ({
+  driverProfile: one(driverProfile, {
+    fields: [driverDocument.driverProfileId],
+    references: [driverProfile.id],
+  }),
 }));
 
 // ─── Request ─────────────────────────────────────────────────────────────────
@@ -233,6 +259,9 @@ export const request = sqliteTable(
     routeDistanceM: integer("route_distance_m"),
     routeDurationS: integer("route_duration_s"),
 
+    zeroQuoteNotifiedAt: integer("zero_quote_notified_at", { mode: "timestamp_ms" }),
+    expiryRemindNotifiedAt: integer("expiry_remind_notified_at", { mode: "timestamp_ms" }),
+
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -244,6 +273,9 @@ export const request = sqliteTable(
   (t) => [
     index("request_userId_idx").on(t.userId),
     index("request_status_scheduledAt_idx").on(t.status, t.scheduledAt),
+    index("request_status_createdAt_idx").on(t.status, t.createdAt),
+    index("request_status_routeDistanceM_idx").on(t.status, t.routeDistanceM),
+    check("request_status_check", sql`${t.status} in ('open', 'accepted', 'in_progress', 'completed', 'cancelled')`),
   ],
 );
 
@@ -251,7 +283,7 @@ export const requestRelations = relations(request, ({ one, many }) => ({
   user: one(user, { fields: [request.userId], references: [user.id] }),
   photos: many(requestPhoto),
   quotes: many(quote),
-  job: one(job, { fields: [request.id], references: [job.requestId] }),
+  jobs: many(job),
 }));
 
 // ─── Request Photo ────────────────────────────────────────────────────────────
@@ -300,7 +332,7 @@ export const quote = sqliteTable(
     priceMax: integer("price_max"),     // range upper bound submitted by driver
     message: text("message"),
     status: text("status").notNull().default("pending"),
-    // 'pending' | 'accepted' | 'rejected' | 'expired'
+    // 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled'
 
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -316,6 +348,8 @@ export const quote = sqliteTable(
     uniqueIndex("quote_one_accepted_per_request_unique").on(t.requestId).where(sql`${t.status} = 'accepted'`),
     index("quote_requestId_idx").on(t.requestId),
     index("quote_driverId_idx").on(t.driverId),
+    index("quote_pending_expiresAt_idx").on(t.expiresAt).where(sql`${t.status} = 'pending'`),
+    check("quote_status_check", sql`${t.status} in ('pending', 'accepted', 'rejected', 'expired', 'cancelled')`),
   ],
 );
 
@@ -338,7 +372,6 @@ export const job = sqliteTable(
     id: text("id").primaryKey(),
     requestId: text("request_id")
       .notNull()
-      .unique()
       .references(() => request.id, { onDelete: "restrict" }),
     quoteId: text("quote_id")
       .notNull()
@@ -368,6 +401,8 @@ export const job = sqliteTable(
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     autoConfirmAt: integer("auto_confirm_at", { mode: "timestamp_ms" }), // cron sweeps jobs past this
     confirmedAt: integer("confirmed_at", { mode: "timestamp_ms" }),
+    cancelledAt: integer("cancelled_at", { mode: "timestamp_ms" }),
+    cancelledByRole: text("cancelled_by_role"),
 
     // Rappi-style handoff code — client shows it, driver enters it to complete
     confirmCode: text("confirm_code"),
@@ -385,6 +420,11 @@ export const job = sqliteTable(
     index("job_userId_idx").on(t.userId),
     index("job_driverId_idx").on(t.driverId),
     index("job_status_idx").on(t.status),
+    uniqueIndex("job_one_active_per_request_unique").on(t.requestId).where(sql`${t.status} != 'cancelled'`),
+    index("job_pending_autoConfirmAt_idx").on(t.autoConfirmAt).where(sql`${t.confirmedAt} is null`),
+    check("job_status_check", sql`${t.status} in ('scheduled', 'on_the_way', 'arrived', 'completed', 'cancelled')`),
+    check("job_payment_status_check", sql`${t.paymentStatus} in ('pending', 'held', 'released', 'refunded')`),
+    check("job_cancelled_by_role_check", sql`${t.cancelledByRole} is null or ${t.cancelledByRole} in ('user', 'driver')`),
   ],
 );
 
@@ -402,6 +442,59 @@ export const jobRelations = relations(job, ({ one, many }) => ({
     relationName: "jobDriver",
   }),
   reviews: many(review),
+  events: many(jobEvent),
+  reports: many(jobReport),
+}));
+
+export const jobEvent = sqliteTable(
+  "job_event",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => job.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    actorRole: text("actor_role").notNull(),
+    meta: text("meta"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (t) => [
+    index("job_event_jobId_idx").on(t.jobId),
+    check("job_event_actor_role_check", sql`${t.actorRole} in ('system', 'user', 'driver', 'operator')`),
+  ],
+);
+
+export const jobEventRelations = relations(jobEvent, ({ one }) => ({
+  job: one(job, { fields: [jobEvent.jobId], references: [job.id] }),
+}));
+
+export const jobReport = sqliteTable(
+  "job_report",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => job.id, { onDelete: "cascade" }),
+    reporterId: text("reporter_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    reporterRole: text("reporter_role").notNull(),
+    message: text("message").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (t) => [
+    index("job_report_jobId_idx").on(t.jobId),
+    check("job_report_reporter_role_check", sql`${t.reporterRole} in ('user', 'driver')`),
+  ],
+);
+
+export const jobReportRelations = relations(jobReport, ({ one }) => ({
+  job: one(job, { fields: [jobReport.jobId], references: [job.id] }),
+  reporter: one(user, { fields: [jobReport.reporterId], references: [user.id] }),
 }));
 
 // ─── Review ───────────────────────────────────────────────────────────────────
@@ -433,6 +526,8 @@ export const review = sqliteTable(
     uniqueIndex("review_job_reviewer_unique").on(t.jobId, t.reviewerId),
     index("review_jobId_idx").on(t.jobId),
     index("review_revieweeId_idx").on(t.revieweeId),
+    check("review_rating_check", sql`${t.rating} >= 1 and ${t.rating} <= 5`),
+    check("review_reviewer_role_check", sql`${t.reviewerRole} in ('user', 'driver')`),
   ],
 );
 

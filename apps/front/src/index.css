@@ -99,6 +99,14 @@
     --sidebar-ring: #0c8c5e;
 }
 
+[data-app-mode="driver"] {
+    --sidebar: #121916;
+    --sidebar-foreground: #AAB8B2;
+    --sidebar-accent: #203129;
+    --sidebar-accent-foreground: #F2F8F5;
+    --sidebar-border: #2A3A33;
+}
+
 .dark {
     --background: #121715;
     --foreground: #FAFAF8;
