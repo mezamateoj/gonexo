@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { fireConfetti, warmConfetti } from "@/lib/celebrate"
+import { warmConfetti } from "@/lib/celebrate"
 import { cn } from "@/lib/utils"
 
 const toneClasses = {
@@ -18,7 +18,7 @@ const toneClasses = {
 
 // Celebratory moment for the two peak client actions (accept quote, confirm
 // reception). A toast is too fleeting for these; this owns the screen for a
-// beat, fires confetti, and hands off to the next step via the footer CTAs.
+// beat and hands off to the next step via the footer CTAs.
 export function CelebrationDialog({
   open,
   onOpenChange,
@@ -43,10 +43,6 @@ export function CelebrationDialog({
   useEffect(() => {
     warmConfetti()
   }, [])
-
-  useEffect(() => {
-    if (open) fireConfetti()
-  }, [open])
 
   const t = toneClasses[tone]
 

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DialogClose } from "@/components/ui/dialog"
 import { CelebrationDialog } from "@/components/celebration-dialog"
+import { fireConfetti } from "@/lib/celebrate"
 import { formatConfirmTime } from "@/lib/display"
 import { useConfirmJob } from "@/hooks/use-request-mutations"
 import { StarRatingPrompt } from "./star-rating-prompt"
@@ -57,7 +58,12 @@ export function ConfirmReceptionBanner({ job, hasReviewed }: { job: JobDetail; h
         </p>
         <Button
           type="button"
-          onClick={() => confirmJob.mutate(undefined, { onSuccess: () => setCelebrate(true) })}
+          onClick={() => confirmJob.mutate(undefined, {
+            onSuccess: () => {
+              fireConfetti()
+              setCelebrate(true)
+            },
+          })}
           disabled={confirmJob.isPending}
           className="h-[46px] w-full bg-amber-500 text-[15px] font-semibold text-white hover:bg-amber-500/90 active:scale-[0.98]"
         >

@@ -35,6 +35,7 @@ import { DetailRow } from "@/components/requests/detail-row"
 import { QuoteCard } from "@/components/requests/quote-card"
 import { RequestCancelledBanner } from "@/components/requests/request-cancelled-banner"
 import { CelebrationDialog } from "@/components/celebration-dialog"
+import { fireConfetti } from "@/lib/celebrate"
 
 export const Route = createFileRoute("/_app/requests/$id")({
   component: RequestDetailPage,
@@ -58,7 +59,10 @@ function RequestDetailPage() {
 
   function handleAccept(quote: { id: string; price: number; driver: { name: string } }) {
     acceptMutation.mutate(quote.id, {
-      onSuccess: ({ jobId }) => setBooked({ jobId, driverName: quote.driver.name, price: quote.price }),
+      onSuccess: ({ jobId }) => {
+        fireConfetti()
+        setBooked({ jobId, driverName: quote.driver.name, price: quote.price })
+      },
     })
   }
 
