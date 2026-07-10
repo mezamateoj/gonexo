@@ -1,6 +1,7 @@
+import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { MapPin, ChevronLeft, ArrowRight, TriangleAlert } from "lucide-react"
+import { MapPin, ChevronLeft, ArrowRight, TriangleAlert, PartyPopper } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
@@ -33,6 +34,8 @@ import {
 import { DetailRow } from "@/components/requests/detail-row"
 import { QuoteCard } from "@/components/requests/quote-card"
 import { RequestCancelledBanner } from "@/components/requests/request-cancelled-banner"
+import { CelebrationDialog } from "@/components/celebration-dialog"
+import { fireConfetti } from "@/lib/celebrate"
 
 export const Route = createFileRoute("/_app/requests/$id")({
   component: RequestDetailPage,
@@ -49,6 +52,19 @@ function RequestDetailPage() {
 
   const acceptMutation = useAcceptQuote(id)
   const cancelMutation = useCancelRequest(id)
+
+  // Details are captured from the accepted quote at click time so the
+  // celebration dialog can show them before we route to the new job.
+  const [booked, setBooked] = useState<{ jobId: string; driverName: string; price: number } | null>(null)
+
+  function handleAccept(quote: { id: string; price: number; driver: { name: string } }) {
+    acceptMutation.mutate(quote.id, {
+      onSuccess: ({ jobId }) => {
+        fireConfetti()
+        setBooked({ jobId, driverName: quote.driver.name, price: quote.price })
+      },
+    })
+  }
 
   if (isLoading) {
     return (
@@ -262,7 +278,7 @@ function RequestDetailPage() {
                       <QuoteCard
                         key={q.id}
                         quote={q}
-                        onAccept={(qid) => acceptMutation.mutate(qid)}
+                        onAccept={() => handleAccept(q)}
                         accepting={acceptMutation.isPending && acceptMutation.variables === q.id}
                       />
                     ))}
@@ -312,6 +328,35 @@ function RequestDetailPage() {
           )}
         </div>
       </div>
+
+      <CelebrationDialog
+        open={booked !== null}
+        onOpenChange={(open) => !open && setBooked(null)}
+        tone="primary"
+        icon={<PartyPopper />}
+        title="¡Flete reservado!"
+        description="Tu transportista fue confirmado. Coordina los detalles y sigue el avance desde tu flete."
+        details={
+          booked
+            ? [
+                { label: "Transportista", value: booked.driverName },
+                { label: "Precio acordado", value: formatCLP(booked.price) },
+                { label: "Fecha", value: formatLongDateTime(req.scheduledAt) },
+              ]
+            : undefined
+        }
+      >
+        <Button
+          className="h-11 w-full text-[15px] font-semibold"
+          onClick={() => booked && navigate({ to: "/jobs/$id", params: { id: booked.jobId } })}
+        >
+          Ver mi flete
+          <ArrowRight data-icon="inline-end" />
+        </Button>
+        <Button variant="ghost" className="h-10 w-full" onClick={() => setBooked(null)}>
+          Seguir aquí
+        </Button>
+      </CelebrationDialog>
     </div>
   )
 }

@@ -264,6 +264,10 @@ function NewRequestPage() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       toast.success("Solicitud publicada", {
         description: "Los transportistas ya pueden verla y enviarte ofertas.",
+        action: {
+          label: "Mis fletes",
+          onClick: () => navigate({ to: "/requests", search: { tab: "offers", page: 1 } }),
+        },
       })
       navigate({ to: "/requests/$id", params: { id } })
     },

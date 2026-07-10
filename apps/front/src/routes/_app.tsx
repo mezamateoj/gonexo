@@ -6,9 +6,8 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Plus, Truck } from "lucide-react"
+import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAppMode } from "@/lib/app-mode"
 import { cn } from "@/lib/utils"
@@ -53,12 +52,6 @@ function TopBar() {
           <span className="text-muted-foreground">/</span>
           <span className="truncate font-medium text-foreground">{currentLabel}</span>
         </nav>
-        {mode === "driver" && (
-          <Badge>
-            <Truck data-icon="inline-start" />
-            Transportista
-          </Badge>
-        )}
       </div>
 
       <div className="flex items-center gap-2">

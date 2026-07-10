@@ -1,4 +1,6 @@
-PRAGMA defer_foreign_keys=ON;--> statement-breakpoint
+DROP TABLE IF EXISTS `__new_request`;
+-- Drizzle's D1 HTTP driver must send this migration as one batch so deferred foreign keys stay active.
+PRAGMA defer_foreign_keys=ON;
 CREATE TABLE `__new_request` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -34,14 +36,14 @@ CREATE TABLE `__new_request` (
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "request_status_check" CHECK("status" in ('open', 'accepted', 'in_progress', 'completed', 'cancelled'))
 );
---> statement-breakpoint
-INSERT INTO `__new_request`("id", "user_id", "status", "origin_address", "origin_lat", "origin_lng", "origin_floor", "origin_has_elevator", "dest_address", "dest_lat", "dest_lng", "dest_floor", "dest_has_elevator", "scheduled_at", "flexible_date", "volume_category", "item_description", "notes", "budget_max", "helpers_needed", "has_fragile_items", "assembly_required", "packing_included", "parking_type", "long_carry", "route_distance_m", "route_duration_s", "zero_quote_notified_at", "expiry_remind_notified_at", "created_at", "updated_at") SELECT "id", "user_id", "status", "origin_address", "origin_lat", "origin_lng", "origin_floor", "origin_has_elevator", "dest_address", "dest_lat", "dest_lng", "dest_floor", "dest_has_elevator", "scheduled_at", "flexible_date", "volume_category", "item_description", "notes", "budget_max", "helpers_needed", "has_fragile_items", "assembly_required", "packing_included", "parking_type", "long_carry", "route_distance_m", "route_duration_s", NULL, NULL, "created_at", "updated_at" FROM `request`;--> statement-breakpoint
-DROP TABLE `request`;--> statement-breakpoint
-ALTER TABLE `__new_request` RENAME TO `request`;--> statement-breakpoint
-CREATE INDEX `request_userId_idx` ON `request` (`user_id`);--> statement-breakpoint
-CREATE INDEX `request_status_scheduledAt_idx` ON `request` (`status`,`scheduled_at`);--> statement-breakpoint
-CREATE INDEX `request_status_createdAt_idx` ON `request` (`status`,`created_at`);--> statement-breakpoint
-CREATE INDEX `request_status_routeDistanceM_idx` ON `request` (`status`,`route_distance_m`);--> statement-breakpoint
+
+INSERT INTO `__new_request`("id", "user_id", "status", "origin_address", "origin_lat", "origin_lng", "origin_floor", "origin_has_elevator", "dest_address", "dest_lat", "dest_lng", "dest_floor", "dest_has_elevator", "scheduled_at", "flexible_date", "volume_category", "item_description", "notes", "budget_max", "helpers_needed", "has_fragile_items", "assembly_required", "packing_included", "parking_type", "long_carry", "route_distance_m", "route_duration_s", "zero_quote_notified_at", "expiry_remind_notified_at", "created_at", "updated_at") SELECT "id", "user_id", "status", "origin_address", "origin_lat", "origin_lng", "origin_floor", "origin_has_elevator", "dest_address", "dest_lat", "dest_lng", "dest_floor", "dest_has_elevator", "scheduled_at", "flexible_date", "volume_category", "item_description", "notes", "budget_max", "helpers_needed", "has_fragile_items", "assembly_required", "packing_included", "parking_type", "long_carry", "route_distance_m", "route_duration_s", NULL, NULL, "created_at", "updated_at" FROM `request`;
+DROP TABLE `request`;
+ALTER TABLE `__new_request` RENAME TO `request`;
+CREATE INDEX `request_userId_idx` ON `request` (`user_id`);
+CREATE INDEX `request_status_scheduledAt_idx` ON `request` (`status`,`scheduled_at`);
+CREATE INDEX `request_status_createdAt_idx` ON `request` (`status`,`created_at`);
+CREATE INDEX `request_status_routeDistanceM_idx` ON `request` (`status`,`route_distance_m`);
 CREATE TABLE `__new_quote` (
 	`id` text PRIMARY KEY NOT NULL,
 	`request_id` text NOT NULL,
@@ -58,15 +60,15 @@ CREATE TABLE `__new_quote` (
 	FOREIGN KEY (`driver_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "quote_status_check" CHECK("status" in ('pending', 'accepted', 'rejected', 'expired', 'cancelled'))
 );
---> statement-breakpoint
-INSERT INTO `__new_quote`("id", "request_id", "driver_id", "price", "price_min", "price_max", "message", "status", "expires_at", "created_at", "updated_at") SELECT "id", "request_id", "driver_id", "price", "price_min", "price_max", "message", "status", "expires_at", "created_at", "updated_at" FROM `quote`;--> statement-breakpoint
-DROP TABLE `quote`;--> statement-breakpoint
-ALTER TABLE `__new_quote` RENAME TO `quote`;--> statement-breakpoint
-CREATE UNIQUE INDEX `quote_request_driver_unique` ON `quote` (`request_id`,`driver_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `quote_one_accepted_per_request_unique` ON `quote` (`request_id`) WHERE "quote"."status" = 'accepted';--> statement-breakpoint
-CREATE INDEX `quote_requestId_idx` ON `quote` (`request_id`);--> statement-breakpoint
-CREATE INDEX `quote_driverId_idx` ON `quote` (`driver_id`);--> statement-breakpoint
-CREATE INDEX `quote_pending_expiresAt_idx` ON `quote` (`expires_at`) WHERE "quote"."status" = 'pending';--> statement-breakpoint
+
+INSERT INTO `__new_quote`("id", "request_id", "driver_id", "price", "price_min", "price_max", "message", "status", "expires_at", "created_at", "updated_at") SELECT "id", "request_id", "driver_id", "price", "price_min", "price_max", "message", "status", "expires_at", "created_at", "updated_at" FROM `quote`;
+DROP TABLE `quote`;
+ALTER TABLE `__new_quote` RENAME TO `quote`;
+CREATE UNIQUE INDEX `quote_request_driver_unique` ON `quote` (`request_id`,`driver_id`);
+CREATE UNIQUE INDEX `quote_one_accepted_per_request_unique` ON `quote` (`request_id`) WHERE "quote"."status" = 'accepted';
+CREATE INDEX `quote_requestId_idx` ON `quote` (`request_id`);
+CREATE INDEX `quote_driverId_idx` ON `quote` (`driver_id`);
+CREATE INDEX `quote_pending_expiresAt_idx` ON `quote` (`expires_at`) WHERE "quote"."status" = 'pending';
 CREATE TABLE `__new_job` (
 	`id` text PRIMARY KEY NOT NULL,
 	`request_id` text NOT NULL,
@@ -97,16 +99,16 @@ CREATE TABLE `__new_job` (
 	CONSTRAINT "job_payment_status_check" CHECK("payment_status" in ('pending', 'held', 'released', 'refunded')),
 	CONSTRAINT "job_cancelled_by_role_check" CHECK("cancelled_by_role" is null or "cancelled_by_role" in ('user', 'driver'))
 );
---> statement-breakpoint
-INSERT INTO `__new_job`("id", "request_id", "quote_id", "user_id", "driver_id", "status", "agreed_price", "platform_fee", "driver_payout", "payment_status", "on_the_way_at", "arrived_at", "completed_at", "auto_confirm_at", "confirmed_at", "cancelled_at", "cancelled_by_role", "confirm_code", "confirm_code_used_at", "created_at", "updated_at") SELECT "id", "request_id", "quote_id", "user_id", "driver_id", "status", "agreed_price", "platform_fee", "driver_payout", "payment_status", "on_the_way_at", "arrived_at", "completed_at", "auto_confirm_at", "confirmed_at", NULL, NULL, "confirm_code", "confirm_code_used_at", "created_at", "updated_at" FROM `job`;--> statement-breakpoint
-DROP TABLE `job`;--> statement-breakpoint
-ALTER TABLE `__new_job` RENAME TO `job`;--> statement-breakpoint
-CREATE UNIQUE INDEX `job_quote_id_unique` ON `job` (`quote_id`);--> statement-breakpoint
-CREATE INDEX `job_userId_idx` ON `job` (`user_id`);--> statement-breakpoint
-CREATE INDEX `job_driverId_idx` ON `job` (`driver_id`);--> statement-breakpoint
-CREATE INDEX `job_status_idx` ON `job` (`status`);--> statement-breakpoint
-CREATE UNIQUE INDEX `job_one_active_per_request_unique` ON `job` (`request_id`) WHERE "job"."status" != 'cancelled';--> statement-breakpoint
-CREATE INDEX `job_pending_autoConfirmAt_idx` ON `job` (`auto_confirm_at`) WHERE "job"."confirmed_at" is null;--> statement-breakpoint
+
+INSERT INTO `__new_job`("id", "request_id", "quote_id", "user_id", "driver_id", "status", "agreed_price", "platform_fee", "driver_payout", "payment_status", "on_the_way_at", "arrived_at", "completed_at", "auto_confirm_at", "confirmed_at", "cancelled_at", "cancelled_by_role", "confirm_code", "confirm_code_used_at", "created_at", "updated_at") SELECT "id", "request_id", "quote_id", "user_id", "driver_id", "status", "agreed_price", "platform_fee", "driver_payout", "payment_status", "on_the_way_at", "arrived_at", "completed_at", "auto_confirm_at", "confirmed_at", NULL, NULL, "confirm_code", "confirm_code_used_at", "created_at", "updated_at" FROM `job`;
+DROP TABLE `job`;
+ALTER TABLE `__new_job` RENAME TO `job`;
+CREATE UNIQUE INDEX `job_quote_id_unique` ON `job` (`quote_id`);
+CREATE INDEX `job_userId_idx` ON `job` (`user_id`);
+CREATE INDEX `job_driverId_idx` ON `job` (`driver_id`);
+CREATE INDEX `job_status_idx` ON `job` (`status`);
+CREATE UNIQUE INDEX `job_one_active_per_request_unique` ON `job` (`request_id`) WHERE "job"."status" != 'cancelled';
+CREATE INDEX `job_pending_autoConfirmAt_idx` ON `job` (`auto_confirm_at`) WHERE "job"."confirmed_at" is null;
 CREATE TABLE `__new_review` (
 	`id` text PRIMARY KEY NOT NULL,
 	`job_id` text NOT NULL,
@@ -122,13 +124,13 @@ CREATE TABLE `__new_review` (
 	CONSTRAINT "review_rating_check" CHECK("rating" >= 1 and "rating" <= 5),
 	CONSTRAINT "review_reviewer_role_check" CHECK("reviewer_role" in ('user', 'driver'))
 );
---> statement-breakpoint
-INSERT INTO `__new_review`("id", "job_id", "reviewer_id", "reviewee_id", "reviewer_role", "rating", "comment", "created_at") SELECT "id", "job_id", "reviewer_id", "reviewee_id", "reviewer_role", "rating", "comment", "created_at" FROM `review`;--> statement-breakpoint
-DROP TABLE `review`;--> statement-breakpoint
-ALTER TABLE `__new_review` RENAME TO `review`;--> statement-breakpoint
-CREATE UNIQUE INDEX `review_job_reviewer_unique` ON `review` (`job_id`,`reviewer_id`);--> statement-breakpoint
-CREATE INDEX `review_jobId_idx` ON `review` (`job_id`);--> statement-breakpoint
-CREATE INDEX `review_revieweeId_idx` ON `review` (`reviewee_id`);--> statement-breakpoint
+
+INSERT INTO `__new_review`("id", "job_id", "reviewer_id", "reviewee_id", "reviewer_role", "rating", "comment", "created_at") SELECT "id", "job_id", "reviewer_id", "reviewee_id", "reviewer_role", "rating", "comment", "created_at" FROM `review`;
+DROP TABLE `review`;
+ALTER TABLE `__new_review` RENAME TO `review`;
+CREATE UNIQUE INDEX `review_job_reviewer_unique` ON `review` (`job_id`,`reviewer_id`);
+CREATE INDEX `review_jobId_idx` ON `review` (`job_id`);
+CREATE INDEX `review_revieweeId_idx` ON `review` (`reviewee_id`);
 CREATE TABLE `__new_driver_profile` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -154,12 +156,12 @@ CREATE TABLE `__new_driver_profile` (
 	CONSTRAINT "driver_profile_total_jobs_check" CHECK("total_jobs" >= 0),
 	CONSTRAINT "driver_profile_verified_status_check" CHECK("is_verified" = false or "documents_status" = 'verified')
 );
---> statement-breakpoint
-INSERT INTO `__new_driver_profile`("id", "user_id", "phone", "vehicle_type", "vehicle_plate", "vehicle_year", "bio", "is_verified", "is_available", "avg_rating", "total_jobs", "vehicle_description", "vehicle_capacity", "documents_status", "created_at", "updated_at") SELECT "id", "user_id", "phone", "vehicle_type", "vehicle_plate", "vehicle_year", "bio", "is_verified", "is_available", "avg_rating", "total_jobs", "vehicle_description", "vehicle_capacity", "documents_status", "created_at", "updated_at" FROM `driver_profile`;--> statement-breakpoint
-DROP TABLE `driver_profile`;--> statement-breakpoint
-ALTER TABLE `__new_driver_profile` RENAME TO `driver_profile`;--> statement-breakpoint
-CREATE UNIQUE INDEX `driver_profile_user_id_unique` ON `driver_profile` (`user_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `driver_profile_vehicle_plate_unique` ON `driver_profile` (`vehicle_plate`);--> statement-breakpoint
+
+INSERT INTO `__new_driver_profile`("id", "user_id", "phone", "vehicle_type", "vehicle_plate", "vehicle_year", "bio", "is_verified", "is_available", "avg_rating", "total_jobs", "vehicle_description", "vehicle_capacity", "documents_status", "created_at", "updated_at") SELECT "id", "user_id", "phone", "vehicle_type", "vehicle_plate", "vehicle_year", "bio", "is_verified", "is_available", "avg_rating", "total_jobs", "vehicle_description", "vehicle_capacity", "documents_status", "created_at", "updated_at" FROM `driver_profile`;
+DROP TABLE `driver_profile`;
+ALTER TABLE `__new_driver_profile` RENAME TO `driver_profile`;
+CREATE UNIQUE INDEX `driver_profile_user_id_unique` ON `driver_profile` (`user_id`);
+CREATE UNIQUE INDEX `driver_profile_vehicle_plate_unique` ON `driver_profile` (`vehicle_plate`);
 CREATE TABLE `driver_document` (
 	`id` text PRIMARY KEY NOT NULL,
 	`driver_profile_id` text NOT NULL,
@@ -170,9 +172,9 @@ CREATE TABLE `driver_document` (
 	FOREIGN KEY (`driver_profile_id`) REFERENCES `driver_profile`(`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "driver_document_kind_check" CHECK("driver_document"."kind" in ('license', 'papers', 'vehicle_photo'))
 );
---> statement-breakpoint
-CREATE INDEX `driver_document_driverProfileId_idx` ON `driver_document` (`driver_profile_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `driver_document_key_unique` ON `driver_document` (`key`);--> statement-breakpoint
+
+CREATE INDEX `driver_document_driverProfileId_idx` ON `driver_document` (`driver_profile_id`);
+CREATE UNIQUE INDEX `driver_document_key_unique` ON `driver_document` (`key`);
 CREATE TABLE `job_event` (
 	`id` text PRIMARY KEY NOT NULL,
 	`job_id` text NOT NULL,
@@ -183,8 +185,8 @@ CREATE TABLE `job_event` (
 	FOREIGN KEY (`job_id`) REFERENCES `job`(`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "job_event_actor_role_check" CHECK("job_event"."actor_role" in ('system', 'user', 'driver', 'operator'))
 );
---> statement-breakpoint
-CREATE INDEX `job_event_jobId_idx` ON `job_event` (`job_id`);--> statement-breakpoint
+
+CREATE INDEX `job_event_jobId_idx` ON `job_event` (`job_id`);
 CREATE TABLE `job_report` (
 	`id` text PRIMARY KEY NOT NULL,
 	`job_id` text NOT NULL,
@@ -196,7 +198,7 @@ CREATE TABLE `job_report` (
 	FOREIGN KEY (`reporter_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "job_report_reporter_role_check" CHECK("job_report"."reporter_role" in ('user', 'driver'))
 );
---> statement-breakpoint
-CREATE INDEX `job_report_jobId_idx` ON `job_report` (`job_id`);--> statement-breakpoint
-PRAGMA defer_foreign_keys=OFF;--> statement-breakpoint
+
+CREATE INDEX `job_report_jobId_idx` ON `job_report` (`job_id`);
+PRAGMA defer_foreign_keys=OFF;
 PRAGMA optimize;

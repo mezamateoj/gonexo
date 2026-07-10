@@ -5,6 +5,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme="light"
+      richColors
+      closeButton
+      duration={4500}
       className="toaster group"
       icons={{
         success: (

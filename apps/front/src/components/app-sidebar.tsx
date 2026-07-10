@@ -140,6 +140,7 @@ export function AppSidebar() {
           <button
             type="button"
             onClick={toggleSidebar}
+            aria-label="Contraer barra lateral"
             className="group-data-[collapsible=icon]:hidden flex size-7 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
           >
             <PanelLeftClose className="size-3.5" />
@@ -150,7 +151,7 @@ export function AppSidebar() {
       <SidebarContent className="px-1 py-2">
         {isDriver && (
           <SidebarGroup className="pb-0">
-            <Badge className="w-full justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0">
+            <Badge className="h-7 w-full justify-center rounded-md group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0">
               <Truck />
               <span className="group-data-[collapsible=icon]:hidden">Transportista</span>
             </Badge>
