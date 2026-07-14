@@ -11,6 +11,7 @@
   },
   "compatibility_date": "2026-06-16",
   "vars": {
+    "ENVIRONMENT": "production",
     "BETTER_AUTH_URL": "https://gonexo-back.mezamateoj.workers.dev",
     "FRONTEND_URL": "https://gonexo-front.mezamateoj.workers.dev",
   },
@@ -34,4 +35,28 @@
       "migrations_dir": "drizzle",
     },
   ],
+  "env": {
+    "staging": {
+      "name": "gonexo-back-staging",
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "BETTER_AUTH_URL": "https://gonexo-back-staging.mezamateoj.workers.dev",
+        "FRONTEND_URL": "https://gonexo-front-staging.mezamateoj.workers.dev",
+      },
+      "r2_buckets": [
+        {
+          "binding": "BUCKET",
+          "bucket_name": "gonexo-uploads-staging",
+        },
+      ],
+      "d1_databases": [
+        {
+          "binding": "db",
+          "database_name": "staging-gonexo",
+          "database_id": "bc316de9-f014-4482-a4c7-1299d6726602",
+          "migrations_dir": "drizzle",
+        },
+      ],
+    },
+  },
 }

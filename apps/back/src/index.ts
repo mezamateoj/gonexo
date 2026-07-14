@@ -32,21 +32,21 @@ configureSync({
   ],
 });
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://gonexo-front.mezamateoj.workers.dev",
-];
-
 const app = new Hono<AppEnv>();
 
-app.use("*", (c, next) =>
-  cors({
+app.use("*", (c, next) => {
+  const allowedOrigins = [
+    ...(c.env.ENVIRONMENT === "local" ? ["http://localhost:5173"] : []),
+    c.env.FRONTEND_URL,
+  ];
+
+  return cors({
     origin: (origin) => (allowedOrigins.includes(origin) ? origin : null),
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
-  })(c, next),
-);
+  })(c, next);
+});
 
 app.onError((err, c) => {
   if (err instanceof AppError) {
