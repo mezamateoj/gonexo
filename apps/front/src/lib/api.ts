@@ -167,7 +167,7 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ documents }),
       }),
-    enrich: (body: { photoUrls: string[]; papersUrl?: string }) =>
+    enrich: (body: { photoKeys: string[]; papersKey?: string }) =>
       apiFetch<EnrichVehicleResult>("/api/drivers/enrich", {
         method: "POST",
         body: JSON.stringify(body),

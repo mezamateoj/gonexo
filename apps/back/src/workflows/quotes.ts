@@ -4,6 +4,7 @@ import type { Db } from "../db";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { PLATFORM_FEE_RATE } from "../lib/pricing";
+import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
 
 export async function acceptQuote(db: Db, userId: string, quoteId: string) {
   const q = await db.query.quote.findFirst({
@@ -36,7 +37,8 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
   // delivery to mark the job completed.
   const confirmCode = String(Math.floor(1000 + Math.random() * 9000));
 
-  await db.batch([
+  try {
+    await db.batch([
     db.update(quote).set({ status: "accepted" }).where(eq(quote.id, quoteId)),
 
     db
@@ -74,7 +76,10 @@ export async function acceptQuote(db: Db, userId: string, quoteId: string) {
       actorRole: "user",
       meta: JSON.stringify({ quoteId, requestId: q.requestId }),
     }),
-  ]);
+    ]);
+  } catch (error) {
+    throwConflictOnUniqueConstraint(error, "Request already has an active job");
+  }
 
   logger.info("Quote accepted -> job created: {jobId} (quote {quoteId}, request {requestId})", {
     jobId,

@@ -4,12 +4,15 @@ import * as schema from "../db/schema";
 import { normalizePhone } from "./normalizers";
 import type { Db } from "../db";
 
+const configuredFrontendOrigin = process.env.FRONTEND_URL;
+const trustedOrigins = configuredFrontendOrigin ? [configuredFrontendOrigin] : [];
+
 export const createAuth = (db?: Db) =>
   betterAuth({
     database: drizzleAdapter(db ?? {}, { provider: "sqlite", schema }),
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:8787",
     secret: process.env.BETTER_AUTH_SECRET,
-    trustedOrigins: ["http://localhost:5173", "https://gonexo-front.mezamateoj.workers.dev"],
+    trustedOrigins,
     emailAndPassword: {
       enabled: true,
     },

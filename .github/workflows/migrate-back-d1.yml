@@ -2,7 +2,7 @@ name: Migrate Back D1
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - "apps/back/drizzle/**"
   workflow_dispatch:
@@ -11,8 +11,10 @@ permissions:
   contents: read
 
 jobs:
-  migrate:
-    name: Migrate Back D1
+  migrate-staging:
+    name: Migrate Back D1 (staging)
+    if: github.ref_name == 'dev'
+    environment: staging
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -29,7 +31,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Apply D1 migrations
+      - name: Apply staging D1 migrations
+        working-directory: apps/back
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_STAGING_ACCOUNT_ID }}
+          CLOUDFLARE_DATABASE_ID: ${{ secrets.CLOUDFLARE_STAGING_DATABASE_ID }}
+          CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_STAGING_D1_TOKEN }}
+        run: pnpm run migrate
+
+  migrate-production:
+    name: Migrate Back D1 (production)
+    if: github.ref_name == 'main'
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply production D1 migrations
         working-directory: apps/back
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -52,6 +52,8 @@
 ## Commands
 
 - Root checks: `pnpm check`, `pnpm check:types`, `pnpm check:lint`.
+- Never run a Cloudflare deployment command, including `wrangler deploy --dry-run`. The user handles every Cloudflare deployment and staging/production verification.
+- During implementation, do not run checks after individual edits. Finish the requested change set first, then run the smallest relevant local checks once.
 - App typechecks must use scripts, not direct `tsc`: run `pnpm run typecheck` inside an app or `pnpm check:types` at the root. The scripts regenerate Wrangler types first.
 - Root dev/deploy shortcuts: `pnpm dev:back`, `pnpm dev:front`, `pnpm deploy:back`, `pnpm deploy:front`.
 - Backend local D1 migration flow: run `pnpm run db:local` in `apps/back` after Drizzle schema or migration changes. It generates SQL and applies it to Wrangler's local D1 store.

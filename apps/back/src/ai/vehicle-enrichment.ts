@@ -23,16 +23,16 @@ const enrichmentSchema = z.object({
 export type VehicleEnrichmentResult = z.infer<typeof enrichmentSchema>;
 
 export async function enrichVehicle(
-  photoUrls: string[],
-  papersUrl: string | null,
+  photos: ArrayBuffer[],
+  papers: ArrayBuffer | null,
   apiKey: string,
 ): Promise<VehicleEnrichmentResult> {
   const anthropic = createAnthropic({ apiKey });
 
-  const imageContent = [...photoUrls, ...(papersUrl ? [papersUrl] : [])].map(
-    (url) => ({
+  const imageContent = [...photos, ...(papers ? [papers] : [])].map(
+    (image) => ({
       type: "image" as const,
-      image: new URL(url),
+      image,
     }),
   );
 
