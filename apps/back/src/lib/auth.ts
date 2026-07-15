@@ -5,10 +5,7 @@ import { normalizePhone } from "./normalizers";
 import type { Db } from "../db";
 
 const configuredFrontendOrigin = process.env.FRONTEND_URL;
-const trustedOrigins = [
-  ...(process.env.ENVIRONMENT === "local" ? ["http://localhost:5173"] : []),
-  ...(configuredFrontendOrigin ? [configuredFrontendOrigin] : []),
-];
+const trustedOrigins = configuredFrontendOrigin ? [configuredFrontendOrigin] : [];
 
 export const createAuth = (db?: Db) =>
   betterAuth({
