@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { badRequest, upstreamError } from "../lib/errors";
 import { requireAuth } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
+import { enforceRateLimit } from "../lib/rate-limit";
 
 const MAPBOX_SUGGEST_URL = "https://api.mapbox.com/search/searchbox/v1/suggest";
 const MAPBOX_RETRIEVE_URL =
@@ -11,6 +12,11 @@ const geo = new Hono<AppEnv>();
 
 // GET /api/geo/suggest?q=...&session=...
 geo.get("/suggest", requireAuth, async (c) => {
+  await enforceRateLimit(
+    c.env.GEO_RATE_LIMITER,
+    `${c.get("user")!.id}:suggest`,
+    "Too many geocoding requests",
+  );
   const q = c.req.query("q")?.trim();
   const session = c.req.query("session")?.trim();
 
@@ -36,6 +42,11 @@ geo.get("/suggest", requireAuth, async (c) => {
 
 // GET /api/geo/retrieve?id=...&session=...
 geo.get("/retrieve", requireAuth, async (c) => {
+  await enforceRateLimit(
+    c.env.GEO_RATE_LIMITER,
+    `${c.get("user")!.id}:retrieve`,
+    "Too many geocoding requests",
+  );
   const id = c.req.query("id")?.trim();
   const session = c.req.query("session")?.trim();
 

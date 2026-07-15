@@ -93,6 +93,23 @@ requests.post(
     const db = c.get("db");
     const user = c.get("user")!;
     const body = c.req.valid("json");
+    if (new Date(body.scheduledAt).getTime() < Date.now() - 5 * 60 * 1000) {
+      throw badRequest("La fecha programada no puede estar en el pasado");
+    }
+    if (
+      body.originLat < -90 || body.originLat > 90 ||
+      body.originLng < -180 || body.originLng > 180 ||
+      (body.originLat === 0 && body.originLng === 0)
+    ) {
+      throw badRequest("Las coordenadas de origen no son válidas");
+    }
+    if (
+      body.destLat < -90 || body.destLat > 90 ||
+      body.destLng < -180 || body.destLng > 180 ||
+      (body.destLat === 0 && body.destLng === 0)
+    ) {
+      throw badRequest("Las coordenadas de destino no son válidas");
+    }
     if (containsContactInfo(body.notes)) throw badRequest(NO_CONTACT_MESSAGE);
     const id = crypto.randomUUID();
 

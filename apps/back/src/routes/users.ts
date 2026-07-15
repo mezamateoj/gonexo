@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/auth";
 import { badRequest } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { normalizePhone } from "../lib/normalizers";
+import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
 
 const users = new Hono<AppEnv>();
 
@@ -35,10 +36,14 @@ users.patch(
       ? { ...body, phone: normalizePhone(body.phone) }
       : body;
 
-    await db
-      .update(user)
-      .set(updates)
-      .where(eq(user.id, u.id));
+    try {
+      await db
+        .update(user)
+        .set(updates)
+        .where(eq(user.id, u.id));
+    } catch (error) {
+      throwConflictOnUniqueConstraint(error, "Phone number is already in use");
+    }
 
     return c.json({ ok: true });
   }

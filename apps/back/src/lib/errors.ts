@@ -7,6 +7,7 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "TOO_MANY_REQUESTS"
   | "PAYLOAD_TOO_LARGE"
   | "UNSUPPORTED_MEDIA_TYPE"
   | "UPSTREAM_ERROR"
@@ -43,6 +44,10 @@ export function notFound(message = "Not found") {
 
 export function conflict(message: string) {
   return new AppError(409, "CONFLICT", message);
+}
+
+export function tooManyRequests(message: string) {
+  return new AppError(429, "TOO_MANY_REQUESTS", message);
 }
 
 export function payloadTooLarge(message: string) {

@@ -1,9 +1,12 @@
 import { Hono } from "hono";
+import * as Sentry from "@sentry/cloudflare";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { cors } from "hono/cors";
 import { configureSync, getConsoleSink, logfmtFormatter, resetSync } from "@logtape/logtape";
 import { honoLogger } from "@logtape/hono";
 import { createAuth } from "./lib/auth";
-import { AppError, notFound } from "./lib/errors";
+import { AppError, badRequest, notFound } from "./lib/errors";
 import { logger } from "./lib/logger";
 import type { AppEnv } from "./lib/types";
 import { dbMiddleware } from "./middleware/db";
@@ -18,6 +21,8 @@ import users from "./routes/users";
 import uploads from "./routes/uploads";
 import geo from "./routes/geo";
 import seed from "./routes/seed";
+import { driverDocument, user as userTable } from "./db/schema";
+import { normalizePhone } from "./lib/normalizers";
 
 resetSync();
 configureSync({
@@ -33,6 +38,7 @@ configureSync({
 });
 
 const app = new Hono<AppEnv>();
+const signUpPrecheckSchema = z.object({ phone: z.string().optional() }).passthrough();
 
 app.use("*", (c, next) => {
   const allowedOrigins = [
@@ -80,6 +86,23 @@ app.use("*", honoLogger({
 
 app.use("*", dbMiddleware);
 
+app.post("/api/auth/sign-up/email", async (c) => {
+  const json = await c.req.raw.clone().json().catch(() => null);
+  const parsedBody = signUpPrecheckSchema.safeParse(json);
+  if (!parsedBody.success) throw badRequest("Invalid request body");
+  const body = parsedBody.data;
+  const { phone } = body;
+  if (phone) {
+    const existing = await c.get("db").query.user.findFirst({
+      where: eq(userTable.phone, normalizePhone(phone)),
+    });
+    if (existing) {
+      return c.json({ code: "PHONE_NUMBER_EXISTS", message: "Phone number is already in use" }, 409);
+    }
+  }
+  return createAuth(c.get("db")).handler(c.req.raw);
+});
+
 app.on(["GET", "POST"], "/api/auth/*", (c) =>
   createAuth(c.get("db")).handler(c.req.raw),
 );
@@ -96,6 +119,13 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+const localSeed = new Hono<AppEnv>();
+localSeed.use("*", async (c, next) => {
+  if (c.env.ENVIRONMENT !== "local") throw notFound();
+  await next();
+});
+localSeed.route("/", seed);
+
 const api = new Hono<AppEnv>()
   .route("/requests", requests)
   .route("/quotes", quotes)
@@ -104,17 +134,27 @@ const api = new Hono<AppEnv>()
   .route("/users", users)
   .route("/uploads", uploads)
   .route("/geo", geo)
-  .route("/__seed", seed);
+  .route("/__seed", localSeed);
 
 app.route("/api", api);
 
-// Switch to a proper R2 custom domain later; this is fine for MVP.
+// All uploads require a session. Driver documents additionally belong only to
+// the driver who registered them; request photos remain visible to signed-in users.
 app.get("/cdn/:key", async (c) => {
-  const obj = await c.env.BUCKET.get(c.req.param("key"));
+  if (!c.get("user")) throw notFound();
+  const key = c.req.param("key");
+  const document = await c.get("db").query.driverDocument.findFirst({
+    where: eq(driverDocument.key, key),
+    with: { driverProfile: { columns: { userId: true } } },
+  });
+  if (document && document.driverProfile.userId !== c.get("user")?.id) {
+    throw notFound();
+  }
+  const obj = await c.env.BUCKET.get(key);
   if (!obj) throw notFound();
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
-  headers.set("cache-control", "public, max-age=31536000, immutable");
+  headers.set("cache-control", "private, max-age=3600");
   return new Response(obj.body, { headers });
 });
 
@@ -134,7 +174,7 @@ app.notFound((c) =>
 
 export type AppType = typeof api;
 
-export default {
+const worker = {
   fetch: app.fetch,
   // Hourly Cron Trigger (wrangler.jsonc `triggers.crons`): auto-confirm
   // delivered jobs whose 24h client-confirmation window expired.
@@ -142,3 +182,23 @@ export default {
     ctx.waitUntil(autoConfirmOverdueJobs(createDb(env.db)));
   },
 } satisfies ExportedHandler<Bindings>;
+
+export default Sentry.withSentry<Bindings>(
+  (env) => env.SENTRY_DSN ? {
+    dsn: env.SENTRY_DSN,
+    environment: env.ENVIRONMENT,
+    tracesSampleRate: 0.1,
+    enableMetrics: true,
+    flushInterval: 0,
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      queryParams: false,
+      genAI: { inputs: false, outputs: false },
+      stackFrameVariables: false,
+    },
+  } : undefined,
+  worker,
+);

@@ -25,6 +25,7 @@ uploads.post("/", requireAuth, async (c) => {
 
   await c.env.BUCKET.put(key, await file.arrayBuffer(), {
     httpMetadata: { contentType: file.type },
+    customMetadata: { userId: c.get("user")!.id },
   });
 
   const url = new URL(c.req.url);
