@@ -1,4 +1,4 @@
-import type { JobStatus, VolumeCategory } from "@/lib/types"
+import type { DriverDocumentKind, DriverVerificationStatus, JobStatus, VolumeCategory } from "@/lib/types"
 
 export const volumeLabels: Record<VolumeCategory, string> = {
   small: "Pequeño",
@@ -58,6 +58,25 @@ export const vehicleLabels: Record<string, string> = {
   pickup: "Camioneta",
   truck_small: "Camión chico",
   truck_large: "Camión grande",
+}
+
+export const documentKindLabels: Record<DriverDocumentKind, string> = {
+  license: "Licencia de conducir",
+  papers: "Permiso de circulación",
+  vehicle_photo: "Foto del vehículo",
+}
+
+// Honest verification states: never claim "Verificado" until a human verified.
+export const driverVerificationLabels: Record<DriverVerificationStatus, string> = {
+  pending: "Sin documentos",
+  submitted: "En revisión",
+  verified: "Verificado",
+}
+
+export const driverVerificationClasses: Record<DriverVerificationStatus, string> = {
+  pending: "bg-muted text-muted-foreground",
+  submitted: "bg-amber-50 text-amber-700",
+  verified: "bg-green-50 text-green-700",
 }
 
 export function formatCLP(n: number) {

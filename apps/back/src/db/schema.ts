@@ -12,6 +12,11 @@ export const user = sqliteTable(
       .notNull(),
     image: text("image"),
     phone: text("phone"),
+    // Better Auth admin plugin fields (added manually — never `auth:generate`).
+    role: text("role").default("user").notNull(),
+    banned: integer("banned", { mode: "boolean" }),
+    banReason: text("ban_reason"),
+    banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -37,6 +42,8 @@ export const session = sqliteTable(
       .notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    // Better Auth admin plugin: set when an admin impersonates this session.
+    impersonatedBy: text("impersonated_by"),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

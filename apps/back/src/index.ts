@@ -21,6 +21,8 @@ import users from "./routes/users";
 import uploads from "./routes/uploads";
 import geo from "./routes/geo";
 import seed from "./routes/seed";
+import admin from "./routes/admin";
+import { isAdmin } from "./middleware/auth";
 import { driverDocument, user as userTable } from "./db/schema";
 import { normalizePhone } from "./lib/normalizers";
 
@@ -134,6 +136,7 @@ const api = new Hono<AppEnv>()
   .route("/users", users)
   .route("/uploads", uploads)
   .route("/geo", geo)
+  .route("/admin", admin)
   .route("/__seed", localSeed);
 
 app.route("/api", api);
@@ -147,7 +150,12 @@ app.get("/cdn/:key", async (c) => {
     where: eq(driverDocument.key, key),
     with: { driverProfile: { columns: { userId: true } } },
   });
-  if (document && document.driverProfile.userId !== c.get("user")?.id) {
+  // Owners see their own documents; admins can review any driver's documents.
+  if (
+    document &&
+    document.driverProfile.userId !== c.get("user")?.id &&
+    !isAdmin(c)
+  ) {
     throw notFound();
   }
   const obj = await c.env.BUCKET.get(key);
