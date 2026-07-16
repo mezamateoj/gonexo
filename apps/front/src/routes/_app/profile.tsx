@@ -4,18 +4,15 @@ import { useForm } from "@tanstack/react-form"
 import { Link, createFileRoute } from "@tanstack/react-router"
 import {
   CalendarDays,
-  Camera,
-  ExternalLink,
-  FileCheck2,
   IdCard,
   Mail,
   Phone,
   ShieldCheck,
-  Trash2,
   Truck,
 } from "lucide-react"
 import { toast } from "sonner"
 import { z } from "zod"
+import { DriverDocumentUploads } from "@/components/drivers/document-uploads"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,15 +34,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import { api, cdnUrl, uploadDriverFile } from "@/lib/api"
+import { api, uploadDriverFile } from "@/lib/api"
 import { useSession } from "@/lib/auth-client"
 import { vehicleLabels } from "@/lib/display"
 import { queryKeys } from "@/lib/query-keys"
-import type {
-  DriverDocument,
-  DriverDocumentKind,
-  DriverProfile,
-} from "@/lib/types"
+import type { DriverDocumentKind, DriverProfile } from "@/lib/types"
 
 export const Route = createFileRoute("/_app/profile")({
   component: ProfilePage,
@@ -316,11 +309,11 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
     },
     validators: { onSubmit: driverSchema },
     onSubmit: async ({ value }) => {
-      const verificationDocuments = value.documents.filter(
-        (document) => document.kind !== "vehicle_photo",
+      const verificationDocuments = value.documents.flatMap(({ kind, key, order }) =>
+        kind === "vehicle_photo" ? [] : [{ kind, key, order }],
       )
-      const originalVerificationDocuments = profile.documents.filter(
-        (document) => document.kind !== "vehicle_photo",
+      const originalVerificationDocuments = profile.documents.flatMap(({ kind, key, order }) =>
+        kind === "vehicle_photo" ? [] : [{ kind, key, order }],
       )
       const photos = value.documents.filter(
         (document) => document.kind === "vehicle_photo",
@@ -330,10 +323,10 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
       )
       const documentsChanged =
         JSON.stringify(
-          verificationDocuments.map(({ kind, key, order }) => ({ kind, key, order })),
+          verificationDocuments,
         ) !==
         JSON.stringify(
-          originalVerificationDocuments.map(({ kind, key, order }) => ({ kind, key, order })),
+          originalVerificationDocuments,
         )
       const photosChanged =
         JSON.stringify(photos.map(({ key, order }) => ({ key, order }))) !==
@@ -347,11 +340,7 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
         bio: value.bio || undefined,
         ...(documentsChanged
           ? {
-              documents: verificationDocuments.map(({ kind, key, order }) => ({
-                kind,
-                key,
-                order,
-              })),
+              documents: verificationDocuments,
             }
           : {}),
       })
@@ -373,11 +362,10 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
   async function upload(kind: DriverDocumentKind, files: FileList | null) {
     const file = files?.[0]
     if (!file) return
-    if (
-      kind === "vehicle_photo" &&
-      form.state.values.documents.filter((document) => document.kind === kind).length >= 8
-    ) {
-      toast.error("Puedes subir hasta 8 fotos del vehículo")
+    const kindCount = form.state.values.documents.filter((document) => document.kind === kind).length
+    const limit = kind === "license" ? 1 : kind === "papers" ? 3 : 8
+    if (kindCount >= limit && kind !== "license") {
+      toast.error(kind === "papers" ? "Puedes subir hasta 3 documentos" : "Puedes subir hasta 8 fotos")
       return
     }
 
@@ -385,10 +373,12 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
     try {
       const uploaded = await uploadDriverFile(file)
       form.setFieldValue("documents", (documents) => {
-        const withoutKind =
-          kind === "vehicle_photo"
-            ? documents
-            : documents.filter((document) => document.kind !== kind)
+        const withoutKind = kind === "license"
+          ? documents.filter((document) => document.kind !== "license")
+          : documents
+        const nextOrder = withoutKind
+          .filter((document) => document.kind === kind)
+          .reduce((highest, document) => Math.max(highest, document.order), -1) + 1
         return [
           ...withoutKind,
           {
@@ -396,7 +386,7 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
             driverProfileId: profile.id,
             kind,
             key: uploaded.key,
-            order: kind === "vehicle_photo" ? withoutKind.length : 0,
+            order: nextOrder,
             createdAt: new Date().toISOString(),
           },
         ]
@@ -460,9 +450,10 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
 
       <form.Subscribe selector={(state) => state.values.documents}>
         {(documents) => (
-          <DocumentUploads
+          <DriverDocumentUploads
             documents={documents}
             uploading={uploading}
+            verificationStatus={profile.documentsStatus}
             onUpload={upload}
             onRemove={(key) =>
               form.setFieldValue("documents", (items) =>
@@ -535,143 +526,6 @@ function VehicleIdentity({ profile }: { profile: DriverProfile }) {
           Si cambias de vehículo, contacta a soporte para actualizar la patente, el tipo y
           el año sin perder tu historial.
         </p>
-      </div>
-    </div>
-  )
-}
-
-function DocumentUploads({
-  documents,
-  uploading,
-  onUpload,
-  onRemove,
-}: {
-  documents: DriverDocument[]
-  uploading: DriverDocumentKind | null
-  onUpload: (kind: DriverDocumentKind, files: FileList | null) => void
-  onRemove: (key: string) => void
-}) {
-  const slots: {
-    kind: "license" | "papers"
-    label: string
-    description: string
-  }[] = [
-    {
-      kind: "license",
-      label: "Licencia de conducir",
-      description: "Acredita que puedes conducir el vehículo registrado.",
-    },
-    {
-      kind: "papers",
-      label: "Papeles del vehículo",
-      description: "Permiso de circulación o revisión técnica vigente.",
-    },
-  ]
-  const photos = documents.filter((document) => document.kind === "vehicle_photo")
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <FileCheck2 className="size-4 text-primary" />
-          <h3 className="font-medium">Verificación</h3>
-        </div>
-        <p className="text-pretty text-sm text-muted-foreground">
-          Reemplazar o quitar estos archivos envía tu identidad nuevamente a revisión.
-        </p>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        {slots.map((slot) => {
-          const document = documents.find((item) => item.kind === slot.kind)
-          return (
-            <div key={slot.kind} className="flex flex-col gap-3 rounded-lg bg-muted p-4">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium">{slot.label}</p>
-                  <Badge variant={document ? "secondary" : "outline"}>
-                    {document ? "Cargado" : "Pendiente"}
-                  </Badge>
-                </div>
-                <p className="text-pretty text-xs text-muted-foreground">
-                  {slot.description}
-                </p>
-              </div>
-              {document && (
-                <div className="flex items-center gap-2">
-                  <Button asChild type="button" variant="outline" size="sm">
-                    <a href={cdnUrl(document.key)} target="_blank" rel="noreferrer">
-                      <ExternalLink data-icon="inline-start" />
-                      Ver archivo
-                    </a>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemove(document.key)}
-                  >
-                    <Trash2 data-icon="inline-start" />
-                    Quitar
-                  </Button>
-                </div>
-              )}
-              <Input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={uploading === slot.kind}
-                onChange={(event) => onUpload(slot.kind, event.target.files)}
-                aria-label={`Subir ${slot.label.toLowerCase()}`}
-              />
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Camera className="size-4 text-primary" />
-              <h3 className="font-medium">Fotos del vehículo</h3>
-              <Badge variant="secondary">Opcional</Badge>
-            </div>
-            <p className="text-pretty text-sm text-muted-foreground">
-              Ayudan a elegirte y no afectan tu estado de verificación.
-            </p>
-          </div>
-          <span className="text-xs text-muted-foreground">{photos.length}/8 fotos</span>
-        </div>
-        <Input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          disabled={uploading === "vehicle_photo" || photos.length >= 8}
-          onChange={(event) => onUpload("vehicle_photo", event.target.files)}
-          aria-label="Subir foto del vehículo"
-        />
-        {photos.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {photos.map((document) => (
-              <div key={document.key} className="group relative overflow-hidden rounded-lg">
-                <img
-                  src={cdnUrl(document.key)}
-                  alt="Vehículo"
-                  className="aspect-[4/3] w-full object-cover outline -outline-offset-1 outline-black/10 dark:outline-white/10"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  className="absolute right-2 top-2 size-10 shadow-sm active:scale-[0.96] transition-transform"
-                  onClick={() => onRemove(document.key)}
-                  aria-label="Quitar foto"
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

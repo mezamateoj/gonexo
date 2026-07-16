@@ -62,7 +62,7 @@ export const vehicleLabels: Record<string, string> = {
 
 export const documentKindLabels: Record<DriverDocumentKind, string> = {
   license: "Licencia de conducir",
-  papers: "Permiso de circulación",
+  papers: "Documentos del vehículo",
   vehicle_photo: "Foto del vehículo",
 }
 

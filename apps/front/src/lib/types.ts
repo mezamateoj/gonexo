@@ -25,6 +25,7 @@ export type VehicleType = "van" | "pickup" | "truck_small" | "truck_large"
 export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired" | "cancelled"
 
 export type DriverDocumentKind = "license" | "papers" | "vehicle_photo"
+export type VerificationDocumentKind = Exclude<DriverDocumentKind, "vehicle_photo">
 
 export interface DriverDocument {
   id: string
@@ -58,11 +59,55 @@ export interface DriverProfile {
   documents: DriverDocument[]
   vehicleDescription: string | null
   vehicleCapacity: string | null
-  documentsStatus: string
+  documentsStatus: DriverVerificationStatus
   createdAt: string
 }
 
 export type DriverVerificationStatus = "pending" | "submitted" | "verified"
+
+export type DocumentReviewStatus =
+  | "queued"
+  | "analyzing"
+  | "ready"
+  | "analysis_failed"
+  | "enqueue_failed"
+  | "superseded"
+
+export type DocumentReviewDecision = "verified" | "changes_requested"
+
+export interface DocumentTriageResult {
+  documents: {
+    key: string
+    kind: "license" | "papers"
+    documentType:
+      | "license"
+      | "vehicle_registration"
+      | "circulation_permit"
+      | "technical_inspection"
+      | "other"
+    name: string | null
+    rut: string | null
+    plate: string | null
+    expiryDate: string | null
+    readable: boolean
+    confidence: number
+    notes: string[]
+  }[]
+  flags: { code: string; message: string; documentKey: string | null }[]
+}
+
+export interface AdminDocumentReview {
+  id: string
+  status: DocumentReviewStatus
+  result: DocumentTriageResult | null
+  analysisAttempts: number
+  analyzedAt: string | null
+  decision: DocumentReviewDecision | null
+  reviewedAt: string | null
+  note: string | null
+  createdAt: string
+  reviewer: { id: string; name: string } | null
+}
 
 // The bare driver_profile row an admin acts on — matches what the verification
 // PATCH returns via `.returning()` (no relations joined).
@@ -89,6 +134,7 @@ export interface AdminDriverProfile {
 export interface AdminDriver extends AdminDriverProfile {
   user: { id: string; name: string; email: string; phone: string | null }
   documents: DriverDocument[]
+  latestReview: AdminDocumentReview | null
 }
 
 export interface AdminDriversResponse {
@@ -104,7 +150,7 @@ export interface UpsertDriverInput {
   vehiclePlate: string
   vehicleYear?: number
   bio?: string
-  documents?: { kind: DriverDocumentKind; key: string; order: number }[]
+  documents?: { kind: VerificationDocumentKind; key: string; order: number }[]
   vehicleDescription?: string
   vehicleCapacity?: string
 }

@@ -41,34 +41,36 @@ const flagSchema = z.object({
 
 export type DocumentReviewFlag = z.infer<typeof flagSchema>;
 
+export const documentTriageResultSchema = z.object({
+  documents: z.array(z.object({
+    key: z.string(),
+    kind: z.enum(["license", "papers"]),
+    documentType: documentTypeSchema,
+    name: z.string().nullable(),
+    rut: z.string().nullable(),
+    plate: z.string().nullable(),
+    expiryDate: z.iso.date().nullable(),
+    readable: z.boolean(),
+    confidence: z.number().min(0).max(1),
+    notes: z.array(z.string()),
+  })),
+  flags: z.array(flagSchema),
+});
+
 export type ReviewDocument = {
   key: string;
   kind: "license" | "papers";
   image: ArrayBuffer;
 };
 
-export type DocumentTriageResult = {
-  documents: Array<{
-    key: string;
-    kind: "license" | "papers";
-    documentType: z.infer<typeof documentTypeSchema>;
-    name: string | null;
-    rut: string | null;
-    plate: string | null;
-    expiryDate: string | null;
-    readable: boolean;
-    confidence: number;
-    notes: string[];
-  }>;
-  flags: DocumentReviewFlag[];
-};
+export type DocumentTriageResult = z.infer<typeof documentTriageResultSchema>;
 
 function normalizeName(value: string) {
   return value
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
-    .replace(/[^a-z\s]/g, " ")
+    .replace(/[^\p{L}\s]/gu, " ")
     .split(/\s+/)
     .filter((part) => part.length > 1);
 }
@@ -76,6 +78,8 @@ function normalizeName(value: string) {
 function namesMatch(expected: string, actual: string) {
   const expectedParts = normalizeName(expected);
   const actualParts = normalizeName(actual);
+  if (expectedParts.length === 0 || actualParts.length === 0) return false;
+
   return expectedParts.every((part) => actualParts.includes(part))
     || actualParts.every((part) => expectedParts.includes(part));
 }
@@ -234,10 +238,10 @@ Use it only for comparison and do not change extracted values to match it.`,
     }],
   });
 
-  const documents = output.documents.map((document) => ({
+  const documents = output.documents.map(({ imageIndex, ...document }) => ({
     ...document,
-    key: reviewDocuments[document.imageIndex]!.key,
-    kind: reviewDocuments[document.imageIndex]!.kind,
+    key: reviewDocuments[imageIndex]!.key,
+    kind: reviewDocuments[imageIndex]!.kind,
   }));
 
   return { documents, flags: buildFlags(documents, expected.accountName, expected.vehiclePlate) };

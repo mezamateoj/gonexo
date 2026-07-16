@@ -1,4 +1,4 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriverProfile, DriverVerificationStatus } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriverProfile, DriverVerificationStatus } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -181,7 +181,7 @@ export const api = {
         body: JSON.stringify(body),
       }),
     documents: () => apiFetch<DriverDocument[]>("/api/drivers/me/documents"),
-    replaceDocuments: (documents: { kind: DriverDocumentKind; key: string; order: number }[]) =>
+    replaceDocuments: (documents: { kind: VerificationDocumentKind; key: string; order: number }[]) =>
       apiFetch<{ ok: boolean }>("/api/drivers/me/documents", {
         method: "PUT",
         body: JSON.stringify({ documents }),
@@ -197,10 +197,15 @@ export const api = {
   admin: {
     drivers: (status: DriverVerificationStatus, page: number) =>
       apiFetch<AdminDriversResponse>(`/api/admin/drivers?status=${status}&page=${page}`),
-    setVerification: (id: string, action: "verify" | "reset") =>
+    decideReview: (id: string, decision: "verified" | "changes_requested", note?: string) =>
       apiFetch<{ driver: AdminDriverProfile }>(`/api/admin/drivers/${id}/verification`, {
         method: "PATCH",
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ decision, note }),
+      }),
+    reopenReview: (id: string) =>
+      apiFetch<{ driver: AdminDriverProfile }>(`/api/admin/drivers/${id}/verification`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: "reopen" }),
       }),
   },
 }

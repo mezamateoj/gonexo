@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { asc, count, eq } from "drizzle-orm";
-import { driverDocument, driverProfile } from "../db/schema";
+import { asc, count, desc, eq } from "drizzle-orm";
+import { documentTriageResultSchema } from "../ai/document-review";
+import { documentReview, driverDocument, driverProfile } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { badRequest, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
@@ -32,7 +33,7 @@ admin.get(
     const db = c.get("db");
     const where = eq(driverProfile.documentsStatus, status);
 
-    const [data, countRows] = await Promise.all([
+    const [profiles, countRows] = await Promise.all([
       db.query.driverProfile.findMany({
         where,
         limit,
@@ -40,6 +41,13 @@ admin.get(
         with: {
           user: { columns: { id: true, name: true, email: true, phone: true } },
           documents: { orderBy: [asc(driverDocument.order)] },
+          documentReviews: {
+            limit: 1,
+            orderBy: [desc(documentReview.createdAt)],
+            with: {
+              reviewer: { columns: { id: true, name: true } },
+            },
+          },
         },
         // Stable chronological order by profile creation; not bumped by later
         // edits (updatedAt would be). Precise submission-time ordering arrives
@@ -49,48 +57,110 @@ admin.get(
       db.select({ n: count() }).from(driverProfile).where(where),
     ]);
 
+    const data = profiles.map(({ documentReviews, ...profile }) => {
+      const review = documentReviews[0];
+      return {
+        ...profile,
+        latestReview: review
+          ? {
+              id: review.id,
+              status: review.status,
+              result: review.result
+                ? documentTriageResultSchema.parse(JSON.parse(review.result))
+                : null,
+              analysisAttempts: review.analysisAttempts,
+              analyzedAt: review.analyzedAt,
+              decision: review.decision,
+              reviewedAt: review.reviewedAt,
+              note: review.note,
+              createdAt: review.createdAt,
+              reviewer: review.reviewer,
+            }
+          : null,
+      };
+    });
+
     return c.json({ data, page, limit, total: countRows[0]?.n ?? 0 });
   },
 );
 
-// The verification lever. `verify` marks the driver trusted; `reset` returns
-// them to the review queue. The schema check constraint
-// (isVerified ⇒ documentsStatus = 'verified') keeps both fields consistent.
+// The human decision and driver trust state change together. Reopening clears
+// the current decision so an admin can correct it without rerunning the model.
 admin.patch(
   "/drivers/:id/verification",
-  zValidator("json", z.object({ action: z.enum(["verify", "reset"]) })),
+  zValidator(
+    "json",
+    z.union([
+      z.object({
+        decision: z.enum(["verified", "changes_requested"]),
+        note: z.string().trim().max(1000).optional(),
+      }).superRefine(({ decision, note }, ctx) => {
+        if (decision === "changes_requested" && !note) {
+          ctx.addIssue({ code: "custom", path: ["note"], message: "Explain the requested changes" });
+        }
+      }),
+      z.object({ action: z.literal("reopen") }),
+    ]),
+  ),
   async (c) => {
     const id = c.req.param("id");
-    const { action } = c.req.valid("json");
+    const body = c.req.valid("json");
     const db = c.get("db");
+    const reviewer = c.get("user")!;
 
-    const profile = await db.query.driverProfile.findFirst({
-      where: eq(driverProfile.id, id),
-    });
+    const profile = await db.query.driverProfile.findFirst({ where: eq(driverProfile.id, id) });
     if (!profile) throw notFound("Driver profile not found");
 
-    // A driver only reaches "verified" from the review queue. Verifying a
-    // "pending" profile would trust a driver who uploaded zero documents.
-    if (action === "verify" && profile.documentsStatus !== "submitted") {
-      throw badRequest("Driver has no submitted documents to verify");
-    }
-    // A driver who never submitted documents has nothing to reset — don't drag
-    // them into the review queue.
-    if (action === "reset" && profile.documentsStatus === "pending") {
-      throw badRequest("Driver has no submitted documents to reset");
+    const review = await db.query.documentReview.findFirst({
+      where: eq(documentReview.driverProfileId, id),
+      orderBy: [desc(documentReview.createdAt)],
+    });
+    if (!review) throw badRequest("Driver has no document review");
+    if (!["ready", "analysis_failed", "enqueue_failed"].includes(review.status)) {
+      throw badRequest("Document review is still being analyzed");
     }
 
-    const [updated] = await db
-      .update(driverProfile)
-      .set(
-        action === "verify"
+    if ("action" in body) {
+      if (!review.decision) throw badRequest("Document review has no decision to reopen");
+
+      const [updated] = await db.batch([
+        db
+          .update(driverProfile)
+          .set({ documentsStatus: "submitted", isVerified: false })
+          .where(eq(driverProfile.id, id))
+          .returning(),
+        db
+          .update(documentReview)
+          .set({ reviewerId: null, decision: null, reviewedAt: null, note: null })
+          .where(eq(documentReview.id, review.id)),
+      ]);
+
+      return c.json({ driver: updated[0] });
+    }
+
+    if (review.decision) throw badRequest("Reopen the document review before deciding again");
+
+    const reviewedAt = new Date();
+    const [updated] = await db.batch([
+      db
+        .update(driverProfile)
+        .set(body.decision === "verified"
           ? { documentsStatus: "verified", isVerified: true }
-          : { documentsStatus: "submitted", isVerified: false },
-      )
-      .where(eq(driverProfile.id, id))
-      .returning();
+          : { documentsStatus: "pending", isVerified: false })
+        .where(eq(driverProfile.id, id))
+        .returning(),
+      db
+        .update(documentReview)
+        .set({
+          reviewerId: reviewer.id,
+          decision: body.decision,
+          reviewedAt,
+          note: body.note || null,
+        })
+        .where(eq(documentReview.id, review.id)),
+    ]);
 
-    return c.json({ driver: updated });
+    return c.json({ driver: updated[0] });
   },
 );
 
