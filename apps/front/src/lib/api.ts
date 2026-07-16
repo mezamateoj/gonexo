@@ -1,6 +1,12 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, AdminDriversResponse, AdminDriverProfile, DriverVerificationStatus } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
+
+// Documents/photos are served (with an ownership/admin check) from the backend's
+// /cdn/:key route; the session cookie rides along cross-origin like apiFetch.
+export function cdnUrl(key: string) {
+  return `${BASE}/cdn/${encodeURIComponent(key)}`
+}
 
 type ApiErrorResponse = {
   error?: {
@@ -171,6 +177,15 @@ export const api = {
       apiFetch<EnrichVehicleResult>("/api/drivers/enrich", {
         method: "POST",
         body: JSON.stringify(body),
+      }),
+  },
+  admin: {
+    drivers: (status: DriverVerificationStatus, page: number) =>
+      apiFetch<AdminDriversResponse>(`/api/admin/drivers?status=${status}&page=${page}`),
+    setVerification: (id: string, action: "verify" | "reset") =>
+      apiFetch<{ driver: AdminDriverProfile }>(`/api/admin/drivers/${id}/verification`, {
+        method: "PATCH",
+        body: JSON.stringify({ action }),
       }),
   },
 }
