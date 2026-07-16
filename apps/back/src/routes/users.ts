@@ -6,8 +6,6 @@ import { user } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { badRequest } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
-import { normalizePhone } from "../lib/normalizers";
-import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
 
 const users = new Hono<AppEnv>();
 
@@ -17,7 +15,6 @@ users.get("/me", requireAuth, (c) => {
 
 const updateMeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  phone: z.string().min(8).max(20).optional(),
 });
 
 users.patch(
@@ -29,21 +26,13 @@ users.patch(
     const u = c.get("user")!;
     const body = c.req.valid("json");
 
-    if (!body.name && !body.phone)
+    if (!body.name)
       throw badRequest("Nothing to update");
 
-    const updates = body.phone
-      ? { ...body, phone: normalizePhone(body.phone) }
-      : body;
-
-    try {
-      await db
-        .update(user)
-        .set(updates)
-        .where(eq(user.id, u.id));
-    } catch (error) {
-      throwConflictOnUniqueConstraint(error, "Phone number is already in use");
-    }
+    await db
+      .update(user)
+      .set(body)
+      .where(eq(user.id, u.id));
 
     return c.json({ ok: true });
   }

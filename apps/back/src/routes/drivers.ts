@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { asc, eq, desc } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { driverDocument, driverProfile, review, user as userTable } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { badRequest, notFound } from "../lib/errors";
@@ -21,10 +21,17 @@ const uploadKeySchema = z.string().min(1).max(100).refine(
   "R2 object key required",
 );
 
-const driverDocumentSchema = z.object({
-  kind: z.enum(["license", "papers", "vehicle_photo"]),
+const documentSchema = z.object({
   key: uploadKeySchema,
   order: z.number().int().min(0).default(0),
+});
+
+const verificationDocumentSchema = documentSchema.extend({
+  kind: z.enum(["license", "papers"]),
+});
+
+const vehiclePhotoSchema = documentSchema.extend({
+  kind: z.literal("vehicle_photo"),
 });
 
 const upsertDriverSchema = z.object({
@@ -33,13 +40,17 @@ const upsertDriverSchema = z.object({
   vehiclePlate: z.string().min(4).max(10).toUpperCase(),
   vehicleYear: z.number().int().min(1990).max(2030).optional(),
   bio: z.string().max(500).optional(),
-  documents: z.array(driverDocumentSchema).optional(),
+  documents: z.array(verificationDocumentSchema).optional(),
   vehicleDescription: z.string().max(500).optional(),
   vehicleCapacity: z.string().max(200).optional(),
 });
 
 const replaceDocumentsSchema = z.object({
-  documents: z.array(driverDocumentSchema).max(12),
+  documents: z.array(verificationDocumentSchema).max(12),
+});
+
+const replacePhotosSchema = z.object({
+  photos: z.array(vehiclePhotoSchema).max(8),
 });
 
 const enrichSchema = z.object({
@@ -81,11 +92,23 @@ drivers.post(
 
     const documentsChanged = body.documents !== undefined;
     const hasDocuments = !!body.documents?.length;
-    // Plain profile edits preserve verification; document changes require re-review.
+    const vehicleChanged = !!existing && (
+      existing.vehicleType !== body.vehicleType || existing.vehiclePlate !== vehiclePlate
+    );
+    const hasExistingVerificationDocuments = existing && await db.query.driverDocument.findFirst({
+      where: and(
+        eq(driverDocument.driverProfileId, existing.id),
+        ne(driverDocument.kind, "vehicle_photo"),
+      ),
+      columns: { id: true },
+    });
+    // Papers are cross-checked against the vehicle, so a plate or type change
+    // requires the same human re-review as replacing the documents.
+    const verificationChanged = documentsChanged || vehicleChanged;
     const currentStatus = existing?.documentsStatus ?? "pending";
     const documentsStatus = documentsChanged
       ? hasDocuments ? "submitted" : "pending"
-      : currentStatus;
+      : vehicleChanged && hasExistingVerificationDocuments ? "submitted" : currentStatus;
     if (existing) {
       const updateUser = db
         .update(userTable)
@@ -102,30 +125,36 @@ drivers.post(
           vehicleDescription: body.vehicleDescription ?? existing.vehicleDescription,
           vehicleCapacity: body.vehicleCapacity ?? existing.vehicleCapacity,
           documentsStatus,
-          isVerified: documentsChanged ? false : existing.isVerified,
+          isVerified: verificationChanged ? false : existing.isVerified,
         })
         .where(eq(driverProfile.userId, user.id));
 
       try {
         if (body.documents?.length) {
-        const replaceDocuments = db
-          .delete(driverDocument)
-          .where(eq(driverDocument.driverProfileId, existing.id));
-        const insertDocuments = db.insert(driverDocument).values(
-          body.documents.map((document) => ({
-            id: crypto.randomUUID(),
-            driverProfileId: existing.id,
-            kind: document.kind,
-            key: document.key,
-            order: document.order,
-          })),
-        );
+          const replaceDocuments = db
+            .delete(driverDocument)
+            .where(and(
+              eq(driverDocument.driverProfileId, existing.id),
+              ne(driverDocument.kind, "vehicle_photo"),
+            ));
+          const insertDocuments = db.insert(driverDocument).values(
+            body.documents.map((document) => ({
+              id: crypto.randomUUID(),
+              driverProfileId: existing.id,
+              kind: document.kind,
+              key: document.key,
+              order: document.order,
+            })),
+          );
           await db.batch([updateUser, updateProfile, replaceDocuments, insertDocuments]);
         } else if (body.documents) {
           await db.batch([
             updateUser,
             updateProfile,
-            db.delete(driverDocument).where(eq(driverDocument.driverProfileId, existing.id)),
+            db.delete(driverDocument).where(and(
+              eq(driverDocument.driverProfileId, existing.id),
+              ne(driverDocument.kind, "vehicle_photo"),
+            )),
           ]);
         } else {
           await db.batch([updateUser, updateProfile]);
@@ -226,7 +255,10 @@ drivers.put(
 
     const replaceDocuments = db
       .delete(driverDocument)
-      .where(eq(driverDocument.driverProfileId, profile.id));
+      .where(and(
+        eq(driverDocument.driverProfileId, profile.id),
+        ne(driverDocument.kind, "vehicle_photo"),
+      ));
     const updateProfile = db
       .update(driverProfile)
       .set({
@@ -260,6 +292,23 @@ drivers.put(
     return c.json({ ok: true });
   },
 );
+
+drivers.put("/me/photos", requireAuth, zValidator("json", replacePhotosSchema), async (c) => {
+  const db = c.get("db");
+  const user = c.get("user")!;
+  const { photos } = c.req.valid("json");
+  await Promise.all(
+    photos.map(({ key }) => requireOwnedUpload(c.env.BUCKET, key, user.id)),
+  );
+  const profile = await db.query.driverProfile.findFirst({ where: eq(driverProfile.userId, user.id), columns: { id: true } });
+  if (!profile) throw notFound("Driver profile not found");
+
+  await db.batch([
+    db.delete(driverDocument).where(and(eq(driverDocument.driverProfileId, profile.id), eq(driverDocument.kind, "vehicle_photo"))),
+    ...(photos.length ? [db.insert(driverDocument).values(photos.map((photo) => ({ id: crypto.randomUUID(), driverProfileId: profile.id, ...photo })))] : []),
+  ]);
+  return c.json({ ok: true });
+});
 
 drivers.post(
   "/enrich",
@@ -321,6 +370,11 @@ drivers.get("/:id", requireAuth, async (c) => {
     },
     with: {
       user: { columns: { id: true, name: true, image: true } },
+      documents: {
+        where: eq(driverDocument.kind, "vehicle_photo"),
+        orderBy: [asc(driverDocument.order)],
+        columns: { key: true, order: true },
+      },
     },
   });
   if (!profile) throw notFound();
@@ -335,8 +389,8 @@ drivers.get("/:id", requireAuth, async (c) => {
     },
   });
 
-  const { userId: _userId, ...publicProfile } = profile;
-  return c.json({ ...publicProfile, recentReviews });
+  const { userId: _userId, documents, ...publicProfile } = profile;
+  return c.json({ ...publicProfile, vehiclePhotos: documents, recentReviews });
 });
 
 export type DriversType = typeof drivers;

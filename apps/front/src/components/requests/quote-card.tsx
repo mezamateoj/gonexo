@@ -5,11 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { formatCLP, formatCLPRange, vehicleLabels } from "@/lib/display"
-import type { PublicDriverProfile, QuoteWithDriver } from "@/lib/types"
+import type { QuoteDriverProfile, QuoteWithDriver } from "@/lib/types"
 
 // Distinguishes a document-verified driver from one with a merely complete
 // profile — "verified" is a trust signal, "complete" is just onboarded.
-function TrustBadge({ profile }: { profile: PublicDriverProfile }) {
+function TrustBadge({ profile }: { profile: QuoteDriverProfile }) {
   if (profile.isVerified && profile.documentsStatus === "verified") {
     return (
       <Badge className="shrink-0" variant="secondary">

@@ -27,9 +27,7 @@ const CRUMBS: Record<string, string> = {
   "/requests/new": "Publicar flete",
   "/jobs": "Mis fletes",
   "/available": "Buscar fletes",
-  "/vehicle": "Mi vehículo",
-  "/stats": "Estadísticas",
-  "/profile": "Perfil",
+  "/profile": "Configuración",
 }
 
 function TopBar() {

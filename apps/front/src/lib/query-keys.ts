@@ -6,6 +6,7 @@ export const queryKeys = {
   },
   drivers: {
     me: (userId: string) => ["drivers", "me", userId] as const,
+    detail: (id: string) => ["drivers", id] as const,
   },
   requests: {
     // Prefix for invalidating my-requests regardless of bucket/page/filters.
