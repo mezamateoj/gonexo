@@ -81,11 +81,33 @@ export interface EnrichVehicleResult {
 
 // Public driver profile returned on request-detail quotes — no sensitive fields
 export interface PublicDriverProfile {
+  id: string
+  user: { id: string; name: string; image: string | null }
   vehicleType: VehicleType
+  vehicleYear: number | null
   vehicleDescription: string | null
   vehicleCapacity: string | null
   isVerified: boolean
   documentsStatus: string // 'pending' | 'submitted' | 'verified'
+  avgRating: number | null
+  totalJobs: number
+  bio: string | null
+  vehiclePhotos: { key: string; order: number }[]
+  recentReviews: {
+    rating: number
+    comment: string | null
+    reviewerRole: string
+    createdAt: string
+    reviewer: { name: string; image: string | null }
+  }[]
+}
+
+export interface QuoteDriverProfile {
+  vehicleType: VehicleType
+  vehicleDescription: string | null
+  vehicleCapacity: string | null
+  isVerified: boolean
+  documentsStatus: string
   avgRating: number | null
   totalJobs: number
   bio: string | null
@@ -106,7 +128,7 @@ export interface QuoteWithDriver {
     id: string
     name: string
     image: string | null
-    driverProfile: PublicDriverProfile | null
+    driverProfile: QuoteDriverProfile | null
   }
 }
 

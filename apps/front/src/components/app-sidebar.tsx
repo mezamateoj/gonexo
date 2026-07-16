@@ -26,7 +26,6 @@ import {
   CirclePlus,
   Briefcase,
   Truck,
-  Car,
   Settings,
   LogOut,
   ChevronsUpDown,
@@ -47,7 +46,6 @@ const CLIENT_NAV = [
 const DRIVER_NAV = [
   { label: "Buscar fletes", icon: Truck, to: "/available" },
   { label: "Mis fletes", icon: Briefcase, to: "/jobs" },
-  { label: "Mi vehículo", icon: Car, to: "/vehicle" },
 ] as const
 
 function NavItem({

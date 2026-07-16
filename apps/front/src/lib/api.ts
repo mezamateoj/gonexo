@@ -1,4 +1,4 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -76,6 +76,22 @@ export async function uploadFile(file: File): Promise<string> {
   return data.url
 }
 
+export async function uploadDriverFile(file: File): Promise<{ key: string; url: string }> {
+  const form = new FormData()
+  form.append("file", file)
+  const res = await fetch(`${BASE}/api/uploads`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  })
+  if (!res.ok) throw new ApiError(await readErrorMessage(res, "Upload failed"), res.status)
+  return res.json() as Promise<{ key: string; url: string }>
+}
+
+export function cdnUrl(key: string) {
+  return `${BASE}/cdn/${key}`
+}
+
 export const api = {
   requests: {
     my: (query: MyRequestsQuery) => {
@@ -148,7 +164,7 @@ export const api = {
   },
   users: {
     me: () => apiFetch<CurrentUser>("/api/users/me"),
-    updateMe: (body: { name?: string; phone?: string }) =>
+    updateMe: (body: { name: string }) =>
       apiFetch<{ ok: boolean }>("/api/users/me", {
         method: "PATCH",
         body: JSON.stringify(body),
@@ -156,6 +172,7 @@ export const api = {
   },
   drivers: {
     me: () => apiFetch<DriverProfile | null>("/api/drivers/me"),
+    get: (id: string) => apiFetch<PublicDriverProfile>(`/api/drivers/${id}`),
     upsertMe: (body: UpsertDriverInput) =>
       apiFetch<{ id: string }>("/api/drivers/me", {
         method: "POST",
@@ -167,6 +184,8 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ documents }),
       }),
+    replacePhotos: (photos: { kind: "vehicle_photo"; key: string; order: number }[]) =>
+      apiFetch<{ ok: boolean }>("/api/drivers/me/photos", { method: "PUT", body: JSON.stringify({ photos }) }),
     enrich: (body: { photoUrls: string[]; papersUrl?: string }) =>
       apiFetch<EnrichVehicleResult>("/api/drivers/enrich", {
         method: "POST",

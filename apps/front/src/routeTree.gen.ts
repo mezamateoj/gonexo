@@ -15,8 +15,6 @@ import { Route as DriverOnboardingRouteImport } from './routes/driver-onboarding
 import { Route as ChooseModeRouteImport } from './routes/choose-mode'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppVehicleRouteImport } from './routes/_app/vehicle'
-import { Route as AppStatsRouteImport } from './routes/_app/stats'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppRequestsIndexRouteImport } from './routes/_app/requests/index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
@@ -25,6 +23,7 @@ import { Route as AppAvailableIndexRouteImport } from './routes/_app/available/i
 import { Route as AppRequestsNewRouteImport } from './routes/_app/requests/new'
 import { Route as AppRequestsIdRouteImport } from './routes/_app/requests/$id'
 import { Route as AppJobsIdRouteImport } from './routes/_app/jobs/$id'
+import { Route as AppDriversIdRouteImport } from './routes/_app/drivers/$id'
 import { Route as AppAvailableIdRouteImport } from './routes/_app/available/$id'
 
 const SignupRoute = SignupRouteImport.update({
@@ -55,16 +54,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AppVehicleRoute = AppVehicleRouteImport.update({
-  id: '/vehicle',
-  path: '/vehicle',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppStatsRoute = AppStatsRouteImport.update({
-  id: '/stats',
-  path: '/stats',
-  getParentRoute: () => AppRoute,
 } as any)
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
@@ -106,6 +95,11 @@ const AppJobsIdRoute = AppJobsIdRouteImport.update({
   path: '/jobs/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDriversIdRoute = AppDriversIdRouteImport.update({
+  id: '/drivers/$id',
+  path: '/drivers/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAvailableIdRoute = AppAvailableIdRouteImport.update({
   id: '/available/$id',
   path: '/available/$id',
@@ -119,9 +113,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/profile': typeof AppProfileRoute
-  '/stats': typeof AppStatsRoute
-  '/vehicle': typeof AppVehicleRoute
   '/available/$id': typeof AppAvailableIdRoute
+  '/drivers/$id': typeof AppDriversIdRoute
   '/jobs/$id': typeof AppJobsIdRoute
   '/requests/$id': typeof AppRequestsIdRoute
   '/requests/new': typeof AppRequestsNewRoute
@@ -137,9 +130,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/profile': typeof AppProfileRoute
-  '/stats': typeof AppStatsRoute
-  '/vehicle': typeof AppVehicleRoute
   '/available/$id': typeof AppAvailableIdRoute
+  '/drivers/$id': typeof AppDriversIdRoute
   '/jobs/$id': typeof AppJobsIdRoute
   '/requests/$id': typeof AppRequestsIdRoute
   '/requests/new': typeof AppRequestsNewRoute
@@ -157,9 +149,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/profile': typeof AppProfileRoute
-  '/_app/stats': typeof AppStatsRoute
-  '/_app/vehicle': typeof AppVehicleRoute
   '/_app/available/$id': typeof AppAvailableIdRoute
+  '/_app/drivers/$id': typeof AppDriversIdRoute
   '/_app/jobs/$id': typeof AppJobsIdRoute
   '/_app/requests/$id': typeof AppRequestsIdRoute
   '/_app/requests/new': typeof AppRequestsNewRoute
@@ -177,9 +168,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/profile'
-    | '/stats'
-    | '/vehicle'
     | '/available/$id'
+    | '/drivers/$id'
     | '/jobs/$id'
     | '/requests/$id'
     | '/requests/new'
@@ -195,9 +185,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/profile'
-    | '/stats'
-    | '/vehicle'
     | '/available/$id'
+    | '/drivers/$id'
     | '/jobs/$id'
     | '/requests/$id'
     | '/requests/new'
@@ -214,9 +203,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/_app/profile'
-    | '/_app/stats'
-    | '/_app/vehicle'
     | '/_app/available/$id'
+    | '/_app/drivers/$id'
     | '/_app/jobs/$id'
     | '/_app/requests/$id'
     | '/_app/requests/new'
@@ -279,20 +267,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/vehicle': {
-      id: '/_app/vehicle'
-      path: '/vehicle'
-      fullPath: '/vehicle'
-      preLoaderRoute: typeof AppVehicleRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/stats': {
-      id: '/_app/stats'
-      path: '/stats'
-      fullPath: '/stats'
-      preLoaderRoute: typeof AppStatsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/profile': {
       id: '/_app/profile'
       path: '/profile'
@@ -349,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppJobsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/drivers/$id': {
+      id: '/_app/drivers/$id'
+      path: '/drivers/$id'
+      fullPath: '/drivers/$id'
+      preLoaderRoute: typeof AppDriversIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/available/$id': {
       id: '/_app/available/$id'
       path: '/available/$id'
@@ -361,9 +342,8 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
-  AppStatsRoute: typeof AppStatsRoute
-  AppVehicleRoute: typeof AppVehicleRoute
   AppAvailableIdRoute: typeof AppAvailableIdRoute
+  AppDriversIdRoute: typeof AppDriversIdRoute
   AppJobsIdRoute: typeof AppJobsIdRoute
   AppRequestsIdRoute: typeof AppRequestsIdRoute
   AppRequestsNewRoute: typeof AppRequestsNewRoute
@@ -375,9 +355,8 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
-  AppStatsRoute: AppStatsRoute,
-  AppVehicleRoute: AppVehicleRoute,
   AppAvailableIdRoute: AppAvailableIdRoute,
+  AppDriversIdRoute: AppDriversIdRoute,
   AppJobsIdRoute: AppJobsIdRoute,
   AppRequestsIdRoute: AppRequestsIdRoute,
   AppRequestsNewRoute: AppRequestsNewRoute,

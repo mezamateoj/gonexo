@@ -2,6 +2,7 @@ export type Bindings = {
   db: D1Database;
   BUCKET: R2Bucket;
   ENVIRONMENT: "local" | "staging" | "production";
+  BETTER_AUTH_SECRET: string;
   ANTHROPIC_API_KEY: string;
   MAPBOX_TOKEN: string;
   BETTER_AUTH_URL: string;
