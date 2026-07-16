@@ -25,6 +25,11 @@ import admin from "./routes/admin";
 import { isAdmin } from "./middleware/auth";
 import { driverDocument, user as userTable } from "./db/schema";
 import { normalizePhone } from "./lib/normalizers";
+import {
+  markDocumentReviewFailed,
+  processDocumentReview,
+  type DocumentReviewMessage,
+} from "./workflows/document-reviews";
 
 resetSync();
 configureSync({
@@ -189,9 +194,18 @@ const worker = {
   scheduled: (_event, env, ctx) => {
     ctx.waitUntil(autoConfirmOverdueJobs(createDb(env.db)));
   },
-} satisfies ExportedHandler<Bindings>;
+  async queue(batch, env) {
+    for (const message of batch.messages) {
+      if (batch.queue.endsWith("-dlq")) {
+        await markDocumentReviewFailed(env, message.body.reviewId);
+      } else {
+        await processDocumentReview(env, message.body.reviewId);
+      }
+    }
+  },
+} satisfies ExportedHandler<Bindings, DocumentReviewMessage>;
 
-export default Sentry.withSentry<Bindings>(
+export default Sentry.withSentry<Bindings, DocumentReviewMessage>(
   (env) => env.SENTRY_DSN ? {
     dsn: env.SENTRY_DSN,
     environment: env.ENVIRONMENT,

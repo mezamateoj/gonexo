@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
-import { driverDocument, driverProfile, review, user as userTable } from "../db/schema";
+import { documentReview, driverDocument, driverProfile, review, user as userTable } from "../db/schema";
+import {
+  onlyVerificationDocuments,
+  sameVerificationDocuments,
+} from "../domain/driver-documents";
 import { requireAuth } from "../middleware/auth";
 import { badRequest, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
@@ -13,50 +16,19 @@ import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
 import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
 import { enforceRateLimit } from "../lib/rate-limit";
 import { getOwnedUpload, requireOwnedUpload } from "../lib/uploads";
+import {
+  createDocumentReviewValues,
+  retryFailedDocumentReview,
+  scheduleDocumentReview,
+} from "../workflows/document-reviews";
+import {
+  enrichSchema,
+  replaceDocumentsSchema,
+  replacePhotosSchema,
+  upsertDriverSchema,
+} from "./drivers.schemas";
 
 const drivers = new Hono<AppEnv>();
-
-const uploadKeySchema = z.string().min(1).max(100).refine(
-  (key) => !key.includes("://"),
-  "R2 object key required",
-);
-
-const documentSchema = z.object({
-  key: uploadKeySchema,
-  order: z.number().int().min(0).default(0),
-});
-
-const verificationDocumentSchema = documentSchema.extend({
-  kind: z.enum(["license", "papers"]),
-});
-
-const vehiclePhotoSchema = documentSchema.extend({
-  kind: z.literal("vehicle_photo"),
-});
-
-const upsertDriverSchema = z.object({
-  phone: z.string().min(8),
-  vehicleType: z.enum(["van", "pickup", "truck_small", "truck_large"]),
-  vehiclePlate: z.string().min(4).max(10).toUpperCase(),
-  vehicleYear: z.number().int().min(1990).max(2030).optional(),
-  bio: z.string().max(500).optional(),
-  documents: z.array(verificationDocumentSchema).optional(),
-  vehicleDescription: z.string().max(500).optional(),
-  vehicleCapacity: z.string().max(200).optional(),
-});
-
-const replaceDocumentsSchema = z.object({
-  documents: z.array(verificationDocumentSchema).max(12),
-});
-
-const replacePhotosSchema = z.object({
-  photos: z.array(vehiclePhotoSchema).max(8),
-});
-
-const enrichSchema = z.object({
-  photoKeys: z.array(uploadKeySchema).min(1).max(4),
-  papersKey: uploadKeySchema.optional(),
-});
 
 drivers.get("/me", requireAuth, async (c) => {
   const db = c.get("db");
@@ -88,28 +60,37 @@ drivers.post(
 
     const existing = await db.query.driverProfile.findFirst({
       where: eq(driverProfile.userId, user.id),
+      with: { documents: { orderBy: [asc(driverDocument.order)] } },
     });
 
-    const documentsChanged = body.documents !== undefined;
-    const hasDocuments = !!body.documents?.length;
+    const existingVerificationDocuments = existing
+      ? onlyVerificationDocuments(existing.documents)
+      : [];
+    const documentsChanged = body.documents !== undefined
+      && (!existing || !sameVerificationDocuments(existingVerificationDocuments, body.documents));
     const vehicleChanged = !!existing && (
       existing.vehicleType !== body.vehicleType || existing.vehiclePlate !== vehiclePlate
     );
-    const hasExistingVerificationDocuments = existing && await db.query.driverDocument.findFirst({
-      where: and(
-        eq(driverDocument.driverProfileId, existing.id),
-        ne(driverDocument.kind, "vehicle_photo"),
-      ),
-      columns: { id: true },
-    });
+    const reviewDocuments = body.documents ?? existingVerificationDocuments;
+    const hasDocuments = reviewDocuments.length > 0;
     // Papers are cross-checked against the vehicle, so a plate or type change
     // requires the same human re-review as replacing the documents.
     const verificationChanged = documentsChanged || vehicleChanged;
     const currentStatus = existing?.documentsStatus ?? "pending";
-    const documentsStatus = documentsChanged
+    const documentsStatus = verificationChanged
       ? hasDocuments ? "submitted" : "pending"
-      : vehicleChanged && hasExistingVerificationDocuments ? "submitted" : currentStatus;
+      : currentStatus;
     if (existing) {
+      const documentReviewValues = verificationChanged && hasDocuments
+        ? createDocumentReviewValues(existing.id, user.name, vehiclePlate, reviewDocuments)
+        : null;
+      if (documentReviewValues) {
+        await enforceRateLimit(
+          c.env.AI_RATE_LIMITER,
+          `${user.id}:document-review`,
+          "Too many document review requests",
+        );
+      }
       const updateUser = db
         .update(userTable)
         .set({ phone })
@@ -130,7 +111,7 @@ drivers.post(
         .where(eq(driverProfile.userId, user.id));
 
       try {
-        if (body.documents?.length) {
+        if (documentsChanged && body.documents?.length) {
           const replaceDocuments = db
             .delete(driverDocument)
             .where(and(
@@ -146,8 +127,17 @@ drivers.post(
               order: document.order,
             })),
           );
-          await db.batch([updateUser, updateProfile, replaceDocuments, insertDocuments]);
-        } else if (body.documents) {
+          await db.batch([
+            updateUser,
+            updateProfile,
+            replaceDocuments,
+            insertDocuments,
+            db.update(documentReview)
+              .set({ status: "superseded" })
+              .where(and(eq(documentReview.driverProfileId, existing.id), ne(documentReview.status, "superseded"))),
+            ...(documentReviewValues ? [db.insert(documentReview).values(documentReviewValues)] : []),
+          ]);
+        } else if (documentsChanged && body.documents) {
           await db.batch([
             updateUser,
             updateProfile,
@@ -155,6 +145,18 @@ drivers.post(
               eq(driverDocument.driverProfileId, existing.id),
               ne(driverDocument.kind, "vehicle_photo"),
             )),
+            db.update(documentReview)
+              .set({ status: "superseded" })
+              .where(and(eq(documentReview.driverProfileId, existing.id), ne(documentReview.status, "superseded"))),
+          ]);
+        } else if (documentReviewValues) {
+          await db.batch([
+            updateUser,
+            updateProfile,
+            db.update(documentReview)
+              .set({ status: "superseded" })
+              .where(and(eq(documentReview.driverProfileId, existing.id), ne(documentReview.status, "superseded"))),
+            db.insert(documentReview).values(documentReviewValues),
           ]);
         } else {
           await db.batch([updateUser, updateProfile]);
@@ -168,40 +170,56 @@ drivers.post(
         vehiclePlate,
         documentsStatus,
       });
+      if (documentReviewValues) {
+        await scheduleDocumentReview(c.env, db, documentReviewValues.id);
+      } else if (!verificationChanged) {
+        await retryFailedDocumentReview(c.env, db, existing.id);
+      }
       return c.json({ id: existing.id });
     }
 
     const id = crypto.randomUUID();
+    const documentReviewValues = body.documents && hasDocuments
+      ? createDocumentReviewValues(id, user.name, vehiclePlate, body.documents)
+      : null;
+    if (documentReviewValues) {
+      await enforceRateLimit(
+        c.env.AI_RATE_LIMITER,
+        `${user.id}:document-review`,
+        "Too many document review requests",
+      );
+    }
     const updateUser = db
       .update(userTable)
       .set({ phone })
       .where(eq(userTable.id, user.id));
     const insertProfile = db.insert(driverProfile).values({
-        id,
-        userId: user.id,
-        phone,
-        vehicleType: body.vehicleType,
-        vehiclePlate,
-        vehicleYear: body.vehicleYear ?? null,
-        bio: body.bio ?? null,
-        vehicleDescription: body.vehicleDescription ?? null,
-        vehicleCapacity: body.vehicleCapacity ?? null,
-        documentsStatus,
-      });
+      id,
+      userId: user.id,
+      phone,
+      vehicleType: body.vehicleType,
+      vehiclePlate,
+      vehicleYear: body.vehicleYear ?? null,
+      bio: body.bio ?? null,
+      vehicleDescription: body.vehicleDescription ?? null,
+      vehicleCapacity: body.vehicleCapacity ?? null,
+      documentsStatus,
+    });
     try {
       if (body.documents?.length) {
         await db.batch([
-        updateUser,
-        insertProfile,
-        db.insert(driverDocument).values(
-          body.documents.map((document) => ({
-            id: crypto.randomUUID(),
-            driverProfileId: id,
-            kind: document.kind,
-            key: document.key,
-            order: document.order,
-          })),
-        ),
+          updateUser,
+          insertProfile,
+          db.insert(driverDocument).values(
+            body.documents.map((document) => ({
+              id: crypto.randomUUID(),
+              driverProfileId: id,
+              kind: document.kind,
+              key: document.key,
+              order: document.order,
+            })),
+          ),
+          ...(documentReviewValues ? [db.insert(documentReview).values(documentReviewValues)] : []),
         ]);
       } else {
         await db.batch([updateUser, insertProfile]);
@@ -216,6 +234,9 @@ drivers.post(
       vehiclePlate,
       documentsStatus,
     });
+    if (documentReviewValues) {
+      await scheduleDocumentReview(c.env, db, documentReviewValues.id);
+    }
     return c.json({ id }, 201);
   },
 );
@@ -249,9 +270,31 @@ drivers.put(
     );
     const profile = await db.query.driverProfile.findFirst({
       where: eq(driverProfile.userId, user.id),
-      columns: { id: true },
+      columns: { id: true, vehiclePlate: true },
+      with: { documents: { orderBy: [asc(driverDocument.order)] } },
     });
     if (!profile) throw notFound("Driver profile not found");
+
+    const documentsChanged = !sameVerificationDocuments(
+      onlyVerificationDocuments(profile.documents),
+      documents,
+    );
+    if (!documentsChanged) {
+      await retryFailedDocumentReview(c.env, db, profile.id);
+      return c.json({ ok: true });
+    }
+
+    const hasDocuments = documents.length > 0;
+    const documentReviewValues = hasDocuments
+      ? createDocumentReviewValues(profile.id, user.name, profile.vehiclePlate, documents)
+      : null;
+    if (documentReviewValues) {
+      await enforceRateLimit(
+        c.env.AI_RATE_LIMITER,
+        `${user.id}:document-review`,
+        "Too many document review requests",
+      );
+    }
 
     const replaceDocuments = db
       .delete(driverDocument)
@@ -262,7 +305,7 @@ drivers.put(
     const updateProfile = db
       .update(driverProfile)
       .set({
-        documentsStatus: documents.length > 0 ? "submitted" : "pending",
+        documentsStatus: hasDocuments ? "submitted" : "pending",
         isVerified: false,
       })
       .where(eq(driverProfile.id, profile.id));
@@ -270,23 +313,37 @@ drivers.put(
     try {
       if (documents.length > 0) {
         await db.batch([
-        replaceDocuments,
-        db.insert(driverDocument).values(
-          documents.map((document) => ({
-            id: crypto.randomUUID(),
-            driverProfileId: profile.id,
-            kind: document.kind,
-            key: document.key,
-            order: document.order,
-          })),
-        ),
-        updateProfile,
+          replaceDocuments,
+          db.insert(driverDocument).values(
+            documents.map((document) => ({
+              id: crypto.randomUUID(),
+              driverProfileId: profile.id,
+              kind: document.kind,
+              key: document.key,
+              order: document.order,
+            })),
+          ),
+          updateProfile,
+          db.update(documentReview)
+            .set({ status: "superseded" })
+            .where(and(eq(documentReview.driverProfileId, profile.id), ne(documentReview.status, "superseded"))),
+          ...(documentReviewValues ? [db.insert(documentReview).values(documentReviewValues)] : []),
         ]);
       } else {
-        await db.batch([replaceDocuments, updateProfile]);
+        await db.batch([
+          replaceDocuments,
+          updateProfile,
+          db.update(documentReview)
+            .set({ status: "superseded" })
+            .where(and(eq(documentReview.driverProfileId, profile.id), ne(documentReview.status, "superseded"))),
+        ]);
       }
     } catch (error) {
       throwConflictOnUniqueConstraint(error, "A document is already in use");
+    }
+
+    if (documentReviewValues) {
+      await scheduleDocumentReview(c.env, db, documentReviewValues.id);
     }
 
     return c.json({ ok: true });
