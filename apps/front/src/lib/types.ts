@@ -62,6 +62,42 @@ export interface DriverProfile {
   createdAt: string
 }
 
+export type DriverVerificationStatus = "pending" | "submitted" | "verified"
+
+// The bare driver_profile row an admin acts on — matches what the verification
+// PATCH returns via `.returning()` (no relations joined).
+export interface AdminDriverProfile {
+  id: string
+  userId: string
+  phone: string
+  vehicleType: VehicleType
+  vehiclePlate: string
+  vehicleYear: number | null
+  bio: string | null
+  isVerified: boolean
+  isAvailable: boolean
+  avgRating: number | null
+  totalJobs: number
+  vehicleDescription: string | null
+  vehicleCapacity: string | null
+  documentsStatus: DriverVerificationStatus
+  createdAt: string
+}
+
+// A driver profile as seen by an admin in the verification queue: the profile
+// plus the owning user's contact info and the uploaded documents.
+export interface AdminDriver extends AdminDriverProfile {
+  user: { id: string; name: string; email: string; phone: string | null }
+  documents: DriverDocument[]
+}
+
+export interface AdminDriversResponse {
+  data: AdminDriver[]
+  page: number
+  limit: number
+  total: number
+}
+
 export interface UpsertDriverInput {
   phone: string
   vehicleType: VehicleType

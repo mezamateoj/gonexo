@@ -4,18 +4,26 @@ import { z } from "zod";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { driverDocument, driverProfile, review, user as userTable } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
-import { badRequest, conflict, notFound } from "../lib/errors";
+import { badRequest, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { enrichVehicle } from "../ai/vehicle-enrichment";
 import { logger } from "../lib/logger";
 import { normalizePhone, normalizeVehiclePlate } from "../lib/normalizers";
 import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
+import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
+import { enforceRateLimit } from "../lib/rate-limit";
+import { getOwnedUpload, requireOwnedUpload } from "../lib/uploads";
 
 const drivers = new Hono<AppEnv>();
 
+const uploadKeySchema = z.string().min(1).max(100).refine(
+  (key) => !key.includes("://"),
+  "R2 object key required",
+);
+
 const driverDocumentSchema = z.object({
   kind: z.enum(["license", "papers", "vehicle_photo"]),
-  key: z.string().min(1),
+  key: uploadKeySchema,
   order: z.number().int().min(0).default(0),
 });
 
@@ -39,8 +47,8 @@ const replacePhotosSchema = z.object({
 });
 
 const enrichSchema = z.object({
-  photoUrls: z.array(z.string().url()).min(1),
-  papersUrl: z.string().url().optional(),
+  photoKeys: z.array(uploadKeySchema).min(1).max(4),
+  papersKey: uploadKeySchema.optional(),
 });
 
 drivers.get("/me", requireAuth, async (c) => {
@@ -65,18 +73,15 @@ drivers.post(
     const phone = normalizePhone(body.phone);
     const vehiclePlate = normalizeVehiclePlate(body.vehiclePlate);
 
+    if (body.documents) {
+      await Promise.all(
+        body.documents.map(({ key }) => requireOwnedUpload(c.env.BUCKET, key, user.id)),
+      );
+    }
+
     const existing = await db.query.driverProfile.findFirst({
       where: eq(driverProfile.userId, user.id),
     });
-
-    const profileWithPlate = await db.query.driverProfile.findFirst({
-      where: and(
-        eq(driverProfile.vehiclePlate, vehiclePlate),
-        ne(driverProfile.userId, user.id),
-      ),
-      columns: { id: true },
-    });
-    if (profileWithPlate) throw conflict("Esta patente ya está registrada");
 
     const documentsChanged = body.documents !== undefined;
     const hasDocuments = !!body.documents?.length;
@@ -117,34 +122,38 @@ drivers.post(
         })
         .where(eq(driverProfile.userId, user.id));
 
-      if (body.documents?.length) {
-        const replaceDocuments = db
-        .delete(driverDocument)
-          .where(and(
-            eq(driverDocument.driverProfileId, existing.id),
-            ne(driverDocument.kind, "vehicle_photo"),
-          ));
-        const insertDocuments = db.insert(driverDocument).values(
-          body.documents.map((document) => ({
-            id: crypto.randomUUID(),
-            driverProfileId: existing.id,
-            kind: document.kind,
-            key: document.key,
-            order: document.order,
-          })),
-        );
-        await db.batch([updateUser, updateProfile, replaceDocuments, insertDocuments]);
-      } else if (body.documents) {
-        await db.batch([
-          updateUser,
-          updateProfile,
-          db.delete(driverDocument).where(and(
-            eq(driverDocument.driverProfileId, existing.id),
-            ne(driverDocument.kind, "vehicle_photo"),
-          )),
-        ]);
-      } else {
-        await db.batch([updateUser, updateProfile]);
+      try {
+        if (body.documents?.length) {
+          const replaceDocuments = db
+            .delete(driverDocument)
+            .where(and(
+              eq(driverDocument.driverProfileId, existing.id),
+              ne(driverDocument.kind, "vehicle_photo"),
+            ));
+          const insertDocuments = db.insert(driverDocument).values(
+            body.documents.map((document) => ({
+              id: crypto.randomUUID(),
+              driverProfileId: existing.id,
+              kind: document.kind,
+              key: document.key,
+              order: document.order,
+            })),
+          );
+          await db.batch([updateUser, updateProfile, replaceDocuments, insertDocuments]);
+        } else if (body.documents) {
+          await db.batch([
+            updateUser,
+            updateProfile,
+            db.delete(driverDocument).where(and(
+              eq(driverDocument.driverProfileId, existing.id),
+              ne(driverDocument.kind, "vehicle_photo"),
+            )),
+          ]);
+        } else {
+          await db.batch([updateUser, updateProfile]);
+        }
+      } catch (error) {
+        throwConflictOnUniqueConstraint(error, "Phone number or vehicle plate is already in use");
       }
       logger.info("Driver profile updated: {userId} ({vehicleType} {vehiclePlate}, docs: {documentsStatus})", {
         userId: user.id,
@@ -172,8 +181,9 @@ drivers.post(
         vehicleCapacity: body.vehicleCapacity ?? null,
         documentsStatus,
       });
-    if (body.documents?.length) {
-      await db.batch([
+    try {
+      if (body.documents?.length) {
+        await db.batch([
         updateUser,
         insertProfile,
         db.insert(driverDocument).values(
@@ -185,9 +195,12 @@ drivers.post(
             order: document.order,
           })),
         ),
-      ]);
-    } else {
-      await db.batch([updateUser, insertProfile]);
+        ]);
+      } else {
+        await db.batch([updateUser, insertProfile]);
+      }
+    } catch (error) {
+      throwConflictOnUniqueConstraint(error, "Phone number or vehicle plate is already in use");
     }
     logger.info("Driver profile created: {id} for user {userId} ({vehicleType} {vehiclePlate})", {
       id,
@@ -224,6 +237,9 @@ drivers.put(
     const db = c.get("db");
     const user = c.get("user")!;
     const { documents } = c.req.valid("json");
+    await Promise.all(
+      documents.map(({ key }) => requireOwnedUpload(c.env.BUCKET, key, user.id)),
+    );
     const profile = await db.query.driverProfile.findFirst({
       where: eq(driverProfile.userId, user.id),
       columns: { id: true },
@@ -244,8 +260,9 @@ drivers.put(
       })
       .where(eq(driverProfile.id, profile.id));
 
-    if (documents.length > 0) {
-      await db.batch([
+    try {
+      if (documents.length > 0) {
+        await db.batch([
         replaceDocuments,
         db.insert(driverDocument).values(
           documents.map((document) => ({
@@ -257,9 +274,12 @@ drivers.put(
           })),
         ),
         updateProfile,
-      ]);
-    } else {
-      await db.batch([replaceDocuments, updateProfile]);
+        ]);
+      } else {
+        await db.batch([replaceDocuments, updateProfile]);
+      }
+    } catch (error) {
+      throwConflictOnUniqueConstraint(error, "A document is already in use");
     }
 
     return c.json({ ok: true });
@@ -270,6 +290,9 @@ drivers.put("/me/photos", requireAuth, zValidator("json", replacePhotosSchema), 
   const db = c.get("db");
   const user = c.get("user")!;
   const { photos } = c.req.valid("json");
+  await Promise.all(
+    photos.map(({ key }) => requireOwnedUpload(c.env.BUCKET, key, user.id)),
+  );
   const profile = await db.query.driverProfile.findFirst({ where: eq(driverProfile.userId, user.id), columns: { id: true } });
   if (!profile) throw notFound("Driver profile not found");
 
@@ -286,14 +309,29 @@ drivers.post(
   zValidator("json", enrichSchema),
   async (c) => {
     const user = c.get("user")!;
-    const { photoUrls, papersUrl } = c.req.valid("json");
+    await enforceRateLimit(
+      c.env.AI_RATE_LIMITER,
+      `${user.id}:drivers-enrich`,
+      "Too many vehicle enrichment requests",
+    );
+    const { photoKeys, papersKey } = c.req.valid("json");
+    const photoObjects = await Promise.all(
+      photoKeys.map((key) => getOwnedUpload(c.env.BUCKET, key, user.id)),
+    );
+    const papersObject = papersKey
+      ? await getOwnedUpload(c.env.BUCKET, papersKey, user.id)
+      : null;
+    const [photos, papers] = await Promise.all([
+      Promise.all(photoObjects.map((object) => object.arrayBuffer())),
+      papersObject ? papersObject.arrayBuffer() : null,
+    ]);
     const apiKey = c.env.ANTHROPIC_API_KEY;
     logger.debug("Vehicle enrichment started for user {userId} ({photoCount} photos)", {
       userId: user.id,
-      photoCount: photoUrls.length,
-      hasPapers: !!papersUrl,
+      photoCount: photoKeys.length,
+      hasPapers: !!papersKey,
     });
-    const result = await enrichVehicle(photoUrls, papersUrl ?? null, apiKey);
+    const result = await enrichVehicle(photos, papers, apiKey);
     logger.info("Vehicle enrichment complete for user {userId} ({attributes} attributes)", {
       userId: user.id,
       attributes: result.attributes.length,

@@ -1,14 +1,12 @@
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { admin } from "better-auth/plugins/admin";
 import * as schema from "../db/schema";
 import { normalizePhone } from "./normalizers";
 import type { Db } from "../db";
 
 const configuredFrontendOrigin = process.env.FRONTEND_URL;
-const trustedOrigins = [
-  ...(process.env.ENVIRONMENT === "local" ? ["http://localhost:5173"] : []),
-  ...(configuredFrontendOrigin ? [configuredFrontendOrigin] : []),
-];
+const trustedOrigins = configuredFrontendOrigin ? [configuredFrontendOrigin] : [];
 
 export const createAuth = (db?: Db) =>
   betterAuth({
@@ -24,6 +22,8 @@ export const createAuth = (db?: Db) =>
       // every navigation (_app beforeLoad calls getSession on each route change).
       cookieCache: { enabled: true, maxAge: 5 * 60 },
     },
+    // Admin status is the `user.role` column ("admin"); no id-based bootstrap.
+    plugins: [admin()],
     user: {
       additionalFields: {
         phone: {

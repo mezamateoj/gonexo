@@ -26,4 +26,10 @@ export const queryKeys = {
       ["jobs", "my", userId, query.role, query.bucket, query.page, query.q ?? "", query.volume ?? [], query.sort ?? "recent"] as const,
     detail: (id: string) => ["jobs", id] as const,
   },
+  admin: {
+    // Prefix for invalidating the verification queue across all status/page.
+    driversAll: ["admin", "drivers"] as const,
+    drivers: (status: string, page: number) => ["admin", "drivers", status, page] as const,
+    users: (q: string, page: number) => ["admin", "users", q, page] as const,
+  },
 } as const

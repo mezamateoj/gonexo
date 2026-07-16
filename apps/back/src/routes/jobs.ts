@@ -9,6 +9,7 @@ import { conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { sendEmail, confirmReminderEmail } from "../lib/email";
 import { advanceJob, cancelScheduledJob, confirmJob } from "../workflows/jobs";
+import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
 
 const jobs = new Hono<AppEnv>();
 
@@ -244,8 +245,9 @@ jobs.post(
     });
 
     // Keep avg_rating denormalized so profile fetches stay cheap.
-    if (revieweeId === j.driverId) {
-      await db.batch([
+    try {
+      if (revieweeId === j.driverId) {
+        await db.batch([
         insertReview,
         db
           .update(driverProfile)
@@ -256,9 +258,12 @@ jobs.post(
             )`,
           })
           .where(eq(driverProfile.userId, j.driverId)),
-      ]);
-    } else {
-      await insertReview;
+        ]);
+      } else {
+        await insertReview;
+      }
+    } catch (error) {
+      throwConflictOnUniqueConstraint(error, "You have already reviewed this job");
     }
 
     return c.json({ ok: true }, 201);

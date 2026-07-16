@@ -5,6 +5,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -31,6 +32,8 @@ import {
   ChevronsUpDown,
   PanelLeftClose,
   User,
+  Users,
+  ShieldCheck,
 } from "lucide-react"
 import { signOut, useSession } from "@/lib/auth-client"
 import { useAppMode } from "@/lib/app-mode"
@@ -46,6 +49,11 @@ const CLIENT_NAV = [
 const DRIVER_NAV = [
   { label: "Buscar fletes", icon: Truck, to: "/available" },
   { label: "Mis fletes", icon: Briefcase, to: "/jobs" },
+] as const
+
+const ADMIN_NAV = [
+  { label: "Usuarios", icon: Users, to: "/admin/users" },
+  { label: "Verificación", icon: ShieldCheck, to: "/admin/drivers" },
 ] as const
 
 function NavItem({
@@ -111,12 +119,17 @@ export function AppSidebar() {
   const { pathname } = useRouterState({ select: (s) => s.location })
 
   const isDriver = mode === "driver"
+  const isAdmin = session?.user.role === "admin"
   const nav = isDriver ? DRIVER_NAV : CLIENT_NAV
 
   // Pick the single best match: the nav item whose `to` is the longest prefix of
   // the current path. This keeps "Mis fletes" (/requests) from lighting up on
   // /requests/new, where "Publicar flete" (/requests/new) is the more specific match.
-  const candidates = [...nav.map((i) => i.to), "/driver-onboarding"]
+  const candidates = [
+    ...nav.map((i) => i.to),
+    "/driver-onboarding",
+    ...(isAdmin ? ADMIN_NAV.map((i) => i.to) : []),
+  ]
   const matches = candidates.filter(
     (to) => pathname === to || (to !== "/" && pathname.startsWith(to + "/")),
   )
@@ -173,6 +186,17 @@ export function AppSidebar() {
                 to="/driver-onboarding"
                 isActive={activeTo === "/driver-onboarding"}
               />
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
+
+        {isAdmin && (
+          <SidebarGroup className={hasDriverProfile ? "mt-auto" : undefined}>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              {ADMIN_NAV.map((item) => (
+                <NavItem key={item.to} {...item} isActive={item.to === activeTo} />
+              ))}
             </SidebarMenu>
           </SidebarGroup>
         )}

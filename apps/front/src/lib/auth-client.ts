@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/react";
-import { inferAdditionalFields } from "better-auth/client/plugins";
+import { adminClient, inferAdditionalFields } from "better-auth/client/plugins";
 
 export const authClient = createAuthClient({
   // The backend lives on a different domain, so baseURL is required.
@@ -19,6 +19,8 @@ export const authClient = createAuthClient({
         },
       },
     }),
+    // Types `session.user.role` and exposes authClient.admin.* (listUsers, …).
+    adminClient(),
   ],
 });
 

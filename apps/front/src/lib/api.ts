@@ -1,6 +1,12 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriverProfile, DriverVerificationStatus } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
+
+// Documents/photos are served (with an ownership/admin check) from the backend's
+// /cdn/:key route; the session cookie rides along cross-origin like apiFetch.
+export function cdnUrl(key: string) {
+  return `${BASE}/cdn/${encodeURIComponent(key)}`
+}
 
 type ApiErrorResponse = {
   error?: {
@@ -86,10 +92,6 @@ export async function uploadDriverFile(file: File): Promise<{ key: string; url: 
   })
   if (!res.ok) throw new ApiError(await readErrorMessage(res, "Upload failed"), res.status)
   return res.json() as Promise<{ key: string; url: string }>
-}
-
-export function cdnUrl(key: string) {
-  return `${BASE}/cdn/${key}`
 }
 
 export const api = {
@@ -186,10 +188,19 @@ export const api = {
       }),
     replacePhotos: (photos: { kind: "vehicle_photo"; key: string; order: number }[]) =>
       apiFetch<{ ok: boolean }>("/api/drivers/me/photos", { method: "PUT", body: JSON.stringify({ photos }) }),
-    enrich: (body: { photoUrls: string[]; papersUrl?: string }) =>
+    enrich: (body: { photoKeys: string[]; papersKey?: string }) =>
       apiFetch<EnrichVehicleResult>("/api/drivers/enrich", {
         method: "POST",
         body: JSON.stringify(body),
+      }),
+  },
+  admin: {
+    drivers: (status: DriverVerificationStatus, page: number) =>
+      apiFetch<AdminDriversResponse>(`/api/admin/drivers?status=${status}&page=${page}`),
+    setVerification: (id: string, action: "verify" | "reset") =>
+      apiFetch<{ driver: AdminDriverProfile }>(`/api/admin/drivers/${id}/verification`, {
+        method: "PATCH",
+        body: JSON.stringify({ action }),
       }),
   },
 }

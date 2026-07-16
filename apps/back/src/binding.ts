@@ -1,6 +1,8 @@
 export type Bindings = {
   db: D1Database;
   BUCKET: R2Bucket;
+  GEO_RATE_LIMITER: RateLimit;
+  AI_RATE_LIMITER: RateLimit;
   ENVIRONMENT: "local" | "staging" | "production";
   BETTER_AUTH_SECRET: string;
   ANTHROPIC_API_KEY: string;
@@ -10,4 +12,5 @@ export type Bindings = {
   // Optional until a sending domain is set up — sendEmail skips when absent.
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
+  SENTRY_DSN?: string;
 };
