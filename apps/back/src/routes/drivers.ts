@@ -21,10 +21,17 @@ const uploadKeySchema = z.string().min(1).max(100).refine(
   "R2 object key required",
 );
 
-const driverDocumentSchema = z.object({
-  kind: z.enum(["license", "papers", "vehicle_photo"]),
+const documentSchema = z.object({
   key: uploadKeySchema,
   order: z.number().int().min(0).default(0),
+});
+
+const verificationDocumentSchema = documentSchema.extend({
+  kind: z.enum(["license", "papers"]),
+});
+
+const vehiclePhotoSchema = documentSchema.extend({
+  kind: z.literal("vehicle_photo"),
 });
 
 const upsertDriverSchema = z.object({
@@ -33,17 +40,17 @@ const upsertDriverSchema = z.object({
   vehiclePlate: z.string().min(4).max(10).toUpperCase(),
   vehicleYear: z.number().int().min(1990).max(2030).optional(),
   bio: z.string().max(500).optional(),
-  documents: z.array(driverDocumentSchema).optional(),
+  documents: z.array(verificationDocumentSchema).optional(),
   vehicleDescription: z.string().max(500).optional(),
   vehicleCapacity: z.string().max(200).optional(),
 });
 
 const replaceDocumentsSchema = z.object({
-  documents: z.array(driverDocumentSchema).max(12),
+  documents: z.array(verificationDocumentSchema).max(12),
 });
 
 const replacePhotosSchema = z.object({
-  photos: z.array(driverDocumentSchema.extend({ kind: z.literal("vehicle_photo") })).max(8),
+  photos: z.array(vehiclePhotoSchema).max(8),
 });
 
 const enrichSchema = z.object({
