@@ -3,13 +3,10 @@ import {
   AlertCircle,
   Bot,
   CheckCircle2,
-  Clock3,
   ExternalLink,
   FileQuestion,
   RotateCcw,
-  ScanText,
   ShieldCheck,
-  UserCheck,
 } from "lucide-react"
 import { z } from "zod"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -24,6 +21,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import {
   Field,
   FieldDescription,
   FieldError,
@@ -31,23 +35,9 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Separator } from "@/components/ui/separator"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { cdnUrl } from "@/lib/api"
-import {
-  documentKindLabels,
-  formatLongDateTime,
-  reviewStatusLabel,
-  reviewStatusVariant,
-  vehicleLabels,
-} from "@/lib/display"
-import { cn } from "@/lib/utils"
+import { documentKindLabels, formatLongDateTime, vehicleLabels } from "@/lib/display"
 import type {
   AdminDocumentReview,
   AdminDriver,
@@ -68,66 +58,7 @@ const documentTypeLabels: Record<DocumentTriageResult["documents"][number]["docu
   other: "Otro documento",
 }
 
-export function DocumentReviewSheet({
-  driver,
-  isPending,
-  onClose,
-  onDecision,
-  onReopen,
-}: {
-  driver: AdminDriver | null
-  isPending: boolean
-  onClose: () => void
-  onDecision: (decision: DocumentReviewDecision, note?: string) => void
-  onReopen: () => void
-}) {
-  return (
-    <Sheet open={!!driver} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-5xl">
-        {driver && (
-          <>
-            <SheetHeader className="border-b px-5 py-4 pr-14 sm:px-7">
-              <div className="flex flex-wrap items-center gap-2">
-                <SheetTitle className="text-balance text-xl">Expediente de {driver.user.name}</SheetTitle>
-                {driver.latestReview && (
-                  <Badge variant={reviewStatusVariant(driver.latestReview)}>
-                    {reviewStatusLabel(driver.latestReview)}
-                  </Badge>
-                )}
-              </div>
-              <SheetDescription className="text-pretty">
-                La lectura automática ordena la información. La decisión final siempre es humana.
-              </SheetDescription>
-            </SheetHeader>
-
-            <div className="flex flex-col gap-6 p-5 sm:p-7">
-              <DriverIdentity driver={driver} />
-              <ReviewFlow review={driver.latestReview} />
-
-              <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.8fr)]">
-                <DocumentGallery documents={driver.documents} review={driver.latestReview} />
-                <div className="flex flex-col gap-4 lg:sticky lg:top-0">
-                  <AnalysisSummary review={driver.latestReview} />
-                  {driver.latestReview && (
-                    <DecisionPanel
-                      key={driver.latestReview.id}
-                      review={driver.latestReview}
-                      isPending={isPending}
-                      onDecision={onDecision}
-                      onReopen={onReopen}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-function DriverIdentity({ driver }: { driver: AdminDriver }) {
+export function DriverIdentity({ driver }: { driver: AdminDriver }) {
   return (
     <Card className="overflow-hidden bg-muted/45 shadow-none">
       <div className="grid sm:grid-cols-[1fr_auto] sm:items-center">
@@ -161,33 +92,7 @@ function DriverIdentity({ driver }: { driver: AdminDriver }) {
   )
 }
 
-function ReviewFlow({ review }: { review: AdminDocumentReview | null }) {
-  const analysisDone = review?.status === "ready"
-  const decided = !!review?.decision
-
-  return (
-    <div className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-3" aria-label="Proceso de revisión">
-      <div className="flex size-9 items-center justify-center rounded-full bg-accent text-primary shadow-sm">
-        <ScanText className="size-4" />
-      </div>
-      <Separator />
-      <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm">
-        {analysisDone ? <CheckCircle2 className="size-4 text-primary" /> : <Clock3 className="size-4" />}
-      </div>
-      <Separator />
-      <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm">
-        <UserCheck className={cn("size-4", decided && "text-primary")} />
-      </div>
-      <p className="col-span-5 grid grid-cols-3 text-center text-xs text-muted-foreground">
-        <span>Documentos</span>
-        <span>Lectura automática</span>
-        <span>Decisión humana</span>
-      </p>
-    </div>
-  )
-}
-
-function DocumentGallery({
+export function DocumentGallery({
   documents,
   review,
 }: {
@@ -214,12 +119,24 @@ function DocumentGallery({
               <AnalyzedDocumentCard key={document.key} document={document} />
             ))}
           </div>
-        ) : (
+        ) : verificationDocuments.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {verificationDocuments.map((document) => (
               <RawDocumentCard key={document.key} document={document} />
             ))}
           </div>
+        ) : (
+          <Empty className="min-h-48 border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FileQuestion />
+              </EmptyMedia>
+              <EmptyTitle>Sin documentos</EmptyTitle>
+              <EmptyDescription>
+                Este transportista todavía no envía documentos de verificación.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
       </section>
 
@@ -350,7 +267,7 @@ function ExtractedValue({ label, value, mono = false }: { label: string; value: 
   )
 }
 
-function AnalysisSummary({ review }: { review: AdminDocumentReview | null }) {
+export function AnalysisSummary({ review }: { review: AdminDocumentReview | null }) {
   if (!review) {
     return (
       <Alert>
@@ -420,7 +337,7 @@ function AnalysisSummary({ review }: { review: AdminDocumentReview | null }) {
   )
 }
 
-function DecisionPanel({
+export function DecisionPanel({
   review,
   isPending,
   onDecision,

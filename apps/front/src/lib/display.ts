@@ -207,6 +207,19 @@ export function relativeDate(iso: string) {
   }
 }
 
+// Past-tense counterpart of relativeDate ("hace 3 h"); falls back to the
+// short date once the moment is over a week old.
+export function timeAgo(iso: string) {
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (minutes < 1) return "hace un momento"
+  if (minutes < 60) return `hace ${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `hace ${hours} h`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `hace ${days} día${days === 1 ? "" : "s"}`
+  return `el ${formatShortDate(iso)}`
+}
+
 export function floorLine(floor: number | null | undefined, hasElevator: boolean) {
   const floorLabel = floor != null ? `Piso ${floor}` : "Piso 1"
   return `${floorLabel} · ${hasElevator ? "con ascensor" : "sin ascensor"}`

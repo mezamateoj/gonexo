@@ -144,6 +144,66 @@ export interface AdminDriversResponse {
   total: number
 }
 
+// Everything /api/admin/users/:id aggregates for the admin user profile page.
+export interface AdminUserTally {
+  total: number
+  completed: number
+  cancelled: number
+}
+
+export interface AdminUserDetail {
+  user: {
+    id: string
+    name: string
+    email: string
+    emailVerified: boolean
+    phone: string | null
+    image: string | null
+    role: string
+    banned: boolean | null
+    banReason: string | null
+    banExpires: string | null
+    createdAt: string
+    lastActiveAt: string | null
+    driverProfile: {
+      id: string
+      vehicleType: VehicleType
+      vehiclePlate: string
+      vehicleYear: number | null
+      isVerified: boolean
+      isAvailable: boolean
+      avgRating: number | null
+      totalJobs: number
+      documentsStatus: DriverVerificationStatus
+      createdAt: string
+    } | null
+  }
+  stats: {
+    requests: AdminUserTally
+    jobsAsClient: AdminUserTally
+    jobsAsDriver: AdminUserTally
+    quotesSent: number
+    reviewsReceived: { count: number; avgRating: number | null }
+  }
+  recentRequests: {
+    id: string
+    status: RequestStatus
+    originAddress: string
+    destAddress: string
+    volumeCategory: VolumeCategory
+    scheduledAt: string
+    createdAt: string
+  }[]
+  recentJobs: {
+    id: string
+    status: JobStatus
+    agreedPrice: number
+    role: JobRole
+    createdAt: string
+    request: { originAddress: string; destAddress: string }
+  }[]
+}
+
 export interface UpsertDriverInput {
   phone: string
   vehicleType: VehicleType

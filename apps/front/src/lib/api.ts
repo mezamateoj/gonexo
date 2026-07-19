@@ -1,4 +1,4 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriverProfile, DriverVerificationStatus } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriver, AdminDriverProfile, AdminUserDetail, DriverVerificationStatus } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -197,6 +197,8 @@ export const api = {
   admin: {
     drivers: (status: DriverVerificationStatus, page: number) =>
       apiFetch<AdminDriversResponse>(`/api/admin/drivers?status=${status}&page=${page}`),
+    driver: (id: string) => apiFetch<{ driver: AdminDriver }>(`/api/admin/drivers/${id}`),
+    user: (id: string) => apiFetch<AdminUserDetail>(`/api/admin/users/${id}`),
     decideReview: (id: string, decision: "verified" | "changes_requested", note?: string) =>
       apiFetch<{ driver: AdminDriverProfile }>(`/api/admin/drivers/${id}/verification`, {
         method: "PATCH",

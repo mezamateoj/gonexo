@@ -47,7 +47,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const lifecycleTabSchema = z.enum(["offers", "active", "history"])
 const volumeSchema = z.enum(["small", "medium", "large", "full_move"])
@@ -256,23 +255,16 @@ function RequestsPage() {
         </p>
       </div>
 
-      <Tabs
-        value={tab}
-        onValueChange={(value) =>
-          navigate({
-            replace: true,
-            search: (prev) => ({ ...prev, tab: lifecycleTabSchema.parse(value), page: 1 }),
-          })
-        }
-      >
-        <TabsList variant="line" className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="offers">Recibiendo ofertas</TabsTrigger>
-          <TabsTrigger value="active">En curso</TabsTrigger>
-          <TabsTrigger value="history">Historial</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <MyFletesToolbar
+        bucket={{
+          value: tab,
+          options: [
+            { value: "offers", label: "Ofertas" },
+            { value: "active", label: "En curso" },
+            { value: "history", label: "Historial" },
+          ],
+          onChange: (value) => patch({ tab: value }),
+        }}
         q={q}
         volume={volume}
         searchPlaceholder="Buscar por dirección…"

@@ -30,6 +30,8 @@ export const queryKeys = {
     // Prefix for invalidating the verification queue across all status/page.
     driversAll: ["admin", "drivers"] as const,
     drivers: (status: string, page: number) => ["admin", "drivers", status, page] as const,
+    driver: (id: string) => ["admin", "drivers", "detail", id] as const,
     users: (q: string, page: number) => ["admin", "users", q, page] as const,
+    user: (id: string) => ["admin", "users", "detail", id] as const,
   },
 } as const

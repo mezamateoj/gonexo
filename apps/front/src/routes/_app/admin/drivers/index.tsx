@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react"
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, stripSearchParams, useNavigate } from "@tanstack/react-router"
+import { useMemo } from "react"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { createFileRoute, Link, stripSearchParams, useNavigate } from "@tanstack/react-router"
 import {
   createColumnHelper,
   flexRender,
@@ -18,9 +18,7 @@ import {
   Inbox,
   ShieldCheck,
 } from "lucide-react"
-import { toast } from "sonner"
 import { z } from "zod"
-import { DocumentReviewSheet } from "@/components/admin/document-review-sheet"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -33,7 +31,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { api } from "@/lib/api"
 import {
@@ -44,12 +42,7 @@ import {
 } from "@/lib/display"
 import { queryKeys } from "@/lib/query-keys"
 import { cn } from "@/lib/utils"
-import type {
-  AdminDocumentReview,
-  AdminDriver,
-  DocumentReviewDecision,
-  DriverVerificationStatus,
-} from "@/lib/types"
+import type { AdminDocumentReview, AdminDriver, DriverVerificationStatus } from "@/lib/types"
 
 const PAGE_SIZE = 20
 const SEARCH_DEFAULTS = { status: "submitted" as const, page: 1 }
@@ -59,7 +52,7 @@ const searchSchema = z.object({
   page: z.number().int().positive().catch(1).default(1),
 })
 
-export const Route = createFileRoute("/_app/admin/drivers")({
+export const Route = createFileRoute("/_app/admin/drivers/")({
   validateSearch: searchSchema,
   search: { middlewares: [stripSearchParams(SEARCH_DEFAULTS)] },
   component: VerificationPage,
@@ -73,11 +66,94 @@ const statusTabs: { value: DriverVerificationStatus; label: string }[] = [
 
 const columnHelper = createColumnHelper<AdminDriver>()
 
+// TanStack Table expects stable column identities; nothing in the cells
+// closes over component state, so the columns live at module scope.
+const columns = [
+  columnHelper.display({
+    id: "driver",
+    header: "Transportista",
+    cell: ({ row }) => {
+      const driver = row.original
+      return (
+        <div className="flex items-center gap-2.5">
+          <Avatar className="size-8 shrink-0">
+            <AvatarFallback className="bg-accent text-xs font-bold text-primary">
+              {initials(driver.user.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{driver.user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{driver.user.email}</p>
+          </div>
+        </div>
+      )
+    },
+  }),
+  columnHelper.accessor("vehiclePlate", {
+    id: "plate",
+    header: "Patente",
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">
+        {row.original.vehiclePlate}
+      </span>
+    ),
+  }),
+  columnHelper.display({
+    id: "vehicle",
+    header: "Vehículo",
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap text-xs text-muted-foreground">
+        {vehicleLabels[row.original.vehicleType] ?? row.original.vehicleType}
+      </span>
+    ),
+  }),
+  columnHelper.display({
+    id: "analysis",
+    header: "Lectura automática",
+    cell: ({ row }) => <AnalysisBadge review={row.original.latestReview} />,
+  }),
+  columnHelper.accessor("documentsStatus", {
+    id: "status",
+    header: "Estado",
+    cell: ({ row }) => (
+      <Badge variant={row.original.documentsStatus === "verified" ? "default" : "secondary"}>
+        {row.original.documentsStatus === "verified" && <ShieldCheck data-icon="inline-start" />}
+        {driverVerificationLabels[row.original.documentsStatus]}
+      </Badge>
+    ),
+  }),
+  columnHelper.accessor("createdAt", {
+    id: "createdAt",
+    header: "Registrado",
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap text-xs text-muted-foreground">
+        {formatShortDate(row.original.createdAt)}
+      </span>
+    ),
+  }),
+  columnHelper.display({
+    id: "actions",
+    header: "",
+    cell: ({ row }) => (
+      <div className="text-right">
+        <Button
+          asChild
+          size="sm"
+          variant="outline"
+          className="min-h-10 transition-transform active:scale-[0.96]"
+        >
+          <Link to="/admin/drivers/$id" params={{ id: row.original.id }}>
+            Abrir expediente
+          </Link>
+        </Button>
+      </div>
+    ),
+  }),
+]
+
 function VerificationPage() {
   const { status, page } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  const queryClient = useQueryClient()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: queryKeys.admin.drivers(status, page),
@@ -88,118 +164,11 @@ function VerificationPage() {
   const rows = data?.data ?? []
   const total = data?.total ?? 0
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const selected = rows.find((driver) => driver.id === selectedId) ?? null
 
-  const mutation = useMutation({
-    mutationFn: (action: {
-      type: "decide"
-      id: string
-      decision: DocumentReviewDecision
-      note?: string
-    } | {
-      type: "reopen"
-      id: string
-    }) => action.type === "decide"
-      ? api.admin.decideReview(action.id, action.decision, action.note)
-      : api.admin.reopenReview(action.id),
-    onSuccess: (_response, action) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.admin.driversAll })
-      setSelectedId(null)
-      toast.success(action.type === "reopen"
-        ? "Revisión reabierta"
-        : action.decision === "verified" ? "Transportista verificado" : "Cambios solicitados")
-    },
-    onError: (error) => {
-      toast.error("No se pudo registrar la decisión", {
-        description: error instanceof Error ? error.message : undefined,
-      })
-    },
-  })
-
-  // TanStack Table expects stable column identities; the cell closures only
-  // capture the stable setSelectedId setter.
-  const columns = useMemo(() => [
-    columnHelper.display({
-      id: "driver",
-      header: "Transportista",
-      cell: ({ row }) => {
-        const driver = row.original
-        return (
-          <div className="flex items-center gap-2.5">
-            <Avatar className="size-8 shrink-0">
-              <AvatarFallback className="bg-accent text-xs font-bold text-primary">
-                {initials(driver.user.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{driver.user.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{driver.user.email}</p>
-            </div>
-          </div>
-        )
-      },
-    }),
-    columnHelper.accessor("vehiclePlate", {
-      id: "plate",
-      header: "Patente",
-      cell: ({ row }) => (
-        <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">
-          {row.original.vehiclePlate}
-        </span>
-      ),
-    }),
-    columnHelper.display({
-      id: "vehicle",
-      header: "Vehículo",
-      cell: ({ row }) => (
-        <span className="whitespace-nowrap text-xs text-muted-foreground">
-          {vehicleLabels[row.original.vehicleType] ?? row.original.vehicleType}
-        </span>
-      ),
-    }),
-    columnHelper.display({
-      id: "analysis",
-      header: "Lectura automática",
-      cell: ({ row }) => <AnalysisBadge review={row.original.latestReview} />,
-    }),
-    columnHelper.accessor("documentsStatus", {
-      id: "status",
-      header: "Estado",
-      cell: ({ row }) => (
-        <Badge variant={row.original.documentsStatus === "verified" ? "default" : "secondary"}>
-          {row.original.documentsStatus === "verified" && <ShieldCheck data-icon="inline-start" />}
-          {driverVerificationLabels[row.original.documentsStatus]}
-        </Badge>
-      ),
-    }),
-    columnHelper.accessor("createdAt", {
-      id: "createdAt",
-      header: "Registrado",
-      cell: ({ row }) => (
-        <span className="whitespace-nowrap text-xs text-muted-foreground">
-          {formatShortDate(row.original.createdAt)}
-        </span>
-      ),
-    }),
-    columnHelper.display({
-      id: "actions",
-      header: "",
-      cell: ({ row }) => (
-        <div className="text-right">
-          <Button
-            size="sm"
-            variant="outline"
-            className="min-h-10 transition-transform active:scale-[0.96]"
-            onClick={() => setSelectedId(row.original.id)}
-          >
-            Abrir expediente
-          </Button>
-        </div>
-      ),
-    }),
-  ], [])
-
-  const pagination: PaginationState = { pageIndex: page - 1, pageSize: PAGE_SIZE }
+  const pagination: PaginationState = useMemo(
+    () => ({ pageIndex: page - 1, pageSize: PAGE_SIZE }),
+    [page],
+  )
   const table = useReactTable({
     data: rows,
     columns,
@@ -225,16 +194,28 @@ function VerificationPage() {
         </p>
       </header>
 
-      <Tabs
+      <ToggleGroup
+        type="single"
+        variant="outline"
         value={status}
-        onValueChange={(value) => navigate({ replace: true, search: { status: value as DriverVerificationStatus } })}
+        onValueChange={(value) => {
+          // Radix emits "" when the active segment is clicked again; a status
+          // is always selected, so ignore deselection.
+          const next = statusTabs.find((tab) => tab.value === value)
+          if (next) navigate({ replace: true, search: { status: next.value } })
+        }}
+        className="w-full sm:w-fit"
       >
-        <TabsList>
-          {statusTabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+        {statusTabs.map((tab) => (
+          <ToggleGroupItem
+            key={tab.value}
+            value={tab.value}
+            className="flex-1 text-muted-foreground data-[state=on]:text-foreground sm:flex-initial sm:px-3"
+          >
+            {tab.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
 
       {isError && (
         <Alert variant="destructive">
@@ -277,7 +258,11 @@ function VerificationPage() {
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate({ to: "/admin/drivers/$id", params: { id: row.original.id } })}
+                  >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
@@ -315,18 +300,6 @@ function VerificationPage() {
           </div>
         </>
       )}
-
-      <DocumentReviewSheet
-        driver={selected}
-        isPending={mutation.isPending}
-        onClose={() => setSelectedId(null)}
-        onDecision={(decision, note) => {
-          if (selected) mutation.mutate({ type: "decide", id: selected.id, decision, note })
-        }}
-        onReopen={() => {
-          if (selected) mutation.mutate({ type: "reopen", id: selected.id })
-        }}
-      />
     </div>
   )
 }
