@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, stripSearchParams, useNavigate } from "@tanstack/react-router"
 import {
@@ -116,7 +116,9 @@ function VerificationPage() {
     },
   })
 
-  const columns = [
+  // TanStack Table expects stable column identities; the cell closures only
+  // capture the stable setSelectedId setter.
+  const columns = useMemo(() => [
     columnHelper.display({
       id: "driver",
       header: "Transportista",
@@ -195,7 +197,7 @@ function VerificationPage() {
         </div>
       ),
     }),
-  ]
+  ], [])
 
   const pagination: PaginationState = { pageIndex: page - 1, pageSize: PAGE_SIZE }
   const table = useReactTable({

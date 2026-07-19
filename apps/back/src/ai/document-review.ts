@@ -25,13 +25,7 @@ Extract the holder's name, RUT, vehicle plate, and expiry date only when they ar
 
 Do not claim that a document is authentic and do not claim that the driver is verified. Write notes in Spanish.`;
 
-const documentTypeSchema = z.enum([
-  "license",
-  "vehicle_registration",
-  "circulation_permit",
-  "technical_inspection",
-  "other",
-]);
+const documentTypeSchema = z.enum([...expectedDocumentTypes, "other"]);
 
 const flagSchema = z.object({
   code: z.string(),

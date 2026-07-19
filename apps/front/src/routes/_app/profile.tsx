@@ -12,7 +12,12 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { z } from "zod"
-import { DriverDocumentUploads } from "@/components/drivers/document-uploads"
+import {
+  DOCUMENT_LIMITS,
+  DriverDocumentUploads,
+  nextDocumentSlot,
+  splitDocumentPayloads,
+} from "@/components/drivers/document-uploads"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -309,28 +314,12 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
     },
     validators: { onSubmit: driverSchema },
     onSubmit: async ({ value }) => {
-      const verificationDocuments = value.documents.flatMap(({ kind, key, order }) =>
-        kind === "vehicle_photo" ? [] : [{ kind, key, order }],
-      )
-      const originalVerificationDocuments = profile.documents.flatMap(({ kind, key, order }) =>
-        kind === "vehicle_photo" ? [] : [{ kind, key, order }],
-      )
-      const photos = value.documents.filter(
-        (document) => document.kind === "vehicle_photo",
-      )
-      const originalPhotos = profile.documents.filter(
-        (document) => document.kind === "vehicle_photo",
-      )
+      const { verification: verificationDocuments, photos } = splitDocumentPayloads(value.documents)
+      const { verification: originalVerificationDocuments, photos: originalPhotos } =
+        splitDocumentPayloads(profile.documents)
       const documentsChanged =
-        JSON.stringify(
-          verificationDocuments,
-        ) !==
-        JSON.stringify(
-          originalVerificationDocuments,
-        )
-      const photosChanged =
-        JSON.stringify(photos.map(({ key, order }) => ({ key, order }))) !==
-        JSON.stringify(originalPhotos.map(({ key, order }) => ({ key, order })))
+        JSON.stringify(verificationDocuments) !== JSON.stringify(originalVerificationDocuments)
+      const photosChanged = JSON.stringify(photos) !== JSON.stringify(originalPhotos)
 
       await api.drivers.upsertMe({
         phone: value.phone,
@@ -338,16 +327,10 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
         vehiclePlate: profile.vehiclePlate,
         vehicleYear: profile.vehicleYear ?? undefined,
         bio: value.bio || undefined,
-        ...(documentsChanged
-          ? {
-              documents: verificationDocuments,
-            }
-          : {}),
+        ...(documentsChanged ? { documents: verificationDocuments } : {}),
       })
       if (photosChanged) {
-        await api.drivers.replacePhotos(
-          photos.map(({ key, order }) => ({ kind: "vehicle_photo", key, order })),
-        )
+        await api.drivers.replacePhotos(photos)
       }
 
       form.reset(value)
@@ -362,10 +345,10 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
   async function upload(kind: DriverDocumentKind, files: FileList | null) {
     const file = files?.[0]
     if (!file) return
-    const kindCount = form.state.values.documents.filter((document) => document.kind === kind).length
-    const limit = kind === "license" ? 1 : kind === "papers" ? 3 : 8
-    if (kindCount >= limit && kind !== "license") {
-      toast.error(kind === "papers" ? "Puedes subir hasta 3 documentos" : "Puedes subir hasta 8 fotos")
+    if (!nextDocumentSlot(form.state.values.documents, kind)) {
+      toast.error(kind === "papers"
+        ? `Puedes subir hasta ${DOCUMENT_LIMITS.papers} documentos`
+        : `Puedes subir hasta ${DOCUMENT_LIMITS.vehicle_photo} fotos`)
       return
     }
 
@@ -373,20 +356,16 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
     try {
       const uploaded = await uploadDriverFile(file)
       form.setFieldValue("documents", (documents) => {
-        const withoutKind = kind === "license"
-          ? documents.filter((document) => document.kind !== "license")
-          : documents
-        const nextOrder = withoutKind
-          .filter((document) => document.kind === kind)
-          .reduce((highest, document) => Math.max(highest, document.order), -1) + 1
+        const slot = nextDocumentSlot(documents, kind)
+        if (!slot) return documents
         return [
-          ...withoutKind,
+          ...slot.remaining,
           {
             id: crypto.randomUUID(),
             driverProfileId: profile.id,
             kind,
             key: uploaded.key,
-            order: nextOrder,
+            order: slot.order,
             createdAt: new Date().toISOString(),
           },
         ]

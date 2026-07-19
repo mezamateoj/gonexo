@@ -13,7 +13,10 @@ import {
 } from "lucide-react"
 import { z } from "zod"
 import {
+  DOCUMENT_LIMITS,
   DriverDocumentUploads,
+  nextDocumentSlot,
+  splitDocumentPayloads,
   type DriverDocumentUpload,
 } from "@/components/drivers/document-uploads"
 import { GonexoLogo } from "@/components/gonexo-logo"
@@ -70,7 +73,7 @@ const onboardingSchema = z.object({
   if (verificationDocuments.length === 0) return
   const hasLicense = verificationDocuments.some((document) => document.kind === "license")
   const papersCount = verificationDocuments.filter((document) => document.kind === "papers").length
-  if (!hasLicense || papersCount !== 3) {
+  if (!hasLicense || papersCount !== DOCUMENT_LIMITS.papers) {
     ctx.addIssue({
       code: "custom",
       path: ["documents"],
@@ -123,16 +126,7 @@ function DriverOnboardingForm({ userId, accountPhone }: { userId: string; accoun
     validators: { onSubmit: onboardingSchema },
     onSubmit: async ({ value }) => {
       setSubmitError(null)
-      const verificationDocuments = value.documents.flatMap((document) =>
-        document.kind === "vehicle_photo"
-          ? []
-          : [{ kind: document.kind, key: document.key, order: document.order }],
-      )
-      const photos = value.documents.flatMap((document) =>
-        document.kind === "vehicle_photo"
-          ? [{ kind: "vehicle_photo" as const, key: document.key, order: document.order }]
-          : [],
-      )
+      const { verification: verificationDocuments, photos } = splitDocumentPayloads(value.documents)
 
       try {
         await api.drivers.upsertMe({
@@ -157,21 +151,15 @@ function DriverOnboardingForm({ userId, accountPhone }: { userId: string; accoun
   async function upload(kind: DriverDocumentKind, files: FileList | null) {
     const file = files?.[0]
     if (!file) return
-    const kindCount = form.state.values.documents.filter((document) => document.kind === kind).length
-    const limit = kind === "license" ? 1 : kind === "papers" ? 3 : 8
-    if (kindCount >= limit && kind !== "license") return
+    if (!nextDocumentSlot(form.state.values.documents, kind)) return
 
     setUploading(kind)
     try {
       const uploaded = await uploadDriverFile(file)
       form.setFieldValue("documents", (documents) => {
-        const withoutKind = kind === "license"
-          ? documents.filter((document) => document.kind !== "license")
-          : documents
-        const nextOrder = withoutKind
-          .filter((document) => document.kind === kind)
-          .reduce((highest, document) => Math.max(highest, document.order), -1) + 1
-        return [...withoutKind, { kind, key: uploaded.key, order: nextOrder }]
+        const slot = nextDocumentSlot(documents, kind)
+        if (!slot) return documents
+        return [...slot.remaining, { kind, key: uploaded.key, order: slot.order }]
       })
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "No se pudo subir el archivo")
@@ -386,7 +374,10 @@ function PacketChecklist({
     <div className="flex flex-col gap-3 rounded-xl bg-card p-4 shadow-sm ring-1 ring-foreground/5">
       <ChecklistItem ready={vehicleReady} label="Vehículo y patente" />
       <ChecklistItem ready={licenseReady} label="Licencia de conducir" />
-      <ChecklistItem ready={papersCount === 3} label={`Documentos del vehículo (${papersCount}/3)`} />
+      <ChecklistItem
+        ready={papersCount === DOCUMENT_LIMITS.papers}
+        label={`Documentos del vehículo (${papersCount}/${DOCUMENT_LIMITS.papers})`}
+      />
       <ChecklistItem ready={photosCount > 0} label="Fotos del vehículo" optional />
     </div>
   )

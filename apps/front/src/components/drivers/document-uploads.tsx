@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { cdnUrl } from "@/lib/api"
+import { documentKindLabels } from "@/lib/display"
 import type { DriverDocumentKind, DriverVerificationStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -26,6 +27,42 @@ export type DriverDocumentUpload = {
   kind: DriverDocumentKind
   key: string
   order: number
+}
+
+export const DOCUMENT_LIMITS: Record<DriverDocumentKind, number> = {
+  license: 1,
+  papers: 3,
+  vehicle_photo: 8,
+}
+
+// A license upload replaces the current one; papers and photos append until
+// their limit. Returns null when the kind is full.
+export function nextDocumentSlot<T extends DriverDocumentUpload>(
+  documents: readonly T[],
+  kind: DriverDocumentKind,
+): { remaining: readonly T[]; order: number } | null {
+  if (kind === "license") {
+    return { remaining: documents.filter((document) => document.kind !== "license"), order: 0 }
+  }
+  const existing = documents.filter((document) => document.kind === kind)
+  if (existing.length >= DOCUMENT_LIMITS[kind]) return null
+  return {
+    remaining: documents,
+    order: existing.reduce((highest, document) => Math.max(highest, document.order), -1) + 1,
+  }
+}
+
+// Splits form documents into the two backend payloads: verification documents
+// (license/papers) and vehicle photos, both projected to {kind, key, order}.
+export function splitDocumentPayloads(documents: readonly DriverDocumentUpload[]) {
+  return {
+    verification: documents.flatMap(({ kind, key, order }) =>
+      kind === "vehicle_photo" ? [] : [{ kind, key, order }],
+    ),
+    photos: documents.flatMap(({ kind, key, order }) =>
+      kind === "vehicle_photo" ? [{ kind, key, order }] : [],
+    ),
+  }
 }
 
 export function DriverDocumentUploads({
@@ -69,7 +106,7 @@ export function DriverDocumentUploads({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <IdCard className="size-4 text-primary" />
-                <CardTitle>Licencia de conducir</CardTitle>
+                <CardTitle>{documentKindLabels.license}</CardTitle>
               </div>
               <Badge variant={license ? "secondary" : "outline"}>{license ? "Lista" : "Falta"}</Badge>
             </div>
@@ -92,10 +129,10 @@ export function DriverDocumentUploads({
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <FileText className="size-4 text-primary" />
-                <CardTitle>Documentos del vehículo</CardTitle>
+                <CardTitle>{documentKindLabels.papers}</CardTitle>
               </div>
-              <Badge variant={papers.length === 3 ? "secondary" : "outline"} className="tabular-nums">
-                {papers.length}/3
+              <Badge variant={papers.length === DOCUMENT_LIMITS.papers ? "secondary" : "outline"} className="tabular-nums">
+                {papers.length}/{DOCUMENT_LIMITS.papers}
               </Badge>
             </div>
             <CardDescription>Padrón, permiso de circulación y revisión técnica.</CardDescription>
@@ -117,7 +154,7 @@ export function DriverDocumentUploads({
             <UploadButton
               kind="papers"
               label={papers.length === 0 ? "Subir documentos" : "Agregar documento"}
-              disabled={uploading !== null || papers.length >= 3}
+              disabled={uploading !== null || papers.length >= DOCUMENT_LIMITS.papers}
               uploading={uploading === "papers"}
               onUpload={onUpload}
             />
@@ -133,7 +170,7 @@ export function DriverDocumentUploads({
               <CardTitle>Fotos del vehículo</CardTitle>
               <Badge variant="secondary">Recomendado</Badge>
             </div>
-            <span className="text-xs tabular-nums text-muted-foreground">{photos.length}/8</span>
+            <span className="text-xs tabular-nums text-muted-foreground">{photos.length}/{DOCUMENT_LIMITS.vehicle_photo}</span>
           </div>
           <CardDescription>
             No forman parte de la verificación. Sirven para que los clientes conozcan tu vehículo.
@@ -156,7 +193,7 @@ export function DriverDocumentUploads({
           <UploadButton
             kind="vehicle_photo"
             label={photos.length === 0 ? "Subir primera foto" : "Agregar foto"}
-            disabled={uploading !== null || photos.length >= 8}
+            disabled={uploading !== null || photos.length >= DOCUMENT_LIMITS.vehicle_photo}
             uploading={uploading === "vehicle_photo"}
             onUpload={onUpload}
           />

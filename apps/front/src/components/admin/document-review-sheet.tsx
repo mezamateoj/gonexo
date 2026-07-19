@@ -40,12 +40,18 @@ import {
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { cdnUrl } from "@/lib/api"
-import { formatLongDateTime, vehicleLabels } from "@/lib/display"
+import {
+  documentKindLabels,
+  formatLongDateTime,
+  reviewStatusLabel,
+  reviewStatusVariant,
+  vehicleLabels,
+} from "@/lib/display"
+import { cn } from "@/lib/utils"
 import type {
   AdminDocumentReview,
   AdminDriver,
   DocumentReviewDecision,
-  DocumentReviewStatus,
   DocumentTriageResult,
   DriverDocument,
 } from "@/lib/types"
@@ -60,30 +66,6 @@ const documentTypeLabels: Record<DocumentTriageResult["documents"][number]["docu
   circulation_permit: "Permiso de circulación",
   technical_inspection: "Revisión técnica",
   other: "Otro documento",
-}
-
-const reviewStatusLabels: Record<DocumentReviewStatus, string> = {
-  queued: "En cola",
-  analyzing: "Analizando",
-  ready: "Análisis listo",
-  analysis_failed: "Análisis fallido",
-  enqueue_failed: "No se pudo encolar",
-  superseded: "Reemplazado",
-}
-
-function reviewStatusVariant(review: AdminDocumentReview) {
-  if (review.decision === "verified") return "default" as const
-  if (review.decision === "changes_requested") return "destructive" as const
-  if (["analysis_failed", "enqueue_failed"].includes(review.status)) return "destructive" as const
-  return review.status === "ready" ? "outline" as const : "secondary" as const
-}
-
-function reviewStatusLabel(review: AdminDocumentReview) {
-  if (review.decision === "verified") return "Verificado"
-  if (review.decision === "changes_requested") return "Cambios solicitados"
-  if (review.status === "ready" && review.result?.flags.length === 0) return "Sin alertas"
-  if (review.status === "ready") return `${review.result?.flags.length ?? 0} alertas`
-  return reviewStatusLabels[review.status]
 }
 
 export function DocumentReviewSheet({
@@ -194,7 +176,7 @@ function ReviewFlow({ review }: { review: AdminDocumentReview | null }) {
       </div>
       <Separator />
       <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm">
-        {decided ? <UserCheck className="size-4 text-primary" /> : <UserCheck className="size-4" />}
+        <UserCheck className={cn("size-4", decided && "text-primary")} />
       </div>
       <p className="col-span-5 grid grid-cols-3 text-center text-xs text-muted-foreground">
         <span>Documentos</span>
@@ -341,7 +323,7 @@ function RawDocumentCard({ document }: { document: DriverDocument }) {
   return (
     <Card className="overflow-hidden shadow-sm">
       <CardHeader>
-        <CardTitle>{document.kind === "license" ? "Licencia de conducir" : "Documento del vehículo"}</CardTitle>
+        <CardTitle>{documentKindLabels[document.kind]}</CardTitle>
         <CardDescription>Sin extracción disponible</CardDescription>
       </CardHeader>
       <CardContent>

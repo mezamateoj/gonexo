@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/cloudflare";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { and, eq, lt, or, sql } from "drizzle-orm";
+import { and, eq, lt, ne, or, sql } from "drizzle-orm";
 import { triageDocuments, type ReviewDocument } from "../ai/document-review";
 import type { Bindings } from "../binding";
 import { createDb, type Db } from "../db";
@@ -30,6 +30,18 @@ export function createDocumentReviewValues(
     vehiclePlate,
     documents: JSON.stringify(documents),
   };
+}
+
+// Marks every live review for the profile as replaced. Batched alongside the
+// document/profile writes wherever verification documents change.
+export function supersedeDocumentReviews(db: Db, driverProfileId: string) {
+  return db
+    .update(documentReview)
+    .set({ status: "superseded" })
+    .where(and(
+      eq(documentReview.driverProfileId, driverProfileId),
+      ne(documentReview.status, "superseded"),
+    ));
 }
 
 async function enqueueDocumentReview(
@@ -69,20 +81,17 @@ export async function retryFailedDocumentReview(
   db: Db,
   driverProfileId: string,
 ) {
-  const failedReview = await db.query.documentReview.findFirst({
-    where: and(
-      eq(documentReview.driverProfileId, driverProfileId),
-      eq(documentReview.status, "enqueue_failed"),
-    ),
-    orderBy: (review, { desc }) => [desc(review.createdAt)],
-  });
-  if (!failedReview) return;
-
-  await db
+  // At most one non-superseded review exists per profile, so a conditional
+  // update both detects and claims the retry in one round trip.
+  const [failedReview] = await db
     .update(documentReview)
     .set({ status: "queued" })
-    .where(eq(documentReview.id, failedReview.id));
-
+    .where(and(
+      eq(documentReview.driverProfileId, driverProfileId),
+      eq(documentReview.status, "enqueue_failed"),
+    ))
+    .returning({ id: documentReview.id });
+  if (!failedReview) return;
 
   await scheduleDocumentReview(env, db, failedReview.id);
 }
@@ -91,7 +100,7 @@ export async function processDocumentReview(env: Bindings, reviewId: string) {
   const db = createDb(env.db);
   const leaseExpiredAt = new Date(Date.now() - ANALYSIS_LEASE_MS);
 
-  const claimed = await db
+  const [review] = await db
     .update(documentReview)
     .set({
       status: "analyzing",
@@ -105,12 +114,7 @@ export async function processDocumentReview(env: Bindings, reviewId: string) {
         and(eq(documentReview.status, "analyzing"), lt(documentReview.analysisStartedAt, leaseExpiredAt)),
       ),
     ))
-    .run();
-  if (!claimed.meta.changes) return;
-
-  const review = await db.query.documentReview.findFirst({
-    where: eq(documentReview.id, reviewId),
-  });
+    .returning();
   if (!review) return;
 
   const submittedDocuments = verificationDocumentsSchema.parse(JSON.parse(review.documents));

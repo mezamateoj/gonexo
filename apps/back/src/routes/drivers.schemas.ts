@@ -1,13 +1,9 @@
 import { z } from "zod";
 import {
+  uploadKeySchema,
   vehiclePhotoSchema,
   verificationDocumentsSchema,
 } from "../domain/driver-documents";
-
-const uploadKeySchema = z.string().min(1).max(100).refine(
-  (key) => !key.includes("://"),
-  "R2 object key required",
-);
 
 export const upsertDriverSchema = z.object({
   phone: z.string().min(8),

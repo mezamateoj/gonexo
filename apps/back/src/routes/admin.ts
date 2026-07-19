@@ -44,6 +44,19 @@ admin.get(
           documentReviews: {
             limit: 1,
             orderBy: [desc(documentReview.createdAt)],
+            // The `documents` snapshot blob is only needed by the analysis
+            // worker; keep it out of the list payload.
+            columns: {
+              id: true,
+              status: true,
+              result: true,
+              analysisAttempts: true,
+              analyzedAt: true,
+              decision: true,
+              reviewedAt: true,
+              note: true,
+              createdAt: true,
+            },
             with: {
               reviewer: { columns: { id: true, name: true } },
             },
@@ -108,13 +121,14 @@ admin.patch(
     const db = c.get("db");
     const reviewer = c.get("user")!;
 
-    const profile = await db.query.driverProfile.findFirst({ where: eq(driverProfile.id, id) });
+    const [profile, review] = await Promise.all([
+      db.query.driverProfile.findFirst({ where: eq(driverProfile.id, id) }),
+      db.query.documentReview.findFirst({
+        where: eq(documentReview.driverProfileId, id),
+        orderBy: [desc(documentReview.createdAt)],
+      }),
+    ]);
     if (!profile) throw notFound("Driver profile not found");
-
-    const review = await db.query.documentReview.findFirst({
-      where: eq(documentReview.driverProfileId, id),
-      orderBy: [desc(documentReview.createdAt)],
-    });
     if (!review) throw badRequest("Driver has no document review");
     if (!["ready", "analysis_failed", "enqueue_failed"].includes(review.status)) {
       throw badRequest("Document review is still being analyzed");

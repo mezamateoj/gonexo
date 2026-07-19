@@ -20,6 +20,7 @@ import {
   createDocumentReviewValues,
   retryFailedDocumentReview,
   scheduleDocumentReview,
+  supersedeDocumentReviews,
 } from "../workflows/document-reviews";
 import {
   enrichSchema,
@@ -62,15 +63,14 @@ drivers.post(
       where: eq(driverProfile.userId, user.id),
       with: { documents: { orderBy: [asc(driverDocument.order)] } },
     });
-
     const existingVerificationDocuments = existing
       ? onlyVerificationDocuments(existing.documents)
       : [];
-    const documentsChanged = body.documents !== undefined
-      && (!existing || !sameVerificationDocuments(existingVerificationDocuments, body.documents));
     const vehicleChanged = !!existing && (
       existing.vehicleType !== body.vehicleType || existing.vehiclePlate !== vehiclePlate
     );
+    const documentsChanged = body.documents !== undefined
+      && (!existing || !sameVerificationDocuments(existingVerificationDocuments, body.documents));
     const reviewDocuments = body.documents ?? existingVerificationDocuments;
     const hasDocuments = reviewDocuments.length > 0;
     // Papers are cross-checked against the vehicle, so a plate or type change
@@ -110,57 +110,33 @@ drivers.post(
         })
         .where(eq(driverProfile.userId, user.id));
 
-      try {
-        if (documentsChanged && body.documents?.length) {
-          const replaceDocuments = db
-            .delete(driverDocument)
-            .where(and(
-              eq(driverDocument.driverProfileId, existing.id),
-              ne(driverDocument.kind, "vehicle_photo"),
-            ));
-          const insertDocuments = db.insert(driverDocument).values(
-            body.documents.map((document) => ({
-              id: crypto.randomUUID(),
-              driverProfileId: existing.id,
-              kind: document.kind,
-              key: document.key,
-              order: document.order,
-            })),
-          );
-          await db.batch([
-            updateUser,
-            updateProfile,
-            replaceDocuments,
-            insertDocuments,
-            db.update(documentReview)
-              .set({ status: "superseded" })
-              .where(and(eq(documentReview.driverProfileId, existing.id), ne(documentReview.status, "superseded"))),
-            ...(documentReviewValues ? [db.insert(documentReview).values(documentReviewValues)] : []),
-          ]);
-        } else if (documentsChanged && body.documents) {
-          await db.batch([
-            updateUser,
-            updateProfile,
+      const documentStatements = documentsChanged && body.documents
+        ? [
             db.delete(driverDocument).where(and(
               eq(driverDocument.driverProfileId, existing.id),
               ne(driverDocument.kind, "vehicle_photo"),
             )),
-            db.update(documentReview)
-              .set({ status: "superseded" })
-              .where(and(eq(documentReview.driverProfileId, existing.id), ne(documentReview.status, "superseded"))),
-          ]);
-        } else if (documentReviewValues) {
-          await db.batch([
-            updateUser,
-            updateProfile,
-            db.update(documentReview)
-              .set({ status: "superseded" })
-              .where(and(eq(documentReview.driverProfileId, existing.id), ne(documentReview.status, "superseded"))),
-            db.insert(documentReview).values(documentReviewValues),
-          ]);
-        } else {
-          await db.batch([updateUser, updateProfile]);
-        }
+            ...(body.documents.length
+              ? [db.insert(driverDocument).values(
+                  body.documents.map((document) => ({
+                    id: crypto.randomUUID(),
+                    driverProfileId: existing.id,
+                    kind: document.kind,
+                    key: document.key,
+                    order: document.order,
+                  })),
+                )]
+              : []),
+          ]
+        : [];
+      const reviewStatements = [
+        ...(documentsChanged || documentReviewValues
+          ? [supersedeDocumentReviews(db, existing.id)]
+          : []),
+        ...(documentReviewValues ? [db.insert(documentReview).values(documentReviewValues)] : []),
+      ];
+      try {
+        await db.batch([updateUser, updateProfile, ...documentStatements, ...reviewStatements]);
       } catch (error) {
         throwConflictOnUniqueConstraint(error, "Phone number or vehicle plate is already in use");
       }
@@ -311,33 +287,23 @@ drivers.put(
       .where(eq(driverProfile.id, profile.id));
 
     try {
-      if (documents.length > 0) {
-        await db.batch([
-          replaceDocuments,
-          db.insert(driverDocument).values(
-            documents.map((document) => ({
-              id: crypto.randomUUID(),
-              driverProfileId: profile.id,
-              kind: document.kind,
-              key: document.key,
-              order: document.order,
-            })),
-          ),
-          updateProfile,
-          db.update(documentReview)
-            .set({ status: "superseded" })
-            .where(and(eq(documentReview.driverProfileId, profile.id), ne(documentReview.status, "superseded"))),
-          ...(documentReviewValues ? [db.insert(documentReview).values(documentReviewValues)] : []),
-        ]);
-      } else {
-        await db.batch([
-          replaceDocuments,
-          updateProfile,
-          db.update(documentReview)
-            .set({ status: "superseded" })
-            .where(and(eq(documentReview.driverProfileId, profile.id), ne(documentReview.status, "superseded"))),
-        ]);
-      }
+      await db.batch([
+        replaceDocuments,
+        ...(documents.length
+          ? [db.insert(driverDocument).values(
+              documents.map((document) => ({
+                id: crypto.randomUUID(),
+                driverProfileId: profile.id,
+                kind: document.kind,
+                key: document.key,
+                order: document.order,
+              })),
+            )]
+          : []),
+        updateProfile,
+        supersedeDocumentReviews(db, profile.id),
+        ...(documentReviewValues ? [db.insert(documentReview).values(documentReviewValues)] : []),
+      ]);
     } catch (error) {
       throwConflictOnUniqueConstraint(error, "A document is already in use");
     }

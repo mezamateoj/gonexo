@@ -3,7 +3,7 @@ import { z } from "zod";
 export const verificationDocumentKinds = ["license", "papers"] as const;
 export const driverDocumentKinds = [...verificationDocumentKinds, "vehicle_photo"] as const;
 
-const uploadKeySchema = z.string().min(1).max(100).refine(
+export const uploadKeySchema = z.string().min(1).max(100).refine(
   (key) => !key.includes("://"),
   "R2 object key required",
 );
