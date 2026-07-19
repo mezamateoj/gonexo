@@ -47,6 +47,27 @@
       "simple": { "limit": 5, "period": 60 },
     },
   ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "DOCUMENT_REVIEW_QUEUE",
+        "queue": "gonexo-document-review-production",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "gonexo-document-review-production",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "retry_delay": 300,
+        "dead_letter_queue": "gonexo-document-review-production-dlq",
+      },
+      {
+        "queue": "gonexo-document-review-production-dlq",
+        "max_batch_size": 1,
+      },
+    ],
+  },
   "env": {
     "staging": {
       "name": "gonexo-back-staging",
@@ -81,6 +102,27 @@
           "simple": { "limit": 5, "period": 60 },
         },
       ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "DOCUMENT_REVIEW_QUEUE",
+            "queue": "gonexo-document-review-staging",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "gonexo-document-review-staging",
+            "max_batch_size": 1,
+            "max_retries": 3,
+            "retry_delay": 300,
+            "dead_letter_queue": "gonexo-document-review-staging-dlq",
+          },
+          {
+            "queue": "gonexo-document-review-staging-dlq",
+            "max_batch_size": 1,
+          },
+        ],
+      },
     },
   },
 }

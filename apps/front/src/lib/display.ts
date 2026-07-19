@@ -1,4 +1,11 @@
-import type { DriverDocumentKind, DriverVerificationStatus, JobStatus, VolumeCategory } from "@/lib/types"
+import type {
+  AdminDocumentReview,
+  DocumentReviewStatus,
+  DriverDocumentKind,
+  DriverVerificationStatus,
+  JobStatus,
+  VolumeCategory,
+} from "@/lib/types"
 
 export const volumeLabels: Record<VolumeCategory, string> = {
   small: "Pequeño",
@@ -62,8 +69,32 @@ export const vehicleLabels: Record<string, string> = {
 
 export const documentKindLabels: Record<DriverDocumentKind, string> = {
   license: "Licencia de conducir",
-  papers: "Permiso de circulación",
+  papers: "Documentos del vehículo",
   vehicle_photo: "Foto del vehículo",
+}
+
+export const reviewStatusLabels: Record<DocumentReviewStatus, string> = {
+  queued: "En cola",
+  analyzing: "Analizando",
+  ready: "Análisis listo",
+  analysis_failed: "Análisis fallido",
+  enqueue_failed: "No se pudo encolar",
+  superseded: "Reemplazado",
+}
+
+export function reviewStatusVariant(review: AdminDocumentReview) {
+  if (review.decision === "verified") return "default" as const
+  if (review.decision === "changes_requested") return "destructive" as const
+  if (["analysis_failed", "enqueue_failed"].includes(review.status)) return "destructive" as const
+  return review.status === "ready" ? "outline" as const : "secondary" as const
+}
+
+export function reviewStatusLabel(review: AdminDocumentReview) {
+  if (review.decision === "verified") return "Verificado"
+  if (review.decision === "changes_requested") return "Cambios solicitados"
+  if (review.status === "ready" && review.result?.flags.length === 0) return "Sin alertas"
+  if (review.status === "ready") return `${review.result?.flags.length ?? 0} alertas`
+  return reviewStatusLabels[review.status]
 }
 
 // Honest verification states: never claim "Verificado" until a human verified.
