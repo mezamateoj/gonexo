@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { sqliteTable, text, integer, real, index, uniqueIndex, check } from "drizzle-orm/sqlite-core";
+import { driverDocumentKinds } from "../domain/driver-documents";
 
 export const user = sqliteTable(
   "user",
@@ -12,6 +13,11 @@ export const user = sqliteTable(
       .notNull(),
     image: text("image"),
     phone: text("phone"),
+    // Better Auth admin plugin fields (added manually — never `auth:generate`).
+    role: text("role").default("user").notNull(),
+    banned: integer("banned", { mode: "boolean" }),
+    banReason: text("ban_reason"),
+    banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -37,6 +43,8 @@ export const session = sqliteTable(
       .notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    // Better Auth admin plugin: set when an admin impersonates this session.
+    impersonatedBy: text("impersonated_by"),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -167,6 +175,7 @@ export const driverProfile = sqliteTable(
 export const driverProfileRelations = relations(driverProfile, ({ one, many }) => ({
   user: one(user, { fields: [driverProfile.userId], references: [user.id] }),
   documents: many(driverDocument),
+  documentReviews: many(documentReview),
 }));
 
 export const driverDocument = sqliteTable(
@@ -176,7 +185,7 @@ export const driverDocument = sqliteTable(
     driverProfileId: text("driver_profile_id")
       .notNull()
       .references(() => driverProfile.id, { onDelete: "cascade" }),
-    kind: text("kind").notNull(),
+    kind: text("kind", { enum: driverDocumentKinds }).notNull(),
     key: text("key").notNull(),
     order: integer("order").default(0).notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -194,6 +203,48 @@ export const driverDocumentRelations = relations(driverDocument, ({ one }) => ({
   driverProfile: one(driverProfile, {
     fields: [driverDocument.driverProfileId],
     references: [driverProfile.id],
+  }),
+}));
+
+export const documentReview = sqliteTable(
+  "document_review",
+  {
+    id: text("id").primaryKey(),
+    driverProfileId: text("driver_profile_id")
+      .notNull()
+      .references(() => driverProfile.id, { onDelete: "cascade" }),
+    accountName: text("account_name").notNull(),
+    vehiclePlate: text("vehicle_plate").notNull(),
+    documents: text("documents").notNull(),
+    status: text("status").notNull().default("queued"),
+    result: text("result"),
+    analysisAttempts: integer("analysis_attempts").notNull().default(0),
+    analysisStartedAt: integer("analysis_started_at", { mode: "timestamp_ms" }),
+    analyzedAt: integer("analyzed_at", { mode: "timestamp_ms" }),
+    adminNotificationAttemptedAt: integer("admin_notification_attempted_at", { mode: "timestamp_ms" }),
+    reviewerId: text("reviewer_id").references(() => user.id, { onDelete: "set null" }),
+    decision: text("decision"),
+    reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
+    note: text("note"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (t) => [
+    index("document_review_driverProfileId_createdAt_idx").on(t.driverProfileId, t.createdAt),
+    check("document_review_status_check", sql`${t.status} in ('queued', 'analyzing', 'ready', 'analysis_failed', 'enqueue_failed', 'superseded')`),
+    check("document_review_decision_check", sql`${t.decision} is null or ${t.decision} in ('verified', 'changes_requested')`),
+  ],
+);
+
+export const documentReviewRelations = relations(documentReview, ({ one }) => ({
+  driverProfile: one(driverProfile, {
+    fields: [documentReview.driverProfileId],
+    references: [driverProfile.id],
+  }),
+  reviewer: one(user, {
+    fields: [documentReview.reviewerId],
+    references: [user.id],
   }),
 }));
 

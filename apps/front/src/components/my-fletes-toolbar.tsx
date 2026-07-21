@@ -11,20 +11,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { volumeLabels } from "@/lib/display"
 import type { VolumeCategory } from "@/lib/types"
 
 const VOLUME_ORDER: VolumeCategory[] = ["small", "medium", "large", "full_move"]
 
-// Search + volume filter bar for the "Mis fletes" tables. Search is debounced so
-// typing doesn't fire a request per keystroke; sort lives on the table headers.
-export function MyFletesToolbar({
+// Search + volume filter bar for the "Mis fletes" tables, with an optional
+// lifecycle-bucket segmented control. Search is debounced so typing doesn't
+// fire a request per keystroke; sort lives on the table headers.
+export function MyFletesToolbar<T extends string>({
+  bucket,
   q,
   volume,
   searchPlaceholder,
   onChange,
   onReset,
 }: {
+  bucket?: {
+    value: T
+    options: { value: T; label: string }[]
+    onChange: (value: T) => void
+  }
   q: string
   volume: VolumeCategory[]
   searchPlaceholder: string
@@ -57,6 +65,31 @@ export function MyFletesToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {bucket && (
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={bucket.value}
+          onValueChange={(value) => {
+            // Radix emits "" when the active segment is clicked again; a
+            // lifecycle bucket is always selected, so ignore deselection.
+            const next = bucket.options.find((o) => o.value === value)
+            if (next) bucket.onChange(next.value)
+          }}
+          className="w-full sm:w-fit"
+        >
+          {bucket.options.map((o) => (
+            <ToggleGroupItem
+              key={o.value}
+              value={o.value}
+              className="flex-1 text-muted-foreground data-[state=on]:text-foreground sm:flex-initial sm:px-3"
+            >
+              {o.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      )}
+
       <div className="relative w-full sm:w-64">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input

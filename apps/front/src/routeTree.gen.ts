@@ -15,17 +15,22 @@ import { Route as DriverOnboardingRouteImport } from './routes/driver-onboarding
 import { Route as ChooseModeRouteImport } from './routes/choose-mode'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppVehicleRouteImport } from './routes/_app/vehicle'
-import { Route as AppStatsRouteImport } from './routes/_app/stats'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppRequestsIndexRouteImport } from './routes/_app/requests/index'
 import { Route as AppQuotesIndexRouteImport } from './routes/_app/quotes/index'
 import { Route as AppJobsIndexRouteImport } from './routes/_app/jobs/index'
 import { Route as AppAvailableIndexRouteImport } from './routes/_app/available/index'
+import { Route as AppAdminIndexRouteImport } from './routes/_app/admin/index'
 import { Route as AppRequestsNewRouteImport } from './routes/_app/requests/new'
 import { Route as AppRequestsIdRouteImport } from './routes/_app/requests/$id'
 import { Route as AppJobsIdRouteImport } from './routes/_app/jobs/$id'
+import { Route as AppDriversIdRouteImport } from './routes/_app/drivers/$id'
 import { Route as AppAvailableIdRouteImport } from './routes/_app/available/$id'
+import { Route as AppAdminUsersIndexRouteImport } from './routes/_app/admin/users/index'
+import { Route as AppAdminDriversIndexRouteImport } from './routes/_app/admin/drivers/index'
+import { Route as AppAdminUsersIdRouteImport } from './routes/_app/admin/users/$id'
+import { Route as AppAdminDriversIdRouteImport } from './routes/_app/admin/drivers/$id'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -56,19 +61,14 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppVehicleRoute = AppVehicleRouteImport.update({
-  id: '/vehicle',
-  path: '/vehicle',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppStatsRoute = AppStatsRouteImport.update({
-  id: '/stats',
-  path: '/stats',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRequestsIndexRoute = AppRequestsIndexRouteImport.update({
@@ -91,6 +91,11 @@ const AppAvailableIndexRoute = AppAvailableIndexRouteImport.update({
   path: '/available/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppRequestsNewRoute = AppRequestsNewRouteImport.update({
   id: '/requests/new',
   path: '/requests/new',
@@ -106,10 +111,35 @@ const AppJobsIdRoute = AppJobsIdRouteImport.update({
   path: '/jobs/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDriversIdRoute = AppDriversIdRouteImport.update({
+  id: '/drivers/$id',
+  path: '/drivers/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAvailableIdRoute = AppAvailableIdRouteImport.update({
   id: '/available/$id',
   path: '/available/$id',
   getParentRoute: () => AppRoute,
+} as any)
+const AppAdminUsersIndexRoute = AppAdminUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminDriversIndexRoute = AppAdminDriversIndexRouteImport.update({
+  id: '/drivers/',
+  path: '/drivers/',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminUsersIdRoute = AppAdminUsersIdRouteImport.update({
+  id: '/users/$id',
+  path: '/users/$id',
+  getParentRoute: () => AppAdminRoute,
+} as any)
+const AppAdminDriversIdRoute = AppAdminDriversIdRouteImport.update({
+  id: '/drivers/$id',
+  path: '/drivers/$id',
+  getParentRoute: () => AppAdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -118,17 +148,22 @@ export interface FileRoutesByFullPath {
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/admin': typeof AppAdminRouteWithChildren
   '/profile': typeof AppProfileRoute
-  '/stats': typeof AppStatsRoute
-  '/vehicle': typeof AppVehicleRoute
   '/available/$id': typeof AppAvailableIdRoute
+  '/drivers/$id': typeof AppDriversIdRoute
   '/jobs/$id': typeof AppJobsIdRoute
   '/requests/$id': typeof AppRequestsIdRoute
   '/requests/new': typeof AppRequestsNewRoute
+  '/admin/': typeof AppAdminIndexRoute
   '/available/': typeof AppAvailableIndexRoute
   '/jobs/': typeof AppJobsIndexRoute
   '/quotes/': typeof AppQuotesIndexRoute
   '/requests/': typeof AppRequestsIndexRoute
+  '/admin/drivers/$id': typeof AppAdminDriversIdRoute
+  '/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/admin/drivers/': typeof AppAdminDriversIndexRoute
+  '/admin/users/': typeof AppAdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -137,16 +172,20 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/profile': typeof AppProfileRoute
-  '/stats': typeof AppStatsRoute
-  '/vehicle': typeof AppVehicleRoute
   '/available/$id': typeof AppAvailableIdRoute
+  '/drivers/$id': typeof AppDriversIdRoute
   '/jobs/$id': typeof AppJobsIdRoute
   '/requests/$id': typeof AppRequestsIdRoute
   '/requests/new': typeof AppRequestsNewRoute
+  '/admin': typeof AppAdminIndexRoute
   '/available': typeof AppAvailableIndexRoute
   '/jobs': typeof AppJobsIndexRoute
   '/quotes': typeof AppQuotesIndexRoute
   '/requests': typeof AppRequestsIndexRoute
+  '/admin/drivers/$id': typeof AppAdminDriversIdRoute
+  '/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/admin/drivers': typeof AppAdminDriversIndexRoute
+  '/admin/users': typeof AppAdminUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -156,17 +195,22 @@ export interface FileRoutesById {
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_app/admin': typeof AppAdminRouteWithChildren
   '/_app/profile': typeof AppProfileRoute
-  '/_app/stats': typeof AppStatsRoute
-  '/_app/vehicle': typeof AppVehicleRoute
   '/_app/available/$id': typeof AppAvailableIdRoute
+  '/_app/drivers/$id': typeof AppDriversIdRoute
   '/_app/jobs/$id': typeof AppJobsIdRoute
   '/_app/requests/$id': typeof AppRequestsIdRoute
   '/_app/requests/new': typeof AppRequestsNewRoute
+  '/_app/admin/': typeof AppAdminIndexRoute
   '/_app/available/': typeof AppAvailableIndexRoute
   '/_app/jobs/': typeof AppJobsIndexRoute
   '/_app/quotes/': typeof AppQuotesIndexRoute
   '/_app/requests/': typeof AppRequestsIndexRoute
+  '/_app/admin/drivers/$id': typeof AppAdminDriversIdRoute
+  '/_app/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/_app/admin/drivers/': typeof AppAdminDriversIndexRoute
+  '/_app/admin/users/': typeof AppAdminUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -176,17 +220,22 @@ export interface FileRouteTypes {
     | '/driver-onboarding'
     | '/login'
     | '/signup'
+    | '/admin'
     | '/profile'
-    | '/stats'
-    | '/vehicle'
     | '/available/$id'
+    | '/drivers/$id'
     | '/jobs/$id'
     | '/requests/$id'
     | '/requests/new'
+    | '/admin/'
     | '/available/'
     | '/jobs/'
     | '/quotes/'
     | '/requests/'
+    | '/admin/drivers/$id'
+    | '/admin/users/$id'
+    | '/admin/drivers/'
+    | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -195,16 +244,20 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/profile'
-    | '/stats'
-    | '/vehicle'
     | '/available/$id'
+    | '/drivers/$id'
     | '/jobs/$id'
     | '/requests/$id'
     | '/requests/new'
+    | '/admin'
     | '/available'
     | '/jobs'
     | '/quotes'
     | '/requests'
+    | '/admin/drivers/$id'
+    | '/admin/users/$id'
+    | '/admin/drivers'
+    | '/admin/users'
   id:
     | '__root__'
     | '/'
@@ -213,17 +266,22 @@ export interface FileRouteTypes {
     | '/driver-onboarding'
     | '/login'
     | '/signup'
+    | '/_app/admin'
     | '/_app/profile'
-    | '/_app/stats'
-    | '/_app/vehicle'
     | '/_app/available/$id'
+    | '/_app/drivers/$id'
     | '/_app/jobs/$id'
     | '/_app/requests/$id'
     | '/_app/requests/new'
+    | '/_app/admin/'
     | '/_app/available/'
     | '/_app/jobs/'
     | '/_app/quotes/'
     | '/_app/requests/'
+    | '/_app/admin/drivers/$id'
+    | '/_app/admin/users/$id'
+    | '/_app/admin/drivers/'
+    | '/_app/admin/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -279,25 +337,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/vehicle': {
-      id: '/_app/vehicle'
-      path: '/vehicle'
-      fullPath: '/vehicle'
-      preLoaderRoute: typeof AppVehicleRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/stats': {
-      id: '/_app/stats'
-      path: '/stats'
-      fullPath: '/stats'
-      preLoaderRoute: typeof AppStatsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/profile': {
       id: '/_app/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/requests/': {
@@ -328,6 +379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAvailableIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/': {
+      id: '/_app/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
     '/_app/requests/new': {
       id: '/_app/requests/new'
       path: '/requests/new'
@@ -349,6 +407,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppJobsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/drivers/$id': {
+      id: '/_app/drivers/$id'
+      path: '/drivers/$id'
+      fullPath: '/drivers/$id'
+      preLoaderRoute: typeof AppDriversIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/available/$id': {
       id: '/_app/available/$id'
       path: '/available/$id'
@@ -356,14 +421,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAvailableIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/users/': {
+      id: '/_app/admin/users/'
+      path: '/users'
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof AppAdminUsersIndexRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/drivers/': {
+      id: '/_app/admin/drivers/'
+      path: '/drivers'
+      fullPath: '/admin/drivers/'
+      preLoaderRoute: typeof AppAdminDriversIndexRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/users/$id': {
+      id: '/_app/admin/users/$id'
+      path: '/users/$id'
+      fullPath: '/admin/users/$id'
+      preLoaderRoute: typeof AppAdminUsersIdRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/drivers/$id': {
+      id: '/_app/admin/drivers/$id'
+      path: '/drivers/$id'
+      fullPath: '/admin/drivers/$id'
+      preLoaderRoute: typeof AppAdminDriversIdRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
 
+interface AppAdminRouteChildren {
+  AppAdminIndexRoute: typeof AppAdminIndexRoute
+  AppAdminDriversIdRoute: typeof AppAdminDriversIdRoute
+  AppAdminUsersIdRoute: typeof AppAdminUsersIdRoute
+  AppAdminDriversIndexRoute: typeof AppAdminDriversIndexRoute
+  AppAdminUsersIndexRoute: typeof AppAdminUsersIndexRoute
+}
+
+const AppAdminRouteChildren: AppAdminRouteChildren = {
+  AppAdminIndexRoute: AppAdminIndexRoute,
+  AppAdminDriversIdRoute: AppAdminDriversIdRoute,
+  AppAdminUsersIdRoute: AppAdminUsersIdRoute,
+  AppAdminDriversIndexRoute: AppAdminDriversIndexRoute,
+  AppAdminUsersIndexRoute: AppAdminUsersIndexRoute,
+}
+
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
+
 interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRouteWithChildren
   AppProfileRoute: typeof AppProfileRoute
-  AppStatsRoute: typeof AppStatsRoute
-  AppVehicleRoute: typeof AppVehicleRoute
   AppAvailableIdRoute: typeof AppAvailableIdRoute
+  AppDriversIdRoute: typeof AppDriversIdRoute
   AppJobsIdRoute: typeof AppJobsIdRoute
   AppRequestsIdRoute: typeof AppRequestsIdRoute
   AppRequestsNewRoute: typeof AppRequestsNewRoute
@@ -374,10 +487,10 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRouteWithChildren,
   AppProfileRoute: AppProfileRoute,
-  AppStatsRoute: AppStatsRoute,
-  AppVehicleRoute: AppVehicleRoute,
   AppAvailableIdRoute: AppAvailableIdRoute,
+  AppDriversIdRoute: AppDriversIdRoute,
   AppJobsIdRoute: AppJobsIdRoute,
   AppRequestsIdRoute: AppRequestsIdRoute,
   AppRequestsNewRoute: AppRequestsNewRoute,

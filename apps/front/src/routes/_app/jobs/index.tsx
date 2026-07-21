@@ -55,7 +55,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const jobsTabSchema = z.enum(["active", "history"])
 const volumeSchema = z.enum(["small", "medium", "large", "full_move"])
@@ -300,22 +299,15 @@ function JobsPage() {
         </p>
       </div>
 
-      <Tabs
-        value={tab}
-        onValueChange={(value) =>
-          navigate({
-            replace: true,
-            search: (prev) => ({ ...prev, tab: jobsTabSchema.parse(value), page: 1 }),
-          })
-        }
-      >
-        <TabsList variant="line">
-          <TabsTrigger value="active">En curso</TabsTrigger>
-          <TabsTrigger value="history">Historial</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <MyFletesToolbar
+        bucket={{
+          value: tab,
+          options: [
+            { value: "active", label: "En curso" },
+            { value: "history", label: "Historial" },
+          ],
+          onChange: (value) => patch({ tab: value }),
+        }}
         q={q}
         volume={volume}
         searchPlaceholder="Buscar por cliente o dirección…"

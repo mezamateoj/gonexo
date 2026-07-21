@@ -47,6 +47,27 @@
       "simple": { "limit": 5, "period": 60 },
     },
   ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "DOCUMENT_REVIEW_QUEUE",
+        "queue": "doc-review-prod",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "doc-review-prod",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "retry_delay": 300,
+        "dead_letter_queue": "doc-review-prod-dlq",
+      },
+      {
+        "queue": "doc-review-prod-dlq",
+        "max_batch_size": 1,
+      },
+    ],
+  },
   "env": {
     "staging": {
       "name": "gonexo-back-staging",
@@ -81,6 +102,27 @@
           "simple": { "limit": 5, "period": 60 },
         },
       ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "DOCUMENT_REVIEW_QUEUE",
+            "queue": "doc-review-stg",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "doc-review-stg",
+            "max_batch_size": 1,
+            "max_retries": 3,
+            "retry_delay": 300,
+            "dead_letter_queue": "doc-review-stg-dlq",
+          },
+          {
+            "queue": "doc-review-stg-dlq",
+            "max_batch_size": 1,
+          },
+        ],
+      },
     },
   },
 }

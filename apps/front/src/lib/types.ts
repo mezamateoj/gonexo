@@ -25,6 +25,7 @@ export type VehicleType = "van" | "pickup" | "truck_small" | "truck_large"
 export type QuoteStatus = "pending" | "accepted" | "rejected" | "expired" | "cancelled"
 
 export type DriverDocumentKind = "license" | "papers" | "vehicle_photo"
+export type VerificationDocumentKind = Exclude<DriverDocumentKind, "vehicle_photo">
 
 export interface DriverDocument {
   id: string
@@ -58,8 +59,149 @@ export interface DriverProfile {
   documents: DriverDocument[]
   vehicleDescription: string | null
   vehicleCapacity: string | null
-  documentsStatus: string
+  documentsStatus: DriverVerificationStatus
   createdAt: string
+}
+
+export type DriverVerificationStatus = "pending" | "submitted" | "verified"
+
+export type DocumentReviewStatus =
+  | "queued"
+  | "analyzing"
+  | "ready"
+  | "analysis_failed"
+  | "enqueue_failed"
+  | "superseded"
+
+export type DocumentReviewDecision = "verified" | "changes_requested"
+
+export interface DocumentTriageResult {
+  documents: {
+    key: string
+    kind: "license" | "papers"
+    documentType:
+      | "license"
+      | "vehicle_registration"
+      | "circulation_permit"
+      | "technical_inspection"
+      | "other"
+    name: string | null
+    rut: string | null
+    plate: string | null
+    expiryDate: string | null
+    readable: boolean
+    confidence: number
+    notes: string[]
+  }[]
+  flags: { code: string; message: string; documentKey: string | null }[]
+}
+
+export interface AdminDocumentReview {
+  id: string
+  status: DocumentReviewStatus
+  result: DocumentTriageResult | null
+  analysisAttempts: number
+  analyzedAt: string | null
+  decision: DocumentReviewDecision | null
+  reviewedAt: string | null
+  note: string | null
+  createdAt: string
+  reviewer: { id: string; name: string } | null
+}
+
+// The bare driver_profile row an admin acts on — matches what the verification
+// PATCH returns via `.returning()` (no relations joined).
+export interface AdminDriverProfile {
+  id: string
+  userId: string
+  phone: string
+  vehicleType: VehicleType
+  vehiclePlate: string
+  vehicleYear: number | null
+  bio: string | null
+  isVerified: boolean
+  isAvailable: boolean
+  avgRating: number | null
+  totalJobs: number
+  vehicleDescription: string | null
+  vehicleCapacity: string | null
+  documentsStatus: DriverVerificationStatus
+  createdAt: string
+}
+
+// A driver profile as seen by an admin in the verification queue: the profile
+// plus the owning user's contact info and the uploaded documents.
+export interface AdminDriver extends AdminDriverProfile {
+  user: { id: string; name: string; email: string; phone: string | null }
+  documents: DriverDocument[]
+  latestReview: AdminDocumentReview | null
+}
+
+export interface AdminDriversResponse {
+  data: AdminDriver[]
+  page: number
+  limit: number
+  total: number
+}
+
+// Everything /api/admin/users/:id aggregates for the admin user profile page.
+export interface AdminUserTally {
+  total: number
+  completed: number
+  cancelled: number
+}
+
+export interface AdminUserDetail {
+  user: {
+    id: string
+    name: string
+    email: string
+    emailVerified: boolean
+    phone: string | null
+    image: string | null
+    role: string
+    banned: boolean | null
+    banReason: string | null
+    banExpires: string | null
+    createdAt: string
+    lastActiveAt: string | null
+    driverProfile: {
+      id: string
+      vehicleType: VehicleType
+      vehiclePlate: string
+      vehicleYear: number | null
+      isVerified: boolean
+      isAvailable: boolean
+      avgRating: number | null
+      totalJobs: number
+      documentsStatus: DriverVerificationStatus
+      createdAt: string
+    } | null
+  }
+  stats: {
+    requests: AdminUserTally
+    jobsAsClient: AdminUserTally
+    jobsAsDriver: AdminUserTally
+    quotesSent: number
+    reviewsReceived: { count: number; avgRating: number | null }
+  }
+  recentRequests: {
+    id: string
+    status: RequestStatus
+    originAddress: string
+    destAddress: string
+    volumeCategory: VolumeCategory
+    scheduledAt: string
+    createdAt: string
+  }[]
+  recentJobs: {
+    id: string
+    status: JobStatus
+    agreedPrice: number
+    role: JobRole
+    createdAt: string
+    request: { originAddress: string; destAddress: string }
+  }[]
 }
 
 export interface UpsertDriverInput {
@@ -68,7 +210,7 @@ export interface UpsertDriverInput {
   vehiclePlate: string
   vehicleYear?: number
   bio?: string
-  documents?: { kind: DriverDocumentKind; key: string; order: number }[]
+  documents?: { kind: VerificationDocumentKind; key: string; order: number }[]
   vehicleDescription?: string
   vehicleCapacity?: string
 }
@@ -81,11 +223,33 @@ export interface EnrichVehicleResult {
 
 // Public driver profile returned on request-detail quotes — no sensitive fields
 export interface PublicDriverProfile {
+  id: string
+  user: { id: string; name: string; image: string | null }
   vehicleType: VehicleType
+  vehicleYear: number | null
   vehicleDescription: string | null
   vehicleCapacity: string | null
   isVerified: boolean
   documentsStatus: string // 'pending' | 'submitted' | 'verified'
+  avgRating: number | null
+  totalJobs: number
+  bio: string | null
+  vehiclePhotos: { key: string; order: number }[]
+  recentReviews: {
+    rating: number
+    comment: string | null
+    reviewerRole: string
+    createdAt: string
+    reviewer: { name: string; image: string | null }
+  }[]
+}
+
+export interface QuoteDriverProfile {
+  vehicleType: VehicleType
+  vehicleDescription: string | null
+  vehicleCapacity: string | null
+  isVerified: boolean
+  documentsStatus: string
   avgRating: number | null
   totalJobs: number
   bio: string | null
@@ -106,7 +270,7 @@ export interface QuoteWithDriver {
     id: string
     name: string
     image: string | null
-    driverProfile: PublicDriverProfile | null
+    driverProfile: QuoteDriverProfile | null
   }
 }
 

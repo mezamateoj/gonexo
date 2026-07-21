@@ -1,6 +1,12 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, DriverDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriver, AdminDriverProfile, AdminUserDetail, DriverVerificationStatus } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
+
+// Documents/photos are served (with an ownership/admin check) from the backend's
+// /cdn/:key route; the session cookie rides along cross-origin like apiFetch.
+export function cdnUrl(key: string) {
+  return `${BASE}/cdn/${encodeURIComponent(key)}`
+}
 
 type ApiErrorResponse = {
   error?: {
@@ -76,6 +82,18 @@ export async function uploadFile(file: File): Promise<string> {
   return data.url
 }
 
+export async function uploadDriverFile(file: File): Promise<{ key: string; url: string }> {
+  const form = new FormData()
+  form.append("file", file)
+  const res = await fetch(`${BASE}/api/uploads`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  })
+  if (!res.ok) throw new ApiError(await readErrorMessage(res, "Upload failed"), res.status)
+  return res.json() as Promise<{ key: string; url: string }>
+}
+
 export const api = {
   requests: {
     my: (query: MyRequestsQuery) => {
@@ -148,7 +166,7 @@ export const api = {
   },
   users: {
     me: () => apiFetch<CurrentUser>("/api/users/me"),
-    updateMe: (body: { name?: string; phone?: string }) =>
+    updateMe: (body: { name: string }) =>
       apiFetch<{ ok: boolean }>("/api/users/me", {
         method: "PATCH",
         body: JSON.stringify(body),
@@ -156,21 +174,40 @@ export const api = {
   },
   drivers: {
     me: () => apiFetch<DriverProfile | null>("/api/drivers/me"),
+    get: (id: string) => apiFetch<PublicDriverProfile>(`/api/drivers/${id}`),
     upsertMe: (body: UpsertDriverInput) =>
       apiFetch<{ id: string }>("/api/drivers/me", {
         method: "POST",
         body: JSON.stringify(body),
       }),
     documents: () => apiFetch<DriverDocument[]>("/api/drivers/me/documents"),
-    replaceDocuments: (documents: { kind: DriverDocumentKind; key: string; order: number }[]) =>
+    replaceDocuments: (documents: { kind: VerificationDocumentKind; key: string; order: number }[]) =>
       apiFetch<{ ok: boolean }>("/api/drivers/me/documents", {
         method: "PUT",
         body: JSON.stringify({ documents }),
       }),
+    replacePhotos: (photos: { kind: "vehicle_photo"; key: string; order: number }[]) =>
+      apiFetch<{ ok: boolean }>("/api/drivers/me/photos", { method: "PUT", body: JSON.stringify({ photos }) }),
     enrich: (body: { photoKeys: string[]; papersKey?: string }) =>
       apiFetch<EnrichVehicleResult>("/api/drivers/enrich", {
         method: "POST",
         body: JSON.stringify(body),
+      }),
+  },
+  admin: {
+    drivers: (status: DriverVerificationStatus, page: number) =>
+      apiFetch<AdminDriversResponse>(`/api/admin/drivers?status=${status}&page=${page}`),
+    driver: (id: string) => apiFetch<{ driver: AdminDriver }>(`/api/admin/drivers/${id}`),
+    user: (id: string) => apiFetch<AdminUserDetail>(`/api/admin/users/${id}`),
+    decideReview: (id: string, decision: "verified" | "changes_requested", note?: string) =>
+      apiFetch<{ driver: AdminDriverProfile }>(`/api/admin/drivers/${id}/verification`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision, note }),
+      }),
+    reopenReview: (id: string) =>
+      apiFetch<{ driver: AdminDriverProfile }>(`/api/admin/drivers/${id}/verification`, {
+        method: "PATCH",
+        body: JSON.stringify({ action: "reopen" }),
       }),
   },
 }

@@ -139,3 +139,21 @@ export function confirmReminderEmail(p: {
     `),
   };
 }
+
+export function documentReviewReadyEmail(p: {
+  driverName: string;
+  driverProfileId: string;
+  frontendUrl: string;
+}): EmailContent {
+  return {
+    subject: `Documentos listos para revisar: ${p.driverName}`,
+    html: layout(`
+      <h1 style="font-size:18px;margin:0">Hay documentos de un transportista listos para revisar</h1>
+      <p style="font-size:14px;color:#485450;margin:12px 0 0">
+        El análisis automático terminó para <strong>${escapeHtml(p.driverName)}</strong>.
+        Revisa los documentos originales y decide la verificación desde el panel.
+      </p>
+      ${button(`${p.frontendUrl}/admin/drivers/${p.driverProfileId}`, "Revisar documentos")}
+    `),
+  };
+}

@@ -6,6 +6,7 @@ export const queryKeys = {
   },
   drivers: {
     me: (userId: string) => ["drivers", "me", userId] as const,
+    detail: (id: string) => ["drivers", id] as const,
   },
   requests: {
     // Prefix for invalidating my-requests regardless of bucket/page/filters.
@@ -24,5 +25,13 @@ export const queryKeys = {
     my: (userId: string, query: MyJobsQuery) =>
       ["jobs", "my", userId, query.role, query.bucket, query.page, query.q ?? "", query.volume ?? [], query.sort ?? "recent"] as const,
     detail: (id: string) => ["jobs", id] as const,
+  },
+  admin: {
+    // Prefix for invalidating the verification queue across all status/page.
+    driversAll: ["admin", "drivers"] as const,
+    drivers: (status: string, page: number) => ["admin", "drivers", status, page] as const,
+    driver: (id: string) => ["admin", "drivers", "detail", id] as const,
+    users: (q: string, page: number) => ["admin", "users", q, page] as const,
+    user: (id: string) => ["admin", "users", "detail", id] as const,
   },
 } as const

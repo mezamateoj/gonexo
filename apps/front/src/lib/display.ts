@@ -1,4 +1,11 @@
-import type { JobStatus, VolumeCategory } from "@/lib/types"
+import type {
+  AdminDocumentReview,
+  DocumentReviewStatus,
+  DriverDocumentKind,
+  DriverVerificationStatus,
+  JobStatus,
+  VolumeCategory,
+} from "@/lib/types"
 
 export const volumeLabels: Record<VolumeCategory, string> = {
   small: "Pequeño",
@@ -58,6 +65,49 @@ export const vehicleLabels: Record<string, string> = {
   pickup: "Camioneta",
   truck_small: "Camión chico",
   truck_large: "Camión grande",
+}
+
+export const documentKindLabels: Record<DriverDocumentKind, string> = {
+  license: "Licencia de conducir",
+  papers: "Documentos del vehículo",
+  vehicle_photo: "Foto del vehículo",
+}
+
+export const reviewStatusLabels: Record<DocumentReviewStatus, string> = {
+  queued: "En cola",
+  analyzing: "Analizando",
+  ready: "Análisis listo",
+  analysis_failed: "Análisis fallido",
+  enqueue_failed: "No se pudo encolar",
+  superseded: "Reemplazado",
+}
+
+export function reviewStatusVariant(review: AdminDocumentReview) {
+  if (review.decision === "verified") return "default" as const
+  if (review.decision === "changes_requested") return "destructive" as const
+  if (["analysis_failed", "enqueue_failed"].includes(review.status)) return "destructive" as const
+  return review.status === "ready" ? "outline" as const : "secondary" as const
+}
+
+export function reviewStatusLabel(review: AdminDocumentReview) {
+  if (review.decision === "verified") return "Verificado"
+  if (review.decision === "changes_requested") return "Cambios solicitados"
+  if (review.status === "ready" && review.result?.flags.length === 0) return "Sin alertas"
+  if (review.status === "ready") return `${review.result?.flags.length ?? 0} alertas`
+  return reviewStatusLabels[review.status]
+}
+
+// Honest verification states: never claim "Verificado" until a human verified.
+export const driverVerificationLabels: Record<DriverVerificationStatus, string> = {
+  pending: "Sin documentos",
+  submitted: "En revisión",
+  verified: "Verificado",
+}
+
+export const driverVerificationClasses: Record<DriverVerificationStatus, string> = {
+  pending: "bg-muted text-muted-foreground",
+  submitted: "bg-amber-50 text-amber-700",
+  verified: "bg-green-50 text-green-700",
 }
 
 export function formatCLP(n: number) {
@@ -155,6 +205,19 @@ export function relativeDate(iso: string) {
     label: `${d.toLocaleDateString("es-CL", { day: "numeric", month: "short" })} ${time}`,
     urgent: false,
   }
+}
+
+// Past-tense counterpart of relativeDate ("hace 3 h"); falls back to the
+// short date once the moment is over a week old.
+export function timeAgo(iso: string) {
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (minutes < 1) return "hace un momento"
+  if (minutes < 60) return `hace ${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `hace ${hours} h`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `hace ${days} día${days === 1 ? "" : "s"}`
+  return `el ${formatShortDate(iso)}`
 }
 
 export function floorLine(floor: number | null | undefined, hasElevator: boolean) {
