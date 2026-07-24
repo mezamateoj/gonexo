@@ -79,17 +79,16 @@ export function newQuoteEmail(p: {
   clientName: string;
   origin: string;
   dest: string;
-  priceMin: number;
-  priceMax: number;
+  price: number;
   requestId: string;
   frontendUrl: string;
 }): EmailContent {
   return {
-    subject: `Nueva oferta: ${clp(p.priceMin)}–${clp(p.priceMax)} por tu flete`,
+    subject: `Nueva oferta: ${clp(p.price)} por tu flete`,
     html: layout(`
       <h1 style="font-size:18px;margin:0">Hola ${escapeHtml(p.clientName)}, recibiste una oferta</h1>
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
-        Un transportista ofreció <strong>${clp(p.priceMin)}–${clp(p.priceMax)}</strong> por tu solicitud.
+        Un transportista ofreció <strong>${clp(p.price)}</strong> por tu solicitud.
       </p>
       ${routeLine(p.origin, p.dest)}
       ${button(`${p.frontendUrl}/requests/${p.requestId}`, "Ver oferta")}

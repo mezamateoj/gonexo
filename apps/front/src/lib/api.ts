@@ -1,4 +1,4 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriver, AdminDriverProfile, AdminUserDetail, DriverVerificationStatus } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, RequestQuotesResponse, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriver, AdminDriverProfile, AdminUserDetail, DriverVerificationStatus } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -110,13 +110,14 @@ export const api = {
       return apiFetch<AvailableResponse>(`/api/requests?${params.toString()}`)
     },
     get: (id: string) => apiFetch<RequestDetail>(`/api/requests/${id}`),
+    quotes: (id: string) => apiFetch<RequestQuotesResponse>(`/api/requests/${id}/quotes`),
     priceRange: (id: string) => apiFetch<PriceRange>(`/api/requests/${id}/price-range`),
     create: (body: CreateRequestInput) =>
       apiFetch<{ id: string }>("/api/requests", {
         method: "POST",
         body: JSON.stringify(body),
       }),
-    submitQuote: (requestId: string, body: { priceMin: number; priceMax: number; message?: string }) =>
+    submitQuote: (requestId: string, body: { price: number; message?: string }) =>
       apiFetch<{ id: string }>(`/api/requests/${requestId}/quotes`, {
         method: "POST",
         body: JSON.stringify(body),

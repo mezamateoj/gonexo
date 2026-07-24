@@ -4,12 +4,12 @@ import { useForm } from "@tanstack/react-form"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { z } from "zod"
-import { MapPin, ChevronLeft, Package, Calendar, MessageSquare, Clock } from "lucide-react"
+import { MapPin, ChevronLeft, Package, Calendar, MessageSquare, Clock, CircleAlert, LoaderCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api, ApiError } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { useSession } from "@/lib/auth-client"
-import { floorLine, formatCLP, formatCLPRange, formatLongDateTime, initials, volumeLabels } from "@/lib/display"
+import { floorLine, formatCLP, formatLongDateTime, initials, volumeLabels } from "@/lib/display"
 import { useSubmitQuote } from "@/hooks/use-request-mutations"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +17,9 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Field, FieldError, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
 import { FairPriceBar } from "@/components/requests/fair-price-bar"
 import type { PriceRange } from "@/lib/types"
 
@@ -31,30 +34,26 @@ function parseCLPInput(raw: string): number {
   return digits ? parseInt(digits, 10) : 0
 }
 
-function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRange }) {
+function QuoteForm({ requestId, fair }: { requestId: string; fair: PriceRange }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const submitQuote = useSubmitQuote(requestId)
 
-  const quoteSchema = z
-    .object({
-      priceMin: z.number().int().min(fair.acceptableMin, `Mínimo permitido: ${formatCLP(fair.acceptableMin)}`),
-      priceMax: z.number().int().max(fair.acceptableMax, `Máximo permitido: ${formatCLP(fair.acceptableMax)}`),
-      message: z.string().max(500),
-    })
-    .refine((v) => v.priceMin <= v.priceMax, {
-      message: "El máximo debe ser mayor o igual al mínimo.",
-      path: ["priceMax"],
-    })
+  const priceSchema = z
+    .number()
+    .int()
+    .min(fair.acceptableMin, `La oferta mínima es ${formatCLP(fair.acceptableMin)}.`)
+    .max(fair.acceptableMax, `La oferta máxima es ${formatCLP(fair.acceptableMax)}.`)
+  const messageSchema = z.string().max(500, "El mensaje no puede superar los 500 caracteres.")
+  const quoteSchema = z.object({ price: priceSchema, message: messageSchema })
 
   const form = useForm({
-    defaultValues: { priceMin: fair.min, priceMax: fair.max, message: "" },
+    defaultValues: { price: fair.mid, message: "" },
     validators: { onSubmit: quoteSchema },
     onSubmit: async ({ value }) => {
       setSubmitError(null)
       try {
         await submitQuote.mutateAsync({
-          priceMin: value.priceMin,
-          priceMax: value.priceMax,
+          price: value.price,
           message: value.message || undefined,
         })
       } catch (err) {
@@ -72,42 +71,93 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
   })
 
   return (
-    <div className="rounded-[14px] border border-border bg-white p-5">
-      <h3 className="mb-1 text-[14px] font-semibold text-foreground">Enviar oferta</h3>
-      <p className="mb-4 text-[12px] text-muted-foreground">El cliente verá tu rango y tu mensaje.</p>
+    <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Define tu oferta</CardTitle>
+          <CardDescription className="text-pretty">
+            El cliente verá un solo precio total y tu mensaje.
+          </CardDescription>
+        </CardHeader>
 
-      <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }} className="flex flex-col gap-4">
-        <form.Subscribe selector={(s) => [s.values.priceMin, s.values.priceMax] as const}>
-          {([priceMin, priceMax]) => (
-            <FairPriceBar
-              fair={fair}
-              value={[priceMin, priceMax]}
-              onChange={([min, max]) => {
-                form.setFieldValue("priceMin", min)
-                form.setFieldValue("priceMax", max)
-              }}
-              disabled={form.state.isSubmitting}
-            />
-          )}
-        </form.Subscribe>
-
-        <FieldGroup>
-          <div className="grid grid-cols-2 gap-3">
-            <form.Field name="priceMin">
+        <CardContent>
+          <FieldGroup>
+            <form.Field name="price" validators={{ onBlur: priceSchema }}>
               {(field) => {
                 const attempted = form.state.submissionAttempts > 0
                 const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
+                const price = field.state.value
+                const fee = Math.round(price * fair.feeRate)
+
                 return (
                   <Field data-invalid={isInvalid || undefined}>
-                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-ink-soft">
-                      Mínimo
-                    </FieldLabel>
-                    <Input
+                    <FieldLabel htmlFor={field.name}>Tu oferta (CLP)</FieldLabel>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-semibold text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        id={field.name}
+                        inputMode="numeric"
+                        className="h-12 pl-7 text-lg font-bold tabular-nums"
+                        value={price.toLocaleString("es-CL")}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(parseCLPInput(e.target.value))}
+                        aria-invalid={isInvalid}
+                      />
+                    </div>
+                    <FieldDescription>Este será el precio total que pagará el cliente.</FieldDescription>
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+
+                    <FairPriceBar
+                      fair={fair}
+                      value={price}
+                      onChange={field.handleChange}
+                      disabled={form.state.isSubmitting}
+                    />
+
+                    <dl className="rounded-lg bg-muted px-3.5 py-3 text-[12px] tabular-nums">
+                      <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                        <dt>Tu oferta</dt>
+                        <dd>{formatCLP(price)}</dd>
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between gap-4 text-muted-foreground">
+                        <dt>Comisión Gonexo ({Math.round(fair.feeRate * 100)}%)</dt>
+                        <dd>− {formatCLP(fee)}</dd>
+                      </div>
+                      <div className="mt-2.5 flex items-center justify-between gap-4 border-t border-border pt-2.5 text-[14px] font-bold text-primary">
+                        <dt>Recibes</dt>
+                        <dd>{formatCLP(price - fee)}</dd>
+                      </div>
+                    </dl>
+                  </Field>
+                )
+              }}
+            </form.Field>
+
+            <form.Field name="message" validators={{ onBlur: messageSchema }}>
+              {(field) => {
+                const attempted = form.state.submissionAttempts > 0
+                const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
+
+                return (
+                  <Field data-invalid={isInvalid || undefined}>
+                    <div className="flex items-baseline justify-between gap-4">
+                      <FieldLabel htmlFor={field.name}>
+                        Mensaje <span className="font-normal text-muted-foreground">(opcional)</span>
+                      </FieldLabel>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">{field.state.value.length}/500</span>
+                    </div>
+                    <FieldDescription>Explica brevemente qué incluye tu servicio.</FieldDescription>
+                    <Textarea
                       id={field.name}
-                      className="font-semibold tabular-nums"
-                      value={field.state.value.toLocaleString("es-CL")}
+                      rows={3}
+                      maxLength={500}
+                      className="resize-none"
+                      placeholder="Ej. Incluye dos ayudantes y protección para los muebles."
+                      value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(parseCLPInput(e.target.value))}
+                      onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
                     />
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -116,83 +166,31 @@ function QuoteRangeForm({ requestId, fair }: { requestId: string; fair: PriceRan
               }}
             </form.Field>
 
-            <form.Field name="priceMax">
-              {(field) => {
-                const attempted = form.state.submissionAttempts > 0
-                const isInvalid = (field.state.meta.isTouched || attempted) && field.state.meta.errors.length > 0
-                return (
-                  <Field data-invalid={isInvalid || undefined}>
-                    <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-ink-soft">
-                      Máximo
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      className="font-semibold tabular-nums"
-                      value={field.state.value.toLocaleString("es-CL")}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(parseCLPInput(e.target.value))}
-                      aria-invalid={isInvalid}
-                    />
-                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                  </Field>
-                )
-              }}
-            </form.Field>
-          </div>
+            {submitError && (
+              <Alert variant="destructive">
+                <CircleAlert />
+                <AlertDescription>{submitError}</AlertDescription>
+              </Alert>
+            )}
+          </FieldGroup>
+        </CardContent>
 
-          <form.Subscribe selector={(s) => [s.values.priceMin, s.values.priceMax] as const}>
-            {([priceMin, priceMax]) => (
-              <div className="rounded-[8px] bg-muted px-3 py-2.5">
-                <p className="text-[12px] text-ink-soft">
-                  Recibes después de la comisión ({Math.round(fair.feeRate * 100)}%)
-                </p>
-                <p className="text-[15px] font-bold tabular-nums text-primary">
-                  {formatCLPRange(
-                    Math.round(priceMin * (1 - fair.feeRate)),
-                    Math.round(priceMax * (1 - fair.feeRate)),
-                  )}
-                </p>
-              </div>
+        <CardFooter>
+          <form.Subscribe selector={(s) => s.isSubmitting}>
+            {(isSubmitting) => (
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="min-h-10 w-full transition-transform duration-150 active:scale-[0.98]"
+              >
+                {isSubmitting && <LoaderCircle className="animate-spin" data-icon="inline-start" />}
+                {isSubmitting ? "Enviando…" : "Enviar oferta"}
+              </Button>
             )}
           </form.Subscribe>
-
-          <form.Field name="message">
-            {(field) => (
-              <Field>
-                <FieldLabel htmlFor={field.name} className="text-[12px] font-medium text-ink-soft">
-                  Mensaje <span className="font-normal text-muted-foreground">(opcional)</span>
-                </FieldLabel>
-                <FieldDescription>Cuéntale algo al cliente sobre tu servicio.</FieldDescription>
-                <textarea
-                  id={field.name}
-                  rows={2}
-                  aria-label="Mensaje para el cliente"
-                  className="w-full resize-none rounded-[8px] border border-border bg-white px-3 py-2.5 text-[13px] text-foreground placeholder:text-ink-faint outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
-                  placeholder="Tengo experiencia en mudanzas de departamentos…"
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-              </Field>
-            )}
-          </form.Field>
-        </FieldGroup>
-
-        {submitError && (
-          <p className="rounded-[8px] bg-red-50 px-3 py-2.5 text-[13px] text-red-600">
-            {submitError}
-          </p>
-        )}
-
-        <form.Subscribe selector={(s) => s.isSubmitting}>
-          {(isSubmitting) => (
-            <Button type="submit" disabled={isSubmitting} className="active:scale-[0.96] transition-[scale,opacity]">
-              {isSubmitting ? "Enviando…" : "Enviar oferta"}
-            </Button>
-          )}
-        </form.Subscribe>
-      </form>
-    </div>
+        </CardFooter>
+      </Card>
+    </form>
   )
 }
 
@@ -227,7 +225,7 @@ function SubmitQuoteForm({ requestId }: { requestId: string }) {
     )
   }
 
-  return <QuoteRangeForm requestId={requestId} fair={fair} />
+  return <QuoteForm requestId={requestId} fair={fair} />
 }
 
 function DriverOpportunityPage() {
@@ -273,7 +271,7 @@ function DriverOpportunityPage() {
 
   if (isOwnRequest) return null
 
-  const myQuote = req.quotes.find((q) => q.driverId === userId)
+  const myQuote = req.myQuote
   const isOpen = req.status === "open"
 
   return (
@@ -423,9 +421,7 @@ function DriverOpportunityPage() {
             )}>
               <p className="mb-1 text-[13px] font-semibold text-foreground">Tu oferta</p>
               <p className="text-[24px] font-bold tabular-nums text-primary">
-                {myQuote.priceMin != null && myQuote.priceMax != null
-                  ? formatCLPRange(myQuote.priceMin, myQuote.priceMax)
-                  : formatCLP(myQuote.price)}
+                {formatCLP(myQuote.price)}
               </p>
               {myQuote.message && (
                 <div className="mt-2 flex gap-2 rounded-[8px] bg-muted px-3 py-2">

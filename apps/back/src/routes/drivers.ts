@@ -372,7 +372,7 @@ drivers.post(
 );
 
 // Public driver profile. Auth-gated and projected to non-sensitive fields only —
-// phone, plate, document URLs, and internal ids never leave the server here.
+// phone, plate, document URLs, and the owning user id never leave the server here.
 drivers.get("/:id", requireAuth, async (c) => {
   const db = c.get("db");
   const profile = await db.query.driverProfile.findFirst({

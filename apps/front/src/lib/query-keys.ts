@@ -18,6 +18,7 @@ export const queryKeys = {
     available: (query: AvailableQuery) =>
       ["requests", "available", query.sort, query.page, query.volume ?? [], query.hasPhotos ?? false] as const,
     detail: (id: string) => ["requests", id] as const,
+    quotes: (id: string) => ["requests", id, "quotes"] as const,
     priceRange: (id: string) => ["requests", id, "price-range"] as const,
   },
   jobs: {

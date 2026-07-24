@@ -50,8 +50,8 @@ export const CIRCUITY_FACTOR = 1.3;
 
 // Acceptance window for submitted quotes, relative to the fair band. Deliberately
 // wide — the band is advisory, so drivers keep latitude; these only reject absurd
-// quotes (typos, wild lowballs, gouging). A submitted range must satisfy
-// priceMin ≥ fair.min × QUOTE_FLOOR_FACTOR and priceMax ≤ fair.max × QUOTE_CEILING_FACTOR.
+// quotes (typos, wild lowballs, gouging). A submitted fixed offer must stay
+// between fair.min × QUOTE_FLOOR_FACTOR and fair.max × QUOTE_CEILING_FACTOR.
 export const QUOTE_FLOOR_FACTOR = 0.5;
 export const QUOTE_CEILING_FACTOR = 2.5;
 

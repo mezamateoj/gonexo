@@ -378,9 +378,7 @@ export const quote = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
 
-    price: integer("price").notNull(),  // CLP — representative/agreed value; set on accept
-    priceMin: integer("price_min"),     // range lower bound submitted by driver
-    priceMax: integer("price_max"),     // range upper bound submitted by driver
+    price: integer("price").notNull(), // Fixed offer in CLP; becomes the agreed price on accept
     message: text("message"),
     status: text("status").notNull().default("pending"),
     // 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled'

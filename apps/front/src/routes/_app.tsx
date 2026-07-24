@@ -35,7 +35,13 @@ function TopBar() {
   const { mode } = useAppMode()
   const isWizard = pathname === "/requests/new"
 
-  const currentLabel = CRUMBS[pathname] ?? "Gonexo"
+  const currentLabel =
+    CRUMBS[pathname] ??
+    (pathname.startsWith("/requests/")
+      ? pathname.endsWith("/offers")
+        ? "Ofertas recibidas"
+        : "Detalle del flete"
+      : "Gonexo")
 
   return (
     <header className={cn(

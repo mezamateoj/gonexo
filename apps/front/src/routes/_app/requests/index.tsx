@@ -15,7 +15,6 @@ import { queryKeys } from "@/lib/query-keys"
 import type { RequestBucket, RequestSort, RequestSummary, VolumeCategory } from "@/lib/types"
 import {
   formatCLP,
-  formatCLPRange,
   formatCompactDateTime,
   requestStatusClasses,
   requestStatusLabels,
@@ -92,8 +91,11 @@ const EMPTY_STATES: Record<
 
 // Row → job detail once a quote is accepted, otherwise the request itself.
 function rowDestination(req: RequestSummary) {
+  const hasPendingOffers = req.quotes.some((quote) => quote.status === "pending")
   return req.job
     ? { to: "/jobs/$id" as const, params: { id: req.job.id } }
+    : hasPendingOffers
+      ? { to: "/requests/$id/offers" as const, params: { id: req.id } }
     : { to: "/requests/$id" as const, params: { id: req.id } }
 }
 
@@ -127,9 +129,7 @@ function RequestValueCell({ req }: { req: RequestSummary }) {
   if (shown) {
     return (
       <span className="tabular-nums font-semibold text-foreground">
-        {shown.priceMin != null && shown.priceMax != null
-          ? formatCLPRange(shown.priceMin, shown.priceMax)
-          : formatCLP(shown.price)}
+        {formatCLP(shown.price)}
       </span>
     )
   }

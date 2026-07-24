@@ -187,7 +187,8 @@ export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 export function shortAddress(address: string) {
   const parts = address.split(",").map((p) => p.trim())
-  return parts.length >= 2 ? parts[parts.length - 2] : parts[0]
+  const comuna = parts[1]
+  return comuna && !/region|región|chile/i.test(comuna) ? comuna : parts[0]
 }
 
 export function relativeDate(iso: string) {

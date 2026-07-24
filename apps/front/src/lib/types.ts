@@ -245,6 +245,7 @@ export interface PublicDriverProfile {
 }
 
 export interface QuoteDriverProfile {
+  id: string
   vehicleType: VehicleType
   vehicleDescription: string | null
   vehicleCapacity: string | null
@@ -259,10 +260,6 @@ export interface QuoteWithDriver {
   id: string
   driverId: string
   price: number
-  // Null on quotes submitted before range quotes shipped — render as a single
-  // price (`price`) rather than a range in that case.
-  priceMin: number | null
-  priceMax: number | null
   message: string | null
   status: QuoteStatus
   createdAt: string
@@ -274,12 +271,25 @@ export interface QuoteWithDriver {
   }
 }
 
+export interface RequestQuotesResponse {
+  count: number
+  quotes: QuoteWithDriver[]
+}
+
+export interface MyQuote {
+  id: string
+  price: number
+  message: string | null
+  status: QuoteStatus
+  createdAt: string
+}
+
 // Fair-price advisory band for a request — GET /api/requests/:id/price-range
 export interface PriceRange {
   min: number
   mid: number
   max: number
-  // Server-enforced acceptance window for POST .../quotes; the slider spans this.
+  // Server-enforced acceptance window for POST .../quotes.
   acceptableMin: number
   acceptableMax: number
   distanceKm: number
@@ -319,7 +329,7 @@ export interface RequestDetail {
   distanceKm: number
   photos: { id: string; url: string; order: number }[]
   user: { id: string; name: string; image: string | null; phone: string | null }
-  quotes: QuoteWithDriver[]
+  myQuote: MyQuote | null
   quoteCount: number
   job: { id: string; status: JobStatus; confirmedAt: string | null } | null
 }
@@ -439,7 +449,7 @@ export interface RequestSummary {
   notes: string | null
   createdAt: string
   photos: { url: string }[]
-  quotes: { id: string; status: string; price: number; priceMin: number | null; priceMax: number | null }[]
+  quotes: { id: string; status: string; price: number }[]
   job: { id: string; status: JobStatus; confirmedAt: string | null } | null
 }
 

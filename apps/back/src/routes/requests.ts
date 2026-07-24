@@ -255,7 +255,7 @@ requests.get("/my", requireAuth, async (c) => {
           orderBy: [asc(requestPhoto.order)],
           columns: { url: true },
         },
-        quotes: { columns: { id: true, status: true, price: true, priceMin: true, priceMax: true } },
+        quotes: { columns: { id: true, status: true, price: true } },
         jobs: {
           where: ne(job.status, "cancelled"),
           limit: 1,
@@ -368,50 +368,43 @@ requests.get("/:id", requireAuth, async (c) => {
         limit: 1,
           columns: { id: true, status: true, driverId: true, confirmedAt: true },
       },
-      quotes: {
-        with: {
-          driver: {
-            columns: { id: true, name: true, image: true },
-            // Public driver profile only — no phone, plate, docs, or photos
-            with: {
-              driverProfile: {
-                columns: {
-                  vehicleType: true,
-                  vehicleDescription: true,
-                  vehicleCapacity: true,
-                  isVerified: true,
-                  documentsStatus: true,
-                  avgRating: true,
-                  totalJobs: true,
-                  bio: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: [asc(quote.price)],
-      },
     },
   });
 
   if (!result) throw notFound();
 
   const isOwner = result.userId === user.id;
-  const myQuote = result.quotes.find((q) => q.driverId === user.id);
   const activeJob = result.jobs[0] ?? null;
+  const driverAccess = isOwner
+    ? null
+    : await Promise.all([
+        db.query.driverProfile.findFirst({
+          where: eq(driverProfile.userId, user.id),
+          columns: { id: true },
+        }),
+        db.query.quote.findFirst({
+          where: and(eq(quote.requestId, result.id), eq(quote.driverId, user.id)),
+          columns: {
+            id: true,
+            price: true,
+            message: true,
+            status: true,
+            createdAt: true,
+          },
+        }),
+      ]);
+  const myQuote = driverAccess?.[1] ?? null;
 
   // Access control: owners see their own request; everyone else must be a
   // driver, and may only inspect open requests or ones they personally quoted.
   // Hide existence (404) from anyone else rather than leaking it via 403.
-  if (!isOwner) {
-    const isDriver = !!(await db.query.driverProfile.findFirst({
-      where: eq(driverProfile.userId, user.id),
-      columns: { id: true },
-    }));
-    if (!isDriver || (result.status !== "open" && !myQuote)) throw notFound();
-  }
+  if (!isOwner && (!driverAccess?.[0] || (result.status !== "open" && !myQuote)))
+    throw notFound();
 
-  const quoteCount = result.quotes.length;
+  const quoteCountRows = await db
+    .select({ n: count() })
+    .from(quote)
+    .where(eq(quote.requestId, result.id));
 
   // Exact address + coords are revealed only to the owner and the matched driver
   // (once their quote is accepted). Everyone else sees the masked zone.
@@ -429,15 +422,61 @@ requests.get("/:id", requireAuth, async (c) => {
     distanceKm: displayDistanceKm(result),
     // Client phone is exchanged on job detail only, never on request detail.
     user: { ...result.user, phone: isOwner ? result.user.phone : null },
-    // Owner compares every quote; a quoting driver sees only their own.
-    quotes: isOwner ? result.quotes : myQuote ? [myQuote] : [],
-    quoteCount,
+    myQuote,
+    quoteCount: quoteCountRows[0]?.n ?? 0,
     // driverId used only for the reveal check above — not exposed.
     jobs: undefined,
     job: activeJob
       ? { id: activeJob.id, status: activeJob.status, confirmedAt: activeJob.confirmedAt }
       : null,
   });
+});
+
+requests.get("/:id/quotes", requireAuth, async (c) => {
+  const db = c.get("db");
+  const user = c.get("user")!;
+  const requestId = c.req.param("id");
+
+  const ownedRequest = await db.query.request.findFirst({
+    where: and(eq(request.id, requestId), eq(request.userId, user.id)),
+    columns: { id: true },
+  });
+  if (!ownedRequest) throw notFound();
+
+  const quotes = await db.query.quote.findMany({
+    where: eq(quote.requestId, requestId),
+    columns: {
+      id: true,
+      driverId: true,
+      price: true,
+      message: true,
+      status: true,
+      createdAt: true,
+    },
+    with: {
+      driver: {
+        columns: { id: true, name: true, image: true },
+        with: {
+          driverProfile: {
+            columns: {
+              id: true,
+              vehicleType: true,
+              vehicleDescription: true,
+              vehicleCapacity: true,
+              isVerified: true,
+              documentsStatus: true,
+              avgRating: true,
+              totalJobs: true,
+              bio: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [asc(quote.price)],
+  });
+
+  return c.json({ count: quotes.length, quotes });
 });
 
 // Advisory fair-price band for a request. Same visibility as GET /:id: the owner,
@@ -482,16 +521,10 @@ requests.get("/:id/price-range", requireAuth, async (c) => {
   });
 });
 
-const createQuoteSchema = z
-  .object({
-    priceMin: z.number().int().positive(),
-    priceMax: z.number().int().positive(),
-    message: z.string().max(500).optional(),
-  })
-  .refine((v) => v.priceMin <= v.priceMax, {
-    message: "priceMin must be ≤ priceMax",
-    path: ["priceMax"],
-  });
+const createQuoteSchema = z.object({
+  price: z.number().int().positive(),
+  message: z.string().max(500).optional(),
+});
 
 requests.post(
   "/:id/quotes",
@@ -515,15 +548,11 @@ requests.post(
     // lowballs, gouging). The window is wide on purpose — the band is guidance.
     const fair = fairPriceRange(req);
     const { min: floor, max: ceiling } = quoteAcceptableWindow(fair);
-    if (body.priceMin < floor || body.priceMax > ceiling) {
+    if (body.price < floor || body.price > ceiling) {
       throw badRequest(
         `Tu oferta está fuera del rango permitido (${floor.toLocaleString("es-CL")}–${ceiling.toLocaleString("es-CL")} CLP para esta solicitud).`,
       );
     }
-
-    // Drivers submit a min–max band; `price` is the accepted ceiling (priceMax)
-    // and becomes the agreed price if the client accepts this quote.
-    const price = body.priceMax;
 
     const id = crypto.randomUUID();
     try {
@@ -531,9 +560,7 @@ requests.post(
         id,
         requestId,
         driverId: driver.id,
-        price,
-        priceMin: body.priceMin,
-        priceMax: body.priceMax,
+        price: body.price,
         message: body.message ?? null,
         expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
       });
@@ -550,12 +577,11 @@ requests.post(
       throw err;
     }
 
-    logger.info("Quote submitted: {id} on request {requestId} by driver {driverId} for {priceMin}-{priceMax}", {
+    logger.info("Quote submitted: {id} on request {requestId} by driver {driverId} for {price}", {
       id,
       requestId,
       driverId: driver.id,
-      priceMin: body.priceMin,
-      priceMax: body.priceMax,
+      price: body.price,
     });
 
     c.executionCtx.waitUntil(
@@ -569,8 +595,7 @@ requests.post(
           clientName: owner.name,
           origin: req.originAddress,
           dest: req.destAddress,
-          priceMin: body.priceMin,
-          priceMax: body.priceMax,
+          price: body.price,
           requestId,
           frontendUrl: c.env.FRONTEND_URL,
         }));

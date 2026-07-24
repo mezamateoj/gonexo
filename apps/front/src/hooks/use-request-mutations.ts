@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/query-keys"
 import type { JobStatusUpdate } from "@/lib/types"
 
 // Navigation is intentionally left to the caller so it can show the celebration
-// dialog first and route from its CTA (see requests/$id.tsx).
+// dialog first and route from its CTA.
 export function useAcceptQuote(requestId: string) {
   const queryClient = useQueryClient()
 
@@ -13,6 +13,7 @@ export function useAcceptQuote(requestId: string) {
     mutationFn: (quoteId: string) => api.quotes.accept(quoteId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
     },
@@ -26,6 +27,7 @@ export function useCancelRequest(requestId: string) {
     mutationFn: () => api.requests.cancel(requestId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
     },
@@ -39,6 +41,7 @@ export function useReopenRequest(requestId: string) {
     mutationFn: () => api.requests.reopen(requestId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
     },
   })
@@ -48,7 +51,7 @@ export function useSubmitQuote(requestId: string, onSuccess?: () => void) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (body: { priceMin: number; priceMax: number; message?: string }) =>
+    mutationFn: (body: { price: number; message?: string }) =>
       api.requests.submitQuote(requestId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
@@ -87,6 +90,7 @@ export function useCancelJob(jobId: string, requestId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
     },
   })

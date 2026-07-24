@@ -29,6 +29,7 @@ import { Route as AppDriversIdRouteImport } from './routes/_app/drivers/$id'
 import { Route as AppAvailableIdRouteImport } from './routes/_app/available/$id'
 import { Route as AppAdminUsersIndexRouteImport } from './routes/_app/admin/users/index'
 import { Route as AppAdminDriversIndexRouteImport } from './routes/_app/admin/drivers/index'
+import { Route as AppRequestsIdOffersRouteImport } from './routes/_app/requests/$id_.offers'
 import { Route as AppAdminUsersIdRouteImport } from './routes/_app/admin/users/$id'
 import { Route as AppAdminDriversIdRouteImport } from './routes/_app/admin/drivers/$id'
 
@@ -131,6 +132,11 @@ const AppAdminDriversIndexRoute = AppAdminDriversIndexRouteImport.update({
   path: '/drivers/',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppRequestsIdOffersRoute = AppRequestsIdOffersRouteImport.update({
+  id: '/requests/$id_/offers',
+  path: '/requests/$id/offers',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminUsersIdRoute = AppAdminUsersIdRouteImport.update({
   id: '/users/$id',
   path: '/users/$id',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/requests/': typeof AppRequestsIndexRoute
   '/admin/drivers/$id': typeof AppAdminDriversIdRoute
   '/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/requests/$id/offers': typeof AppRequestsIdOffersRoute
   '/admin/drivers/': typeof AppAdminDriversIndexRoute
   '/admin/users/': typeof AppAdminUsersIndexRoute
 }
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/requests': typeof AppRequestsIndexRoute
   '/admin/drivers/$id': typeof AppAdminDriversIdRoute
   '/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/requests/$id/offers': typeof AppRequestsIdOffersRoute
   '/admin/drivers': typeof AppAdminDriversIndexRoute
   '/admin/users': typeof AppAdminUsersIndexRoute
 }
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/_app/requests/': typeof AppRequestsIndexRoute
   '/_app/admin/drivers/$id': typeof AppAdminDriversIdRoute
   '/_app/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/_app/requests/$id_/offers': typeof AppRequestsIdOffersRoute
   '/_app/admin/drivers/': typeof AppAdminDriversIndexRoute
   '/_app/admin/users/': typeof AppAdminUsersIndexRoute
 }
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/requests/'
     | '/admin/drivers/$id'
     | '/admin/users/$id'
+    | '/requests/$id/offers'
     | '/admin/drivers/'
     | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/requests'
     | '/admin/drivers/$id'
     | '/admin/users/$id'
+    | '/requests/$id/offers'
     | '/admin/drivers'
     | '/admin/users'
   id:
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/_app/requests/'
     | '/_app/admin/drivers/$id'
     | '/_app/admin/users/$id'
+    | '/_app/requests/$id_/offers'
     | '/_app/admin/drivers/'
     | '/_app/admin/users/'
   fileRoutesById: FileRoutesById
@@ -435,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminDriversIndexRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/_app/requests/$id_/offers': {
+      id: '/_app/requests/$id_/offers'
+      path: '/requests/$id/offers'
+      fullPath: '/requests/$id/offers'
+      preLoaderRoute: typeof AppRequestsIdOffersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/users/$id': {
       id: '/_app/admin/users/$id'
       path: '/users/$id'
@@ -484,6 +503,7 @@ interface AppRouteChildren {
   AppJobsIndexRoute: typeof AppJobsIndexRoute
   AppQuotesIndexRoute: typeof AppQuotesIndexRoute
   AppRequestsIndexRoute: typeof AppRequestsIndexRoute
+  AppRequestsIdOffersRoute: typeof AppRequestsIdOffersRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -498,6 +518,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppJobsIndexRoute: AppJobsIndexRoute,
   AppQuotesIndexRoute: AppQuotesIndexRoute,
   AppRequestsIndexRoute: AppRequestsIndexRoute,
+  AppRequestsIdOffersRoute: AppRequestsIdOffersRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

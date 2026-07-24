@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { Package } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatCLP, formatCLPRange, formatCompactDateTime, requestStatusClasses, requestStatusLabels, volumeLabels } from "@/lib/display"
+import { formatCLP, formatCompactDateTime, requestStatusClasses, requestStatusLabels, volumeLabels } from "@/lib/display"
 import type { RequestSummary } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -10,12 +10,14 @@ import { Separator } from "@/components/ui/separator"
 export function RequestCard({ req }: { req: RequestSummary }) {
   const openQuotes = req.quotes.filter((q) => q.status === "pending")
   const pricedQuotes = req.quotes.filter((q) => q.status !== "cancelled" && q.status !== "expired")
-  // Cheapest by representative price (priceMax); shown as its own range when present.
+  // Cheapest fixed offer gives the client a useful comparison at a glance.
   const cheapest = pricedQuotes.length > 0
     ? pricedQuotes.reduce((a, b) => (a.price <= b.price ? a : b))
     : null
   const destination = req.job
     ? { to: "/jobs/$id" as const, params: { id: req.job.id } }
+    : openQuotes.length > 0
+      ? { to: "/requests/$id/offers" as const, params: { id: req.id } }
     : { to: "/requests/$id" as const, params: { id: req.id } }
 
   return (
@@ -58,9 +60,7 @@ export function RequestCard({ req }: { req: RequestSummary }) {
               </Badge>
             ) : cheapest != null ? (
               <span className="text-[15px] font-bold tabular-nums text-foreground">
-                {cheapest.priceMin != null && cheapest.priceMax != null
-                  ? formatCLPRange(cheapest.priceMin, cheapest.priceMax)
-                  : formatCLP(cheapest.price)}
+                {formatCLP(cheapest.price)}
               </span>
             ) : null}
           </div>
