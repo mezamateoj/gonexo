@@ -6,6 +6,7 @@ import { documentTriageResultSchema } from "../ai/document-review";
 import { documentReview, driverDocument, driverProfile, job, quote, request, review, session, user } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { badRequest, notFound } from "../lib/errors";
+import { driverVerificationDecisionEmail, sendEmail } from "../lib/email";
 import type { Db } from "../db";
 import type { AppEnv } from "../lib/types";
 
@@ -128,6 +129,7 @@ admin.get("/users/:id", async (c) => {
       emailVerified: true,
       phone: true,
       image: true,
+      accountType: true,
       role: true,
       banned: true,
       banReason: true,
@@ -239,7 +241,12 @@ admin.patch(
     const reviewer = c.get("user")!;
 
     const [profile, review] = await Promise.all([
-      db.query.driverProfile.findFirst({ where: eq(driverProfile.id, id) }),
+      db.query.driverProfile.findFirst({
+        where: eq(driverProfile.id, id),
+        with: {
+          user: { columns: { email: true, name: true } },
+        },
+      }),
       db.query.documentReview.findFirst({
         where: eq(documentReview.driverProfileId, id),
         orderBy: [desc(documentReview.createdAt)],
@@ -290,6 +297,15 @@ admin.patch(
         })
         .where(eq(documentReview.id, review.id)),
     ]);
+
+    c.executionCtx.waitUntil(
+      sendEmail(c.env, profile.user.email, driverVerificationDecisionEmail({
+        driverName: profile.user.name,
+        decision: body.decision,
+        note: body.note,
+        frontendUrl: c.env.FRONTEND_URL,
+      })),
+    );
 
     return c.json({ driver: updated[0] });
   },

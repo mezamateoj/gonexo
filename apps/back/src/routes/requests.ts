@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, ne, or, asc, desc, like, inArray, exists, count, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
+import { eq, and, ne, or, asc, desc, like, inArray, exists, count, gt, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
 import { request, requestPhoto, quote, driverProfile, user as userTable, job } from "../db/schema";
-import { requireAuth, requireDriver } from "../middleware/auth";
+import { requireAuth, requireClient, requireDriver } from "../middleware/auth";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { logger } from "../lib/logger";
@@ -19,7 +19,8 @@ import {
 import { mapboxDirections } from "../lib/directions";
 import { maskAddress } from "../lib/address";
 import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
-import { sendEmail, newQuoteEmail } from "../lib/email";
+import { newQuoteEmail, sendEmail } from "../lib/email";
+import { notifyAvailableDrivers, republishRequest } from "../workflows/requests";
 
 const requests = new Hono<AppEnv>();
 
@@ -87,7 +88,7 @@ const createRequestSchema = z.object({
 
 requests.post(
   "/",
-  requireAuth,
+  requireClient,
   zValidator("json", createRequestSchema),
   async (c) => {
     const db = c.get("db");
@@ -173,6 +174,14 @@ requests.post(
       scheduledAt: body.scheduledAt,
       photos: body.photoUrls.length,
     });
+
+    c.executionCtx.waitUntil(notifyAvailableDrivers(db, c.env, {
+      id,
+      originAddress: body.originAddress,
+      destAddress: body.destAddress,
+      scheduledAt: new Date(body.scheduledAt),
+    }));
+
     return c.json({ id }, 201);
   }
 );
@@ -192,7 +201,7 @@ type MyRequestSort = keyof typeof MY_REQUEST_SORTS;
 // Client "Mis fletes" list. Paginated per lifecycle bucket so it scales to
 // hundreds of rows (never fetch the whole set to render one tab). Omitting
 // `bucket` returns every request the caller owns.
-requests.get("/my", requireAuth, async (c) => {
+requests.get("/my", requireClient, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
 
@@ -282,7 +291,7 @@ type AvailableSort = keyof typeof AVAILABLE_SORTS;
 
 const VOLUME_CATEGORIES: VolumeCategory[] = ["small", "medium", "large", "full_move"];
 
-requests.get("/", requireAuth, async (c) => {
+requests.get("/", requireDriver, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const page = Math.max(1, parseInt(c.req.query("page") ?? "1"));
@@ -363,6 +372,11 @@ requests.get("/:id", requireAuth, async (c) => {
     with: {
       photos: { orderBy: [asc(requestPhoto.order)] },
       user: { columns: { id: true, name: true, image: true, phone: true } },
+      originalRequest: { columns: { id: true } },
+      republishedRequests: {
+        columns: { id: true, scheduledAt: true },
+        limit: 1,
+      },
       jobs: {
         where: ne(job.status, "cancelled"),
         limit: 1,
@@ -401,10 +415,32 @@ requests.get("/:id", requireAuth, async (c) => {
   if (!isOwner && (!driverAccess?.[0] || (result.status !== "open" && !myQuote)))
     throw notFound();
 
-  const quoteCountRows = await db
-    .select({ n: count() })
-    .from(quote)
-    .where(eq(quote.requestId, result.id));
+  const now = new Date();
+  const [quoteCountRows, activeQuoteCountRows] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(quote)
+      .where(eq(quote.requestId, result.id)),
+    db
+      .select({ n: count() })
+      .from(quote)
+      .where(and(
+        eq(quote.requestId, result.id),
+        eq(quote.status, "pending"),
+        gt(quote.expiresAt, now),
+      )),
+  ]);
+  const quoteCount = quoteCountRows[0]?.n ?? 0;
+  const activeQuoteCount = activeQuoteCountRows[0]?.n ?? 0;
+  const rescueState = result.status !== "open"
+    ? null
+    : activeQuoteCount > 0
+      ? "offers_available"
+      : quoteCount > 0
+        ? "offers_expired"
+        : result.zeroQuoteNotifiedAt || result.createdAt <= new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          ? "needs_rescue"
+          : "waiting";
 
   // Exact address + coords are revealed only to the owner and the matched driver
   // (once their quote is accepted). Everyone else sees the masked zone.
@@ -423,16 +459,27 @@ requests.get("/:id", requireAuth, async (c) => {
     // Client phone is exchanged on job detail only, never on request detail.
     user: { ...result.user, phone: isOwner ? result.user.phone : null },
     myQuote,
-    quoteCount: quoteCountRows[0]?.n ?? 0,
+    quoteCount,
+    activeQuoteCount,
+    rescueState,
+    republishedFrom: result.originalRequest,
+    republishedAs: result.republishedRequests[0] ?? null,
+    zeroQuoteNotifiedAt: undefined,
+    expiryRemindNotifiedAt: undefined,
+    adminNoQuoteNotifiedAt: undefined,
+    adminExpiryNotifiedAt: undefined,
+    republishedFromId: undefined,
     // driverId used only for the reveal check above — not exposed.
     jobs: undefined,
+    originalRequest: undefined,
+    republishedRequests: undefined,
     job: activeJob
       ? { id: activeJob.id, status: activeJob.status, confirmedAt: activeJob.confirmedAt }
       : null,
   });
 });
 
-requests.get("/:id/quotes", requireAuth, async (c) => {
+requests.get("/:id/quotes", requireClient, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const requestId = c.req.param("id");
@@ -479,10 +526,9 @@ requests.get("/:id/quotes", requireAuth, async (c) => {
   return c.json({ count: quotes.length, quotes });
 });
 
-// Advisory fair-price band for a request. Same visibility as GET /:id: the owner,
-// or a driver while the request is open or one they personally quoted. Anyone
-// else gets 404 rather than leaking existence.
-requests.get("/:id/price-range", requireAuth, async (c) => {
+// Advisory fair-price band for a driver while the request is open or after they
+// quoted it. Anyone else gets 404 rather than leaking request details.
+requests.get("/:id/price-range", requireDriver, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const req = await db.query.request.findFirst({
@@ -490,19 +536,12 @@ requests.get("/:id/price-range", requireAuth, async (c) => {
   });
   if (!req) throw notFound();
 
-  if (req.userId !== user.id) {
-    const isDriver = !!(await db.query.driverProfile.findFirst({
-      where: eq(driverProfile.userId, user.id),
+  if (req.status !== "open") {
+    const myQuote = await db.query.quote.findFirst({
+      where: and(eq(quote.requestId, req.id), eq(quote.driverId, user.id)),
       columns: { id: true },
-    }));
-    if (!isDriver) throw notFound();
-    if (req.status !== "open") {
-      const myQuote = await db.query.quote.findFirst({
-        where: and(eq(quote.requestId, req.id), eq(quote.driverId, user.id)),
-        columns: { id: true },
-      });
-      if (!myQuote) throw notFound();
-    }
+    });
+    if (!myQuote) throw notFound();
   }
 
   const fair = fairPriceRange(req);
@@ -606,7 +645,7 @@ requests.post(
   }
 );
 
-requests.patch("/:id/cancel", requireAuth, async (c) => {
+requests.patch("/:id/cancel", requireClient, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
 
@@ -635,7 +674,38 @@ requests.patch("/:id/cancel", requireAuth, async (c) => {
   return c.json({ ok: true });
 });
 
-requests.patch("/:id/reopen", requireAuth, async (c) => {
+const republishRequestSchema = z.object({
+  scheduledAt: z.string().datetime(),
+  flexibleDate: z.boolean().default(false),
+});
+
+requests.post(
+  "/:id/republish",
+  requireClient,
+  zValidator("json", republishRequestSchema),
+  async (c) => {
+    const db = c.get("db");
+    const user = c.get("user")!;
+    const body = c.req.valid("json");
+    const scheduledAt = new Date(body.scheduledAt);
+    if (scheduledAt <= new Date()) {
+      throw badRequest("La nueva fecha debe estar en el futuro");
+    }
+
+    const republished = await republishRequest(
+      db,
+      user.id,
+      c.req.param("id"),
+      scheduledAt,
+      body.flexibleDate,
+    );
+
+    c.executionCtx.waitUntil(notifyAvailableDrivers(db, c.env, republished));
+    return c.json({ id: republished.id }, 201);
+  },
+);
+
+requests.patch("/:id/reopen", requireClient, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const requestId = c.req.param("id");
@@ -643,9 +713,18 @@ requests.patch("/:id/reopen", requireAuth, async (c) => {
   const req = await db.query.request.findFirst({
     where: and(eq(request.id, requestId), eq(request.userId, user.id)),
     columns: { id: true, status: true },
+    with: {
+      republishedRequests: {
+        columns: { id: true },
+        limit: 1,
+      },
+    },
   });
   if (!req) throw notFound();
   if (req.status !== "cancelled") throw conflict("Only cancelled requests can be reopened");
+  if (req.republishedRequests.length > 0) {
+    throw conflict("Republished requests cannot be reopened");
+  }
 
   const activeJob = await db.query.job.findFirst({
     where: and(eq(job.requestId, requestId), ne(job.status, "cancelled")),

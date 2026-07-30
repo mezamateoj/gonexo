@@ -16,6 +16,7 @@ import type { RequestBucket, RequestSort, RequestSummary, VolumeCategory } from 
 import {
   formatCLP,
   formatCompactDateTime,
+  requestRescueCue,
   requestStatusClasses,
   requestStatusLabels,
   shortAddress,
@@ -24,6 +25,7 @@ import {
 } from "@/lib/display"
 import { cn } from "@/lib/utils"
 import { RequestCard } from "@/components/requests/request-card"
+import { AttentionPanel } from "@/components/attention-panel"
 import { MyFletesToolbar } from "@/components/my-fletes-toolbar"
 import { TablePagination } from "@/components/table-pagination"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -169,11 +171,21 @@ function RequestsPage() {
       columnHelper.display({
         id: "status",
         header: "Estado",
-        cell: ({ row }) => (
-          <Badge variant="secondary" className={cn(requestStatusClasses[row.original.status])}>
-            {requestStatusLabels[row.original.status]}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const rescueCue = requestRescueCue(row.original)
+          return (
+            <div className="flex flex-col items-start gap-1">
+              <Badge variant="secondary" className={cn(requestStatusClasses[row.original.status])}>
+                {requestStatusLabels[row.original.status]}
+              </Badge>
+              {rescueCue && (
+                <span className="whitespace-nowrap text-[11px] font-medium text-amber-700">
+                  {rescueCue}
+                </span>
+              )}
+            </div>
+          )
+        },
       }),
       columnHelper.display({
         id: "route",
@@ -254,6 +266,8 @@ function RequestsPage() {
           Revisa ofertas, sigue tus fletes activos y consulta tu historial.
         </p>
       </div>
+
+      <AttentionPanel />
 
       <MyFletesToolbar
         bucket={{

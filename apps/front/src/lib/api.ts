@@ -1,4 +1,4 @@
-import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, RequestQuotesResponse, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriver, AdminDriverProfile, AdminUserDetail, DriverVerificationStatus } from "./types"
+import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, RequestQuotesResponse, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriver, AdminDriverProfile, AdminUserDetail, DriverVerificationStatus, AttentionOffersResponse, AttentionJobsResponse, AttentionVerificationResponse } from "./types"
 
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
@@ -95,6 +95,12 @@ export async function uploadDriverFile(file: File): Promise<{ key: string; url: 
 }
 
 export const api = {
+  attention: {
+    offers: () => apiFetch<AttentionOffersResponse>("/api/attention/offers"),
+    jobs: () => apiFetch<AttentionJobsResponse>("/api/attention/jobs"),
+    verification: () =>
+      apiFetch<AttentionVerificationResponse>("/api/attention/verification"),
+  },
   requests: {
     my: (query: MyRequestsQuery) => {
       const params = new URLSearchParams({ bucket: query.bucket, page: String(query.page) })
@@ -126,6 +132,11 @@ export const api = {
       apiFetch<{ ok: boolean }>(`/api/requests/${id}/cancel`, { method: "PATCH" }),
     reopen: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/requests/${id}/reopen`, { method: "PATCH" }),
+    republish: (id: string, body: { scheduledAt: string; flexibleDate: boolean }) =>
+      apiFetch<{ id: string }>(`/api/requests/${id}/republish`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   },
   quotes: {
     accept: (quoteId: string) =>
@@ -133,7 +144,7 @@ export const api = {
   },
   jobs: {
     my: (query: MyJobsQuery) => {
-      const params = new URLSearchParams({ role: query.role, bucket: query.bucket, page: String(query.page) })
+      const params = new URLSearchParams({ bucket: query.bucket, page: String(query.page) })
       if (query.q) params.set("q", query.q)
       if (query.volume?.length) params.set("volume", query.volume.join(","))
       if (query.sort && query.sort !== "recent") params.set("sort", query.sort)

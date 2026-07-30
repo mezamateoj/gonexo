@@ -18,10 +18,25 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   await next();
 });
 
-// Verifies the user has a driver profile and sets c.var.driverProfile.
+export const requireClient = createMiddleware<AppEnv>(async (c, next) => {
+  const user = c.get("user");
+  if (!user) throw unauthorized();
+  if (user.accountType !== "client") throw forbidden("Client account required");
+  await next();
+});
+
+export const requireDriverAccount = createMiddleware<AppEnv>(async (c, next) => {
+  const user = c.get("user");
+  if (!user) throw unauthorized();
+  if (user.accountType !== "driver") throw forbidden("Driver account required");
+  await next();
+});
+
+// Verifies the driver completed onboarding and sets c.var.driverProfile.
 export const requireDriver = createMiddleware<AppEnv>(async (c, next) => {
   const user = c.get("user");
   if (!user) throw unauthorized();
+  if (user.accountType !== "driver") throw forbidden("Driver account required");
 
   const db = c.get("db");
   const profile = await db.query.driverProfile.findFirst({

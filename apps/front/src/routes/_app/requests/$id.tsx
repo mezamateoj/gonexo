@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, CalendarDays, ChevronLeft, CircleAlert, TriangleAlert } from "lucide-react"
 import { api } from "@/lib/api"
@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { OffersSummaryCard } from "@/components/requests/offers-summary-card"
 import { RequestCancelledBanner } from "@/components/requests/request-cancelled-banner"
 import { RequestOverviewCard } from "@/components/requests/request-overview-card"
+import { RequestRescueCard } from "@/components/requests/request-rescue-card"
 
 export const Route = createFileRoute("/_app/requests/$id")({
   component: RequestDetailPage,
@@ -109,6 +110,14 @@ function RequestDetailPage() {
             <CalendarDays className="size-4" />
             {formatLongDateTime(request.scheduledAt)}
           </p>
+          {request.republishedFrom && (
+            <Button asChild variant="link" className="h-auto w-fit justify-start p-0 text-muted-foreground">
+              <Link to="/requests/$id" params={{ id: request.republishedFrom.id }}>
+                <ChevronLeft data-icon="inline-start" />
+                Ver publicación anterior
+              </Link>
+            </Button>
+          )}
         </header>
       )}
 
@@ -179,7 +188,11 @@ function RequestDetailPage() {
         </main>
 
         <aside className="flex min-w-0 flex-col gap-3 md:sticky md:top-6">
-          {request?.status === "cancelled" && <RequestCancelledBanner requestId={request.id} />}
+          {request?.status === "cancelled" && !request.republishedAs && (
+            <RequestCancelledBanner requestId={request.id} />
+          )}
+
+          {request && <RequestRescueCard request={request} />}
 
           {job && (
             <Card size="sm">

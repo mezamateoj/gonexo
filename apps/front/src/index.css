@@ -100,7 +100,7 @@
     --sidebar-ring: #0c8c5e;
 }
 
-[data-app-mode="driver"] {
+[data-account-type="driver"] {
     --sidebar: #121916;
     --sidebar-foreground: #AAB8B2;
     --sidebar-accent: #203129;

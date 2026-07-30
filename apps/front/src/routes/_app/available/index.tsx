@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { AvailableRequestCard } from "@/components/available/available-request-card"
+import { AttentionPanel } from "@/components/attention-panel"
 import { AvailableCardSkeleton } from "@/components/available/available-card-skeleton"
 import { AvailableFilters } from "@/components/available/available-filters"
 import { queryKeys } from "@/lib/query-keys"
@@ -395,6 +396,8 @@ function AvailablePage() {
           onReset={() => navigate({ replace: true, search: {} })}
         />
       </div>
+
+      <AttentionPanel className="mb-5" />
 
       {isError && (
         <Alert variant="destructive" className="mb-4">

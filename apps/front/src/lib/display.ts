@@ -4,6 +4,7 @@ import type {
   DriverDocumentKind,
   DriverVerificationStatus,
   JobStatus,
+  RequestSummary,
   VolumeCategory,
 } from "@/lib/types"
 
@@ -35,6 +36,16 @@ export const requestStatusClasses: Record<string, string> = {
   in_progress: "bg-accent text-primary",
   completed: "bg-muted text-muted-foreground",
   cancelled: "bg-[#FEF2F2] text-destructive",
+}
+
+export function requestRescueCue(request: RequestSummary) {
+  if (request.status !== "open") return null
+  if (request.quotes.some((quote) => quote.status === "pending")) return null
+  if (request.quotes.length > 0) return "Ofertas vencidas"
+  if (new Date(request.createdAt).getTime() <= Date.now() - 24 * 60 * 60 * 1000) {
+    return "Necesita nueva fecha"
+  }
+  return null
 }
 
 export const jobStatusLabels: Record<JobStatus, string> = {

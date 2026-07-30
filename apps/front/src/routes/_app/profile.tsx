@@ -6,6 +6,7 @@ import {
   CalendarDays,
   IdCard,
   Mail,
+  Package,
   Phone,
   ShieldCheck,
   Truck,
@@ -86,6 +87,7 @@ function initials(name: string) {
 function ProfilePage() {
   const { data: session } = useSession()
   const userId = session?.user.id
+  const isDriver = session?.user.accountType === "driver"
   const { data: user } = useQuery({
     queryKey: queryKeys.users.me(userId ?? "anonymous"),
     queryFn: api.users.me,
@@ -94,7 +96,7 @@ function ProfilePage() {
   const { data: profile } = useQuery({
     queryKey: queryKeys.drivers.me(userId ?? "anonymous"),
     queryFn: api.drivers.me,
-    enabled: !!userId,
+    enabled: !!userId && isDriver,
   })
 
   if (!user || !userId) return null
@@ -119,14 +121,18 @@ function ProfilePage() {
               <CardDescription className="truncate">{user.email}</CardDescription>
             </div>
           </div>
-          {profile && (
-            <CardAction>
+          <CardAction className="flex flex-wrap justify-end gap-2">
+            <Badge variant="secondary">
+              {isDriver ? <Truck data-icon="inline-start" /> : <Package data-icon="inline-start" />}
+              {isDriver ? "Transportista" : "Cliente"}
+            </Badge>
+            {profile && (
               <Badge variant={profile.isVerified ? "default" : "secondary"}>
                 <ShieldCheck data-icon="inline-start" />
                 {verificationLabel(profile)}
               </Badge>
-            </CardAction>
-          )}
+            )}
+          </CardAction>
         </CardHeader>
 
         <CardContent className="flex flex-col gap-8">
@@ -142,37 +148,41 @@ function ProfilePage() {
             />
           </SettingsSection>
 
-          <Separator />
+          {isDriver && (
+            <>
+              <Separator />
 
-          {profile ? (
-            <SettingsSection
-              title="Actividad de transportista"
-              description="Tu vehículo, presentación y documentos viven aquí, junto a tu cuenta."
-            >
-              <DriverSettings profile={profile} />
-            </SettingsSection>
-          ) : (
-            <SettingsSection
-              title="Actividad de transportista"
-              description="Activa esta opción si también quieres cotizar fletes."
-            >
-              <div className="flex flex-col items-start gap-3 rounded-lg bg-muted p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background text-primary ring-1 ring-foreground/10">
-                    <Truck className="size-5" />
+              {profile ? (
+                <SettingsSection
+                  title="Perfil de transportista"
+                  description="Tu vehículo, presentación y documentos de verificación."
+                >
+                  <DriverSettings profile={profile} />
+                </SettingsSection>
+              ) : (
+                <SettingsSection
+                  title="Perfil de transportista"
+                  description="Completa los datos necesarios para buscar y cotizar fletes."
+                >
+                  <div className="flex flex-col items-start gap-3 rounded-lg bg-muted p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background text-primary ring-1 ring-foreground/10">
+                        <Truck className="size-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Tu perfil todavía está incompleto</p>
+                        <p className="text-pretty text-sm text-muted-foreground">
+                          Registra tu vehículo para acceder a los fletes disponibles.
+                        </p>
+                      </div>
+                    </div>
+                    <Button asChild className="min-h-10 active:scale-[0.96] transition-transform">
+                      <Link to="/driver-onboarding">Completar perfil</Link>
+                    </Button>
                   </div>
-                  <div>
-                    <p className="font-medium">¿También transportas cargas?</p>
-                    <p className="text-pretty text-sm text-muted-foreground">
-                      Registra tu vehículo para buscar y cotizar fletes.
-                    </p>
-                  </div>
-                </div>
-                <Button asChild className="min-h-10 active:scale-[0.96] transition-transform">
-                  <Link to="/driver-onboarding">Activar perfil</Link>
-                </Button>
-              </div>
-            </SettingsSection>
+                </SettingsSection>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -337,6 +347,7 @@ function DriverSettings({ profile }: { profile: DriverProfile }) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.drivers.me(profile.userId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.users.me(profile.userId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.attention.all }),
       ])
       toast.success("Datos de transportista actualizados")
     },

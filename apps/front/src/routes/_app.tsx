@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate, Outlet, redirect, Link, useRouterState } from "@tanstack/react-router"
+import { createFileRoute, Outlet, redirect, Link, useRouterState } from "@tanstack/react-router"
 import { getSession } from "@/lib/auth-client"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
@@ -8,16 +8,28 @@ import {
 } from "@/components/ui/sidebar"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useAppMode } from "@/lib/app-mode"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const session = await getSession()
     if (!session.data) {
       throw redirect({ to: "/login" })
     }
+
+    const { accountType } = session.data.user
+    const isRequestsRoute = location.pathname.startsWith("/requests")
+    const isAvailableRoute = location.pathname.startsWith("/available")
+    const isJobsIndex = location.pathname === "/jobs" || location.pathname === "/jobs/"
+
+    if (accountType === "driver" && isRequestsRoute) {
+      throw redirect({ to: "/available" })
+    }
+    if (accountType === "client" && (isAvailableRoute || isJobsIndex)) {
+      throw redirect({ to: "/requests" })
+    }
+
+    return { session: session.data }
   },
   component: AppLayout,
 })
@@ -32,7 +44,7 @@ const CRUMBS: Record<string, string> = {
 
 function TopBar() {
   const { pathname } = useRouterState({ select: (s) => s.location })
-  const { mode } = useAppMode()
+  const { session } = Route.useRouteContext()
   const isWizard = pathname === "/requests/new"
 
   const currentLabel =
@@ -59,7 +71,7 @@ function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        {mode === "client" && (
+        {session.user.accountType === "client" && (
           <Button size="sm" asChild>
             <Link to="/requests/new" aria-label="Publicar flete">
               <Plus data-icon="inline-start" />
@@ -73,35 +85,10 @@ function TopBar() {
 }
 
 function AppLayout() {
-  const { mode, hasDriverProfile, hasSelectedMode, isPending } = useAppMode()
-
-  if (isPending) {
-    return (
-      <div className="flex h-svh bg-background">
-        <div className="hidden w-64 shrink-0 flex-col gap-4 border-r border-sidebar-border bg-sidebar p-4 md:flex">
-          <Skeleton className="h-8 w-28" />
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-8 w-4/5" />
-          <Skeleton className="h-8 w-3/5" />
-        </div>
-        <div className="flex flex-1 flex-col">
-          <div className="flex h-[52px] items-center border-b border-border px-4">
-            <Skeleton className="h-6 w-40" />
-          </div>
-          <div className="flex flex-1 items-start justify-center p-6">
-            <Skeleton className="h-40 w-full max-w-3xl" />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (hasDriverProfile && !hasSelectedMode) {
-    return <Navigate to="/choose-mode" replace />
-  }
+  const { session } = Route.useRouteContext()
 
   return (
-    <SidebarProvider data-app-mode={mode}>
+    <SidebarProvider data-account-type={session.user.accountType}>
       <AppSidebar />
       <SidebarInset className="min-w-0 bg-background">
         <TopBar />

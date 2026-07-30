@@ -6,7 +6,7 @@ import {
   onlyVerificationDocuments,
   sameVerificationDocuments,
 } from "../domain/driver-documents";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireDriverAccount } from "../middleware/auth";
 import { badRequest, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
 import { enrichVehicle } from "../ai/vehicle-enrichment";
@@ -31,7 +31,7 @@ import {
 
 const drivers = new Hono<AppEnv>();
 
-drivers.get("/me", requireAuth, async (c) => {
+drivers.get("/me", requireDriverAccount, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const profile = await db.query.driverProfile.findFirst({
@@ -43,7 +43,7 @@ drivers.get("/me", requireAuth, async (c) => {
 
 drivers.post(
   "/me",
-  requireAuth,
+  requireDriverAccount,
   zValidator("json", upsertDriverSchema),
   async (c) => {
     const db = c.get("db");
@@ -217,7 +217,7 @@ drivers.post(
   },
 );
 
-drivers.get("/me/documents", requireAuth, async (c) => {
+drivers.get("/me/documents", requireDriverAccount, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const profile = await db.query.driverProfile.findFirst({
@@ -235,7 +235,7 @@ drivers.get("/me/documents", requireAuth, async (c) => {
 
 drivers.put(
   "/me/documents",
-  requireAuth,
+  requireDriverAccount,
   zValidator("json", replaceDocumentsSchema),
   async (c) => {
     const db = c.get("db");
@@ -316,7 +316,7 @@ drivers.put(
   },
 );
 
-drivers.put("/me/photos", requireAuth, zValidator("json", replacePhotosSchema), async (c) => {
+drivers.put("/me/photos", requireDriverAccount, zValidator("json", replacePhotosSchema), async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
   const { photos } = c.req.valid("json");
@@ -335,7 +335,7 @@ drivers.put("/me/photos", requireAuth, zValidator("json", replacePhotosSchema), 
 
 drivers.post(
   "/enrich",
-  requireAuth,
+  requireDriverAccount,
   zValidator("json", enrichSchema),
   async (c) => {
     const user = c.get("user")!;

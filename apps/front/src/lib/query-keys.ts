@@ -1,6 +1,12 @@
 import type { AvailableQuery, MyJobsQuery, MyRequestsQuery } from "./types"
 
 export const queryKeys = {
+  attention: {
+    all: ["attention"] as const,
+    offers: (userId: string) => ["attention", "offers", userId] as const,
+    jobs: (userId: string) => ["attention", "jobs", userId] as const,
+    verification: (userId: string) => ["attention", "verification", userId] as const,
+  },
   users: {
     me: (userId: string) => ["users", "me", userId] as const,
   },
@@ -24,7 +30,7 @@ export const queryKeys = {
   jobs: {
     myAll: ["jobs", "my"] as const,
     my: (userId: string, query: MyJobsQuery) =>
-      ["jobs", "my", userId, query.role, query.bucket, query.page, query.q ?? "", query.volume ?? [], query.sort ?? "recent"] as const,
+      ["jobs", "my", userId, query.bucket, query.page, query.q ?? "", query.volume ?? [], query.sort ?? "recent"] as const,
     detail: (id: string) => ["jobs", id] as const,
   },
   admin: {

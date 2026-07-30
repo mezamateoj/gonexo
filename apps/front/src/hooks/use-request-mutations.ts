@@ -15,7 +15,9 @@ export function useAcceptQuote(requestId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
   })
 }
@@ -30,6 +32,7 @@ export function useCancelRequest(requestId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
   })
 }
@@ -43,6 +46,24 @@ export function useReopenRequest(requestId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
+    },
+  })
+}
+
+export function useRepublishRequest(requestId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: { scheduledAt: string; flexibleDate: boolean }) =>
+      api.requests.republish(requestId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
   })
 }
@@ -56,6 +77,7 @@ export function useSubmitQuote(requestId: string, onSuccess?: () => void) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
       toast.success("Oferta enviada", {
         description: "Te avisaremos cuando el cliente responda.",
       })
@@ -72,6 +94,7 @@ export function useAdvanceJobStatus(jobId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
     onError: (error) => {
       toast.error("No pudimos actualizar el estado", {
@@ -92,6 +115,8 @@ export function useCancelJob(jobId: string, requestId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.quotes(requestId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.requests.availableAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
   })
 }
@@ -104,6 +129,7 @@ export function useConfirmJob(jobId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
   })
 }
@@ -116,6 +142,7 @@ export function useSubmitReview(jobId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
   })
 }

@@ -9,9 +9,9 @@ import {
   verificationDocumentsSchema,
   type VerificationDocument,
 } from "../domain/driver-documents";
-import { documentReviewReadyEmail, sendEmail } from "../lib/email";
+import { documentReviewReadyEmail } from "../lib/email";
 import { upstreamError } from "../lib/errors";
-import { logger } from "../lib/logger";
+import { sendEmailToAdmins } from "./admin-notifications";
 
 const ANALYSIS_LEASE_MS = 5 * 60 * 1000;
 
@@ -143,16 +143,12 @@ export async function processDocumentReview(env: Bindings, reviewId: string) {
     .run();
   if (!completed.meta.changes) return;
 
-  if (!env.ADMIN_EMAIL) {
-    logger.warn("Document review is ready but ADMIN_EMAIL is not set: {reviewId}", { reviewId });
-    return;
-  }
-
-  await sendEmail(env, env.ADMIN_EMAIL, documentReviewReadyEmail({
+  const notifiedAdmins = await sendEmailToAdmins(db, env, documentReviewReadyEmail({
     driverName: review.accountName,
     driverProfileId: review.driverProfileId,
     frontendUrl: env.FRONTEND_URL,
   }));
+  if (notifiedAdmins === 0) return;
 
   await db
     .update(documentReview)

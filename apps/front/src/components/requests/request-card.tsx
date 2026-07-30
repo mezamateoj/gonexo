@@ -1,13 +1,21 @@
 import { Link } from "@tanstack/react-router"
 import { Package } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatCLP, formatCompactDateTime, requestStatusClasses, requestStatusLabels, volumeLabels } from "@/lib/display"
+import {
+  formatCLP,
+  formatCompactDateTime,
+  requestRescueCue,
+  requestStatusClasses,
+  requestStatusLabels,
+  volumeLabels,
+} from "@/lib/display"
 import type { RequestSummary } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
 export function RequestCard({ req }: { req: RequestSummary }) {
+  const rescueCue = requestRescueCue(req)
   const openQuotes = req.quotes.filter((q) => q.status === "pending")
   const pricedQuotes = req.quotes.filter((q) => q.status !== "cancelled" && q.status !== "expired")
   // Cheapest fixed offer gives the client a useful comparison at a glance.
@@ -24,10 +32,17 @@ export function RequestCard({ req }: { req: RequestSummary }) {
     <Link {...destination} className="block">
       <Card className="h-full transition-shadow hover:shadow-sm">
         <CardContent>
-          <div className="flex items-center justify-between">
-            <Badge variant="secondary" className={cn(requestStatusClasses[req.status])}>
-              {requestStatusLabels[req.status]}
-            </Badge>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary" className={cn(requestStatusClasses[req.status])}>
+                {requestStatusLabels[req.status]}
+              </Badge>
+              {rescueCue && (
+                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                  {rescueCue}
+                </Badge>
+              )}
+            </div>
             <span className="text-[13px] text-ink-faint">{formatCompactDateTime(req.scheduledAt)}</span>
           </div>
 

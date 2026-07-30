@@ -12,6 +12,11 @@ export const authClient = createAuthClient({
   plugins: [
     inferAdditionalFields({
       user: {
+        accountType: {
+          type: ["client", "driver"],
+          required: true,
+          input: true,
+        },
         phone: {
           type: "string",
           required: false,

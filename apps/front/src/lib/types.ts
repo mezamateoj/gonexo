@@ -15,6 +15,45 @@ export type JobStatus =
   | "cancelled"
 
 export type JobRole = "client" | "driver"
+export type AccountType = "client" | "driver"
+
+type AttentionJob = {
+  jobId: string
+  requestId: string
+  createdAt: string
+}
+
+export type ClientAttentionJob =
+  | AttentionJob & { type: "confirm_reception" }
+  | AttentionJob & { type: "review_job" }
+
+export type DriverAttentionJob =
+  | AttentionJob & { type: "start_job"; scheduledAt: string }
+  | AttentionJob & { type: "mark_arrived" }
+  | AttentionJob & { type: "complete_job" }
+  | AttentionJob & { type: "review_job" }
+
+export interface AttentionOffersResponse {
+  count: number
+  offers: {
+    requestId: string
+    quoteCount: number
+    lastOfferAt: string
+  }[]
+}
+
+export interface AttentionJobsResponse {
+  count: number
+  jobs: (ClientAttentionJob | DriverAttentionJob)[]
+}
+
+export interface AttentionVerificationResponse {
+  verification: {
+    type: "verification_changes_requested"
+    note: string
+    createdAt: string
+  } | null
+}
 
 export type JobStatusUpdate =
   | { status: "on_the_way" | "arrived" }
@@ -42,6 +81,7 @@ export interface CurrentUser {
   email: string
   image: string | null
   phone: string | null
+  accountType: AccountType
 }
 
 export interface DriverProfile {
@@ -160,6 +200,7 @@ export interface AdminUserDetail {
     phone: string | null
     image: string | null
     role: string
+    accountType: AccountType
     banned: boolean | null
     banReason: string | null
     banExpires: string | null
@@ -276,6 +317,12 @@ export interface RequestQuotesResponse {
   quotes: QuoteWithDriver[]
 }
 
+export type RequestRescueState =
+  | "waiting"
+  | "offers_available"
+  | "offers_expired"
+  | "needs_rescue"
+
 export interface MyQuote {
   id: string
   price: number
@@ -331,6 +378,10 @@ export interface RequestDetail {
   user: { id: string; name: string; image: string | null; phone: string | null }
   myQuote: MyQuote | null
   quoteCount: number
+  activeQuoteCount: number
+  rescueState: RequestRescueState | null
+  republishedFrom: { id: string } | null
+  republishedAs: { id: string; scheduledAt: string } | null
   job: { id: string; status: JobStatus; confirmedAt: string | null } | null
 }
 
@@ -470,7 +521,6 @@ export interface MyRequestsQuery {
 }
 
 export interface MyJobsQuery {
-  role: JobRole
   bucket: JobBucket
   page: number
   q?: string

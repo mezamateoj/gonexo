@@ -76,6 +76,9 @@
         "BETTER_AUTH_URL": "https://gonexo-back-staging.mezamateoj.workers.dev",
         "FRONTEND_URL": "https://gonexo-front-staging.mezamateoj.workers.dev",
       },
+      "triggers": {
+        "crons": ["0 * * * *"],
+      },
       "r2_buckets": [
         {
           "binding": "BUCKET",

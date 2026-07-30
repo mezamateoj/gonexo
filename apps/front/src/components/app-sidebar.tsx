@@ -8,6 +8,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -31,15 +32,14 @@ import {
   LogOut,
   ChevronsUpDown,
   PanelLeftClose,
-  User,
   Users,
   ShieldCheck,
 } from "lucide-react"
 import { signOut, useSession } from "@/lib/auth-client"
-import { useAppMode } from "@/lib/app-mode"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { Badge } from "@/components/ui/badge"
+import { useAttentionQueries } from "@/hooks/use-attention-queries"
 
 const CLIENT_NAV = [
   { label: "Publicar flete", icon: CirclePlus, to: "/requests/new" },
@@ -61,11 +61,13 @@ function NavItem({
   icon: Icon,
   to,
   isActive,
+  badge,
 }: {
   label: string
   icon: React.ComponentType<{ className?: string }>
   to: string
   isActive: boolean
+  badge?: number
 }) {
   const { isMobile, setOpenMobile } = useSidebar()
 
@@ -77,6 +79,7 @@ function NavItem({
           <span>{label}</span>
         </Link>
       </SidebarMenuButton>
+      {!!badge && <SidebarMenuBadge>{badge}</SidebarMenuBadge>}
     </SidebarMenuItem>
   )
 }
@@ -84,6 +87,8 @@ function NavItem({
 export function AppSidebar() {
   const { data: session } = useSession()
   const userId = session?.user.id
+  const accountType = session?.user.accountType
+  const attention = useAttentionQueries(accountType, userId)
 
   const { data: currentUser } = useQuery({
     queryKey: queryKeys.users.me(userId ?? "anonymous"),
@@ -94,7 +99,6 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { toggleSidebar } = useSidebar()
-  const { mode, setMode, clearMode, hasDriverProfile } = useAppMode()
 
   const userName = currentUser?.name ?? session?.user.name
   const userEmail = currentUser?.email ?? session?.user.email
@@ -104,11 +108,10 @@ export function AppSidebar() {
 
   async function handleSignOut() {
     // signOut clears the Better Auth session cookie and the useSession store.
-    // Drop account-scoped queries and the current session's mode selection too.
+    // Drop account-scoped queries before returning to the public app.
     await signOut({
       fetchOptions: {
         onSuccess: () => {
-          clearMode()
           queryClient.clear()
           navigate({ to: "/login" })
         },
@@ -118,34 +121,32 @@ export function AppSidebar() {
 
   const { pathname } = useRouterState({ select: (s) => s.location })
 
-  const isDriver = mode === "driver"
+  const isDriver = session?.user.accountType === "driver"
   const isAdmin = session?.user.role === "admin"
   const nav = isDriver ? DRIVER_NAV : CLIENT_NAV
+  const home = isDriver ? "/available" : "/requests"
+  const attentionCount = isDriver
+    ? attention.jobs.data?.count ?? 0
+    : (attention.offers.data?.count ?? 0) + (attention.jobs.data?.count ?? 0)
+  const attentionNav = isDriver ? "/jobs" : "/requests"
 
   // Pick the single best match: the nav item whose `to` is the longest prefix of
   // the current path. This keeps "Mis fletes" (/requests) from lighting up on
   // /requests/new, where "Publicar flete" (/requests/new) is the more specific match.
   const candidates = [
     ...nav.map((i) => i.to),
-    "/driver-onboarding",
     ...(isAdmin ? ADMIN_NAV.map((i) => i.to) : []),
   ]
   const matches = candidates.filter(
-    (to) => pathname === to || (to !== "/" && pathname.startsWith(to + "/")),
+    (to) => pathname === to || pathname.startsWith(to + "/"),
   )
   const activeTo = matches.reduce((best, to) => (to.length > best.length ? to : best), "")
-
-  function switchMode() {
-    const nextMode = isDriver ? "client" : "driver"
-    setMode(nextMode)
-    navigate({ to: nextMode === "driver" ? "/available" : "/requests" })
-  }
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="h-14 border-b border-sidebar-border px-3">
         <div className="flex items-center justify-between">
-          <Link to="/requests">
+          <Link to={home}>
             <GonexoLogo size="xs" wordmarkClassName="group-data-[collapsible=icon]:hidden text-sidebar-accent-foreground" />
           </Link>
           <button
@@ -172,26 +173,18 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarMenu>
             {nav.map((item) => (
-              <NavItem key={item.to} {...item} isActive={item.to === activeTo} />
+              <NavItem
+                key={item.to}
+                {...item}
+                isActive={item.to === activeTo}
+                badge={item.to === attentionNav ? attentionCount : undefined}
+              />
             ))}
           </SidebarMenu>
         </SidebarGroup>
 
-        {!hasDriverProfile && (
-          <SidebarGroup className="mt-auto">
-            <SidebarMenu>
-              <NavItem
-                label="Conviértete en transportista"
-                icon={Truck}
-                to="/driver-onboarding"
-                isActive={activeTo === "/driver-onboarding"}
-              />
-            </SidebarMenu>
-          </SidebarGroup>
-        )}
-
         {isAdmin && (
-          <SidebarGroup className={hasDriverProfile ? "mt-auto" : undefined}>
+          <SidebarGroup className="mt-auto">
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarMenu>
               {ADMIN_NAV.map((item) => (
@@ -235,12 +228,6 @@ export function AppSidebar() {
                       Configuración
                     </Link>
                   </DropdownMenuItem>
-                  {hasDriverProfile && (
-                    <DropdownMenuItem onClick={switchMode}>
-                      {isDriver ? <User /> : <Truck />}
-                      Cambiar a modo {isDriver ? "cliente" : "transportista"}
-                    </DropdownMenuItem>
-                  )}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>

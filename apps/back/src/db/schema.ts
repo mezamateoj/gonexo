@@ -1,5 +1,15 @@
 import { relations, sql } from "drizzle-orm";
-import { sqliteTable, text, integer, real, index, uniqueIndex, check } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  integer,
+  real,
+  index,
+  uniqueIndex,
+  check,
+  type AnySQLiteColumn,
+} from "drizzle-orm/sqlite-core";
+import { accountTypes } from "../domain/accounts";
 import { driverDocumentKinds } from "../domain/driver-documents";
 
 export const user = sqliteTable(
@@ -13,6 +23,9 @@ export const user = sqliteTable(
       .notNull(),
     image: text("image"),
     phone: text("phone"),
+    accountType: text("account_type", { enum: accountTypes })
+      .default("client")
+      .notNull(),
     // Better Auth admin plugin fields (added manually — never `auth:generate`).
     role: text("role").default("user").notNull(),
     banned: integer("banned", { mode: "boolean" }),
@@ -26,7 +39,10 @@ export const user = sqliteTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [uniqueIndex("user_phone_unique").on(table.phone)],
+  (table) => [
+    uniqueIndex("user_phone_unique").on(table.phone),
+    check("user_account_type_check", sql`${table.accountType} in ('client', 'driver')`),
+  ],
 );
 
 export const session = sqliteTable(
@@ -127,8 +143,8 @@ export const accountRelations = relations(account, ({ one }) => ({
 }));
 
 // ─── Driver Profile ───────────────────────────────────────────────────────────
-// A user becomes a driver by creating a profile. One user can be both
-// a customer and a driver — role is inferred from whether this row exists.
+// Driver accounts create this profile during onboarding. Account identity lives
+// on user.accountType; this row contains the transport business details.
 
 export const driverProfile = sqliteTable(
   "driver_profile",
@@ -266,6 +282,9 @@ export const request = sqliteTable(
     status: text("status").notNull().default("open"),
     // 'open' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'
 
+    republishedFromId: text("republished_from_id")
+      .references((): AnySQLiteColumn => request.id, { onDelete: "set null" }),
+
     // Origin
     originAddress: text("origin_address").notNull(),
     originLat: real("origin_lat").notNull(),
@@ -312,6 +331,8 @@ export const request = sqliteTable(
 
     zeroQuoteNotifiedAt: integer("zero_quote_notified_at", { mode: "timestamp_ms" }),
     expiryRemindNotifiedAt: integer("expiry_remind_notified_at", { mode: "timestamp_ms" }),
+    adminNoQuoteNotifiedAt: integer("admin_no_quote_notified_at", { mode: "timestamp_ms" }),
+    adminExpiryNotifiedAt: integer("admin_expiry_notified_at", { mode: "timestamp_ms" }),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -326,12 +347,21 @@ export const request = sqliteTable(
     index("request_status_scheduledAt_idx").on(t.status, t.scheduledAt),
     index("request_status_createdAt_idx").on(t.status, t.createdAt),
     index("request_status_routeDistanceM_idx").on(t.status, t.routeDistanceM),
+    uniqueIndex("request_republishedFromId_unique").on(t.republishedFromId),
     check("request_status_check", sql`${t.status} in ('open', 'accepted', 'in_progress', 'completed', 'cancelled')`),
   ],
 );
 
 export const requestRelations = relations(request, ({ one, many }) => ({
   user: one(user, { fields: [request.userId], references: [user.id] }),
+  originalRequest: one(request, {
+    fields: [request.republishedFromId],
+    references: [request.id],
+    relationName: "requestRepublication",
+  }),
+  republishedRequests: many(request, {
+    relationName: "requestRepublication",
+  }),
   photos: many(requestPhoto),
   quotes: many(quote),
   jobs: many(job),

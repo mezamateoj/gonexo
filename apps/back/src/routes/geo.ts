@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { badRequest, upstreamError } from "../lib/errors";
-import { requireAuth } from "../middleware/auth";
+import { requireClient } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
 import { enforceRateLimit } from "../lib/rate-limit";
 
@@ -11,7 +11,7 @@ const MAPBOX_RETRIEVE_URL =
 const geo = new Hono<AppEnv>();
 
 // GET /api/geo/suggest?q=...&session=...
-geo.get("/suggest", requireAuth, async (c) => {
+geo.get("/suggest", requireClient, async (c) => {
   await enforceRateLimit(
     c.env.GEO_RATE_LIMITER,
     `${c.get("user")!.id}:suggest`,
@@ -41,7 +41,7 @@ geo.get("/suggest", requireAuth, async (c) => {
 });
 
 // GET /api/geo/retrieve?id=...&session=...
-geo.get("/retrieve", requireAuth, async (c) => {
+geo.get("/retrieve", requireClient, async (c) => {
   await enforceRateLimit(
     c.env.GEO_RATE_LIMITER,
     `${c.get("user")!.id}:retrieve`,
