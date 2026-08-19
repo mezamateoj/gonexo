@@ -74,7 +74,7 @@
       "vars": {
         "ENVIRONMENT": "staging",
         "BETTER_AUTH_URL": "https://gonexo-back-staging.mezamateoj.workers.dev",
-        "FRONTEND_URL": "https://gonexo-front-staging.mezamateoj.workers.dev",
+        "FRONTEND_URL": "https://staging.cargup.cl",
       },
       "triggers": {
         "crons": ["0 * * * *"],
