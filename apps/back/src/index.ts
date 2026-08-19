@@ -48,6 +48,7 @@ configureSync({
 });
 
 const app = new Hono<AppEnv>();
+const CARGUP_ORIGIN = "https://cargup.cl";
 const signUpPrecheckSchema = z.object({
   accountType: z.enum(accountTypes),
   phone: z.string().optional(),
@@ -56,6 +57,7 @@ const signUpPrecheckSchema = z.object({
 app.use("*", (c, next) => {
   const allowedOrigins = [
     ...(c.env.ENVIRONMENT === "local" ? ["http://localhost:5173"] : []),
+    CARGUP_ORIGIN,
     c.env.FRONTEND_URL,
   ];
 

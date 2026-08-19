@@ -8,7 +8,10 @@ import { normalizePhone } from "./normalizers";
 import type { Db } from "../db";
 
 const configuredFrontendOrigin = process.env.FRONTEND_URL;
-const trustedOrigins = configuredFrontendOrigin ? [configuredFrontendOrigin] : [];
+const trustedOrigins = [
+  "https://cargup.cl",
+  ...(configuredFrontendOrigin ? [configuredFrontendOrigin] : []),
+];
 
 export const createAuth = (db?: Db) =>
   betterAuth({
