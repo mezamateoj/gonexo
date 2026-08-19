@@ -88,6 +88,11 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
       status: true,
       cancelledAt: true,
     },
+    with: {
+      user: { columns: { email: true, name: true } },
+      driver: { columns: { email: true, name: true } },
+      request: { columns: { originAddress: true, destAddress: true } },
+    },
   });
   if (!j) throw notFound("Job not found");
 
@@ -157,6 +162,13 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
     requestId: j.requestId,
     requestStatus,
   });
+
+  return {
+    cancelledBy: actorRole,
+    recipient: actorRole === "driver" ? j.user : j.driver,
+    request: j.request,
+    requestId: j.requestId,
+  };
 }
 
 async function releaseCompletedJob(

@@ -1,3 +1,3 @@
 import { getLogger } from "@logtape/logtape"
 
-export const logger = getLogger(["gonexo"])
+export const logger = getLogger(["cargup"])

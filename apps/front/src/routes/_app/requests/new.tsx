@@ -28,7 +28,7 @@ import { Calendar as CalendarUI } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { AddressStep } from "@/components/requests/new/address-step"
 import { PhotoUploader } from "@/components/requests/new/photo-uploader"
-import { GonexoLogo } from "@/components/gonexo-logo"
+import { CargUpLogo } from "@/components/cargup-logo"
 import type { Draft, Step } from "@/components/requests/new/types"
 import type { VolumeCategory } from "@/lib/types"
 
@@ -336,7 +336,7 @@ function NewRequestPage() {
               <ArrowLeft className="size-5" />
             </button>
           ) : (
-            <GonexoLogo size="sm" />
+            <CargUpLogo size="sm" />
           )}
         </div>
         <span className="flex-1 text-center text-[13px] text-muted-foreground">Paso {step} de 6</span>

@@ -15,8 +15,8 @@ import { queryKeys } from "@/lib/query-keys"
 import type { RequestBucket, RequestSort, RequestSummary, VolumeCategory } from "@/lib/types"
 import {
   formatCLP,
-  formatCLPRange,
   formatCompactDateTime,
+  requestRescueCue,
   requestStatusClasses,
   requestStatusLabels,
   shortAddress,
@@ -25,6 +25,7 @@ import {
 } from "@/lib/display"
 import { cn } from "@/lib/utils"
 import { RequestCard } from "@/components/requests/request-card"
+import { AttentionPanel } from "@/components/attention-panel"
 import { MyFletesToolbar } from "@/components/my-fletes-toolbar"
 import { TablePagination } from "@/components/table-pagination"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -92,8 +93,11 @@ const EMPTY_STATES: Record<
 
 // Row → job detail once a quote is accepted, otherwise the request itself.
 function rowDestination(req: RequestSummary) {
+  const hasPendingOffers = req.quotes.some((quote) => quote.status === "pending")
   return req.job
     ? { to: "/jobs/$id" as const, params: { id: req.job.id } }
+    : hasPendingOffers
+      ? { to: "/requests/$id/offers" as const, params: { id: req.id } }
     : { to: "/requests/$id" as const, params: { id: req.id } }
 }
 
@@ -127,9 +131,7 @@ function RequestValueCell({ req }: { req: RequestSummary }) {
   if (shown) {
     return (
       <span className="tabular-nums font-semibold text-foreground">
-        {shown.priceMin != null && shown.priceMax != null
-          ? formatCLPRange(shown.priceMin, shown.priceMax)
-          : formatCLP(shown.price)}
+        {formatCLP(shown.price)}
       </span>
     )
   }
@@ -169,11 +171,21 @@ function RequestsPage() {
       columnHelper.display({
         id: "status",
         header: "Estado",
-        cell: ({ row }) => (
-          <Badge variant="secondary" className={cn(requestStatusClasses[row.original.status])}>
-            {requestStatusLabels[row.original.status]}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const rescueCue = requestRescueCue(row.original)
+          return (
+            <div className="flex flex-col items-start gap-1">
+              <Badge variant="secondary" className={cn(requestStatusClasses[row.original.status])}>
+                {requestStatusLabels[row.original.status]}
+              </Badge>
+              {rescueCue && (
+                <span className="whitespace-nowrap text-[11px] font-medium text-amber-700">
+                  {rescueCue}
+                </span>
+              )}
+            </div>
+          )
+        },
       }),
       columnHelper.display({
         id: "route",
@@ -254,6 +266,8 @@ function RequestsPage() {
           Revisa ofertas, sigue tus fletes activos y consulta tu historial.
         </p>
       </div>
+
+      <AttentionPanel />
 
       <MyFletesToolbar
         bucket={{

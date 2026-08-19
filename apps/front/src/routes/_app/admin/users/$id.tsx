@@ -98,10 +98,13 @@ function UserProfile({ detail }: { detail: AdminUserDetail }) {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-balance font-heading text-2xl font-semibold">{user.name}</h1>
             {user.role === "admin" && <Badge>Admin</Badge>}
-            {driver && (
-              <Badge variant={driver.isVerified ? "default" : "secondary"}>
-                {driver.isVerified && <ShieldCheck data-icon="inline-start" />}
-                Transportista
+            <Badge variant="secondary">
+              {user.accountType === "driver" ? "Transportista" : "Cliente"}
+            </Badge>
+            {driver?.isVerified && (
+              <Badge>
+                <ShieldCheck data-icon="inline-start" />
+                Verificado
               </Badge>
             )}
             {user.banned && <Badge variant="destructive"><Ban data-icon="inline-start" />Suspendido</Badge>}
@@ -126,7 +129,7 @@ function UserProfile({ detail }: { detail: AdminUserDetail }) {
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
         <div className="flex min-w-0 flex-col gap-4">
-          <ActivityStats stats={stats} isDriver={driver !== null} />
+          <ActivityStats stats={stats} isDriver={user.accountType === "driver"} />
 
           <Card>
             <CardHeader>

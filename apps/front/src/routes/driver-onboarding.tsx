@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
 import {
   CarFront,
   Check,
@@ -19,7 +19,7 @@ import {
   splitDocumentPayloads,
   type DriverDocumentUpload,
 } from "@/components/drivers/document-uploads"
-import { GonexoLogo } from "@/components/gonexo-logo"
+import { CargUpLogo } from "@/components/cargup-logo"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -41,12 +41,18 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { api, uploadDriverFile } from "@/lib/api"
-import { useAppMode } from "@/lib/app-mode"
-import { useSession } from "@/lib/auth-client"
+import { getSession, useSession } from "@/lib/auth-client"
 import { queryKeys } from "@/lib/query-keys"
 import type { DriverDocumentKind, VehicleType } from "@/lib/types"
 
 export const Route = createFileRoute("/driver-onboarding")({
+  beforeLoad: async () => {
+    const session = await getSession()
+    if (!session.data) throw redirect({ to: "/login" })
+    if (session.data.user.accountType !== "driver") {
+      throw redirect({ to: "/requests" })
+    }
+  },
   component: DriverOnboardingPage,
 })
 
@@ -111,7 +117,6 @@ function DriverOnboardingPage() {
 function DriverOnboardingForm({ userId, accountPhone }: { userId: string; accountPhone: string }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { setMode } = useAppMode()
   const [uploading, setUploading] = useState<DriverDocumentKind | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -140,7 +145,6 @@ function DriverOnboardingForm({ userId, accountPhone }: { userId: string; accoun
 
         const profile = await api.drivers.me()
         if (profile) queryClient.setQueryData(queryKeys.drivers.me(userId), profile)
-        setMode("driver")
         navigate({ to: "/available" })
       } catch (error) {
         setSubmitError(error instanceof Error ? error.message : "No se pudo activar tu perfil")
@@ -172,7 +176,7 @@ function DriverOnboardingForm({ userId, accountPhone }: { userId: string; accoun
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <GonexoLogo size="xs" />
+          <CargUpLogo size="xs" />
           <Badge variant="secondary"><ShieldCheck data-icon="inline-start" />Perfil de transportista</Badge>
         </div>
       </header>
@@ -335,10 +339,7 @@ function DriverOnboardingForm({ userId, accountPhone }: { userId: string; accoun
               </Alert>
             )}
 
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button asChild type="button" variant="ghost" className="min-h-10">
-                <Link to="/requests" onClick={() => setMode("client")}>Seguir como cliente</Link>
-              </Button>
+            <div className="flex justify-end">
               <form.Subscribe selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}>
                 {({ canSubmit, isSubmitting }) => (
                   <Button

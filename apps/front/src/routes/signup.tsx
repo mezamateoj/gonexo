@@ -3,20 +3,26 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { signUp, useSession } from "@/lib/auth-client";
-import { useAppMode, type AppMode } from "@/lib/app-mode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { cn } from "@/lib/utils";
 import { ArrowLeft, Check, Eye, EyeOff, Package, Truck } from "lucide-react";
-import { GonexoLogo } from "@/components/gonexo-logo";
+import { CargUpLogo } from "@/components/cargup-logo";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
+
+const accountTypeSchema = z.enum(["client", "driver"]);
 
 export const Route = createFileRoute("/signup")({
+  validateSearch: z.object({
+    accountType: accountTypeSchema.catch("client").default("client"),
+  }),
   component: SignupPage,
 });
 
@@ -31,6 +37,7 @@ const phoneSchema = z
 const passwordSchema = z.string().min(8, "Mínimo 8 caracteres");
 
 const formSchema = z.object({
+  accountType: accountTypeSchema,
   firstName: firstNameSchema,
   lastName: lastNameSchema,
   email: emailSchema,
@@ -49,7 +56,7 @@ function SignupMobileHeader() {
   return (
     <div className="flex flex-col gap-3 bg-panel px-6 pb-7 pt-10 md:hidden">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
+        <CargUpLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
       <h2 className="text-[28px] font-bold leading-[1.12] tracking-[-0.8px] text-surface">
         El marketplace
@@ -68,7 +75,7 @@ function SignupLeftPanel() {
   return (
     <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-panel px-12 py-10 md:flex">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
+        <CargUpLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
 
       <div className="flex flex-col gap-7">
@@ -106,7 +113,7 @@ function SignupLeftPanel() {
               Macarena S.
             </span>
             <span className="text-[12px] text-ink-muted">
-              Cliente gonexo, Santiago
+              Cliente CargUp, Santiago
             </span>
           </div>
         </div>
@@ -117,9 +124,8 @@ function SignupLeftPanel() {
 
 function SignupPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const { data: session } = useSession();
-  const { setMode } = useAppMode();
-  const [intent, setIntent] = useState<AppMode>("client");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptsTerms, setAcceptsTerms] = useState(false);
@@ -128,12 +134,15 @@ function SignupPage() {
 
   useEffect(() => {
     if (session && !handlingSubmit.current) {
-      navigate({ to: "/requests" });
+      navigate({
+        to: session.user.accountType === "driver" ? "/available" : "/requests",
+      });
     }
   }, [session, navigate]);
 
   const form = useForm({
     defaultValues: {
+      accountType: search.accountType,
       firstName: "",
       lastName: "",
       email: "",
@@ -153,6 +162,7 @@ function SignupPage() {
         email: value.email,
         password: value.password,
         phone: value.phone,
+        accountType: value.accountType,
       });
       if (error) {
         handlingSubmit.current = false;
@@ -161,12 +171,10 @@ function SignupPage() {
         );
         return;
       }
-      if (intent === "driver") {
-        setMode("driver");
+      if (value.accountType === "driver") {
         navigate({ to: "/driver-onboarding" });
         return;
       }
-      setMode("client");
       navigate({ to: "/requests" });
     },
   });
@@ -207,56 +215,6 @@ function SignupPage() {
             </div>
           </div>
 
-          {/* Intent cards */}
-          <div className="flex flex-col gap-[10px]">
-            <p className="text-[13px] font-medium text-foreground">
-              ¿Qué quieres hacer primero?
-            </p>
-            <div className="grid grid-cols-2 gap-2.5">
-              {(
-                [
-                  {
-                    key: "client" as AppMode,
-                    icon: Package,
-                    label: "Enviar algo",
-                    description:
-                      "Necesitas mover cosas y quieres recibir ofertas",
-                  },
-                  {
-                    key: "driver" as AppMode,
-                    icon: Truck,
-                    label: "Trabajar transportando",
-                    description: "Ofreces servicios de transporte y mudanzas",
-                  },
-                ] as const
-              ).map(({ key, icon: Icon, label, description }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setIntent(key)}
-                  className={cn(
-                    "flex flex-col gap-2.5 rounded-[10px] border p-3 text-left transition-all",
-                    intent === key
-                      ? "border-primary ring-1 ring-primary"
-                      : "border-border hover:border-primary/40",
-                  )}
-                >
-                  <div className="flex size-8 items-center justify-center rounded-full bg-primary/8">
-                    <Icon className="size-[15px] text-primary" />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-semibold leading-[1.3] text-foreground">
-                      {label}
-                    </span>
-                    <span className="text-[11px] leading-[1.45] text-muted-foreground">
-                      {description}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -265,6 +223,49 @@ function SignupPage() {
             className="flex flex-col gap-5"
           >
             <FieldGroup>
+              <form.Field name="accountType">
+                {(field) => (
+                  <Field>
+                    <FieldLabel>¿Cómo usarás CargUp?</FieldLabel>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      value={field.state.value}
+                      onValueChange={(value) => {
+                        const accountType = accountTypeSchema.safeParse(value);
+                        if (accountType.success) field.handleChange(accountType.data);
+                      }}
+                      className="grid w-full grid-cols-2 gap-2.5"
+                      aria-label="Tipo de cuenta"
+                    >
+                      <ToggleGroupItem
+                        value="client"
+                        className="min-h-24 flex-col items-start px-3 text-left whitespace-normal"
+                      >
+                        <Package />
+                        <span className="font-semibold">Necesito un flete</span>
+                        <span className="text-pretty text-xs font-normal text-muted-foreground">
+                          Publica solicitudes, compara ofertas y elige transportista.
+                        </span>
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="driver"
+                        className="min-h-24 flex-col items-start px-3 text-left whitespace-normal"
+                      >
+                        <Truck />
+                        <span className="font-semibold">Soy transportista</span>
+                        <span className="text-pretty text-xs font-normal text-muted-foreground">
+                          Registra tu vehículo, busca fletes y envía ofertas.
+                        </span>
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    <FieldDescription className="text-pretty">
+                      Cada cuenta tiene un solo tipo y no se puede cambiar después.
+                    </FieldDescription>
+                  </Field>
+                )}
+              </form.Field>
+
               {/* Nombre + Apellido — stacked on mobile, side-by-side on desktop */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-3">
                 <form.Field

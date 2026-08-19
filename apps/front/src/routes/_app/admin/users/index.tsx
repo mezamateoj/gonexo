@@ -99,6 +99,15 @@ const columns = [
         ? <Badge>Admin</Badge>
         : <Badge variant="secondary">Usuario</Badge>,
   }),
+  columnHelper.accessor("accountType", {
+    id: "accountType",
+    header: "Cuenta",
+    cell: ({ row }) => (
+      <Badge variant="outline">
+        {row.original.accountType === "driver" ? "Transportista" : "Cliente"}
+      </Badge>
+    ),
+  }),
   columnHelper.accessor("banned", {
     id: "status",
     header: "Estado",

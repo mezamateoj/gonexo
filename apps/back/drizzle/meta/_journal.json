@@ -64,6 +64,27 @@
       "when": 1784226198961,
       "tag": "0008_whole_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784682089582,
+      "tag": "0009_futuristic_the_initiative",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784936336959,
+      "tag": "0010_greedy_shaman",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1785247397169,
+      "tag": "0011_slimy_thunderball",
+      "breakpoints": true
     }
   ]
 }
