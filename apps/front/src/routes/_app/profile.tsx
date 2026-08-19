@@ -138,7 +138,7 @@ function ProfilePage() {
         <CardContent className="flex flex-col gap-8">
           <SettingsSection
             title="Cuenta"
-            description="Los datos con los que te identificas en Gonexo."
+            description="Los datos con los que te identificas en CargUp."
           >
             <AccountSettings
               userId={userId}

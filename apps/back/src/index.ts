@@ -42,7 +42,7 @@ configureSync({
     }),
   },
   loggers: [
-    { category: ["gonexo"], sinks: ["console"], lowestLevel: "debug" },
+    { category: ["cargup"], sinks: ["console"], lowestLevel: "debug" },
     { category: ["logtape", "meta"], sinks: ["console"], lowestLevel: "warning" },
   ],
 });
@@ -92,7 +92,7 @@ app.onError((err, c) => {
 });
 
 app.use("*", honoLogger({
-  category: ["gonexo", "http"],
+  category: ["cargup", "http"],
   format: "structured-combined",
   skip: (c) => c.req.path === "/",
 }));

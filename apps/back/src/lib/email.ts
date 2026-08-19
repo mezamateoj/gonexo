@@ -61,17 +61,17 @@ function escapeHtml(value: string) {
 }
 
 function layout(body: string) {
-  return `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#121715">
-  <p style="font-weight:700;font-size:20px;color:#0c8c5e;margin:0 0 20px">gonexo</p>
+  return `<div style="font-family:Montserrat,system-ui,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1e1e1e">
+  <p style="font-weight:700;font-size:20px;color:#1e1e1e;margin:0 0 20px">Carg<span style="color:#e51920">Up</span></p>
   ${body}
   <p style="font-size:12px;color:#969e9b;margin-top:28px;border-top:1px solid #e9e7e3;padding-top:12px">
-    Coordina todo por la plataforma gonexo. Este correo es automático, no respondas aquí.
+    Coordina todo por CargUp. Este correo es automático, no respondas aquí.
   </p>
 </div>`;
 }
 
 function button(href: string, label: string) {
-  return `<a href="${escapeHtml(href)}" style="display:inline-block;background:#0c8c5e;color:#ffffff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:16px">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" style="display:inline-block;background:#e51920;color:#ffffff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:16px">${escapeHtml(label)}</a>`;
 }
 
 function routeLine(origin: string, dest: string) {
@@ -285,7 +285,7 @@ export function clientNoOfferRescueEmail(p: {
     html: layout(`
       <h1 style="font-size:18px;margin:0">Hola ${escapeHtml(p.clientName)}, seguimos buscando opciones</h1>
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
-        Tu solicitud todavía no tiene ofertas disponibles. El equipo de gonexo ya está revisándola personalmente.
+        Tu solicitud todavía no tiene ofertas disponibles. El equipo de CargUp ya está revisándola personalmente.
       </p>
       ${routeLine(p.origin, p.dest)}
       ${button(`${p.frontendUrl}/requests/${p.requestId}`, "Ver solicitud")}
@@ -325,7 +325,7 @@ export function driverVerificationDecisionEmail(p: {
       html: layout(`
         <h1 style="font-size:18px;margin:0">Hola ${escapeHtml(p.driverName)}, tu perfil fue verificado</h1>
         <p style="font-size:14px;color:#485450;margin:12px 0 0">
-          Revisamos tus documentos y tu perfil ya aparece como verificado en gonexo.
+          Revisamos tus documentos y tu perfil ya aparece como verificado en CargUp.
         </p>
         ${button(`${p.frontendUrl}/available`, "Ver fletes disponibles")}
       `),

@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { GonexoLogo } from "@/components/gonexo-logo"
+import { CargUpLogo } from "@/components/cargup-logo"
 import {
   CirclePlus,
   Briefcase,
@@ -147,7 +147,7 @@ export function AppSidebar() {
       <SidebarHeader className="h-14 border-b border-sidebar-border px-3">
         <div className="flex items-center justify-between">
           <Link to={home}>
-            <GonexoLogo size="xs" wordmarkClassName="group-data-[collapsible=icon]:hidden text-sidebar-accent-foreground" />
+            <CargUpLogo size="xs" wordmarkClassName="group-data-[collapsible=icon]:hidden text-sidebar-accent-foreground" />
           </Link>
           <button
             type="button"

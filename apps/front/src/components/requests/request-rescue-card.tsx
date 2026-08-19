@@ -354,7 +354,7 @@ export function RequestRescueCard({ request }: { request: RequestDetail }) {
     needs_rescue: {
       icon: LifeBuoy,
       title: "Estamos interviniendo personalmente",
-      description: "Avisamos al equipo de Gonexo para contactar transportistas. Una nueva fecha también puede abrir más opciones.",
+      description: "Avisamos al equipo de CargUp para contactar transportistas. Una nueva fecha también puede abrir más opciones.",
       className: "border-amber-200 bg-amber-50/60",
     },
     offers_expired: {

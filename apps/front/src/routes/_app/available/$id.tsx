@@ -122,7 +122,7 @@ function QuoteForm({ requestId, fair }: { requestId: string; fair: PriceRange })
                         <dd>{formatCLP(price)}</dd>
                       </div>
                       <div className="mt-1.5 flex items-center justify-between gap-4 text-muted-foreground">
-                        <dt>Comisión Gonexo ({Math.round(fair.feeRate * 100)}%)</dt>
+                        <dt>Comisión CargUp ({Math.round(fair.feeRate * 100)}%)</dt>
                         <dd>− {formatCLP(fee)}</dd>
                       </div>
                       <div className="mt-2.5 flex items-center justify-between gap-4 border-t border-border pt-2.5 text-[14px] font-bold text-primary">

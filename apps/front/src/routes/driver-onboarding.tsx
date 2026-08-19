@@ -19,7 +19,7 @@ import {
   splitDocumentPayloads,
   type DriverDocumentUpload,
 } from "@/components/drivers/document-uploads"
-import { GonexoLogo } from "@/components/gonexo-logo"
+import { CargUpLogo } from "@/components/cargup-logo"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -176,7 +176,7 @@ function DriverOnboardingForm({ userId, accountPhone }: { userId: string; accoun
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <GonexoLogo size="xs" />
+          <CargUpLogo size="xs" />
           <Badge variant="secondary"><ShieldCheck data-icon="inline-start" />Perfil de transportista</Badge>
         </div>
       </header>

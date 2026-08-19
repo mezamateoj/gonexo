@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { GonexoLogo } from "@/components/gonexo-logo";
+import { CargUpLogo } from "@/components/cargup-logo";
 import { useForm } from "@tanstack/react-form";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -60,7 +60,7 @@ function LoginMobileHeader() {
   return (
     <div className="flex flex-col gap-[14px] bg-panel px-6 pb-8 pt-10 md:hidden">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
+        <CargUpLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
       <h2 className="text-[28px] font-bold leading-[1.1] tracking-[-0.8px] text-surface">
         Bienvenido<br />de vuelta.
@@ -103,7 +103,7 @@ function LoginLeftPanel() {
   return (
     <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-panel px-12 py-10 md:flex">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
+        <CargUpLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
 
       <div className="flex flex-col gap-7">

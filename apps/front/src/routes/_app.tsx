@@ -53,7 +53,7 @@ function TopBar() {
       ? pathname.endsWith("/offers")
         ? "Ofertas recibidas"
         : "Detalle del flete"
-      : "Gonexo")
+      : "CargUp")
 
   return (
     <header className={cn(
@@ -64,7 +64,7 @@ function TopBar() {
         <SidebarTrigger className="text-muted-foreground" />
         <div className="h-5 w-px bg-border" />
         <nav className="hidden min-w-0 items-center gap-1.5 text-sm md:flex">
-          <span className="text-muted-foreground">Gonexo</span>
+          <span className="text-muted-foreground">CargUp</span>
           <span className="text-muted-foreground">/</span>
           <span className="truncate font-medium text-foreground">{currentLabel}</span>
         </nav>
