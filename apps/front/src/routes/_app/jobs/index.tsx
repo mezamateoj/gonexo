@@ -1,7 +1,6 @@
 import {
   createFileRoute,
   Link,
-  Navigate,
   stripSearchParams,
   useNavigate,
 } from "@tanstack/react-router"
@@ -20,7 +19,6 @@ import { useSession } from "@/lib/auth-client"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import type { JobSort, JobSummary, VolumeCategory } from "@/lib/types"
-import { useAppMode } from "@/lib/app-mode"
 import {
   cancelledByRoleLabels,
   formatPrice,
@@ -159,7 +157,6 @@ function JobsPage() {
   const { tab, page, q, volume, sort } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const { data: session } = useSession()
-  const { mode } = useAppMode()
   const userId = session?.user.id
 
   // Filter/sort changes reset to page 1; explicit page changes don't.
@@ -170,12 +167,12 @@ function JobsPage() {
     })
   }
 
-  const query = { role: "driver" as const, bucket: tab, page, q: q || undefined, volume, sort }
+  const query = { bucket: tab, page, q: q || undefined, volume, sort }
 
   const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: queryKeys.jobs.my(userId ?? "", query),
     queryFn: () => api.jobs.my(query),
-    enabled: !!userId && mode === "driver",
+    enabled: !!userId,
     placeholderData: keepPreviousData,
   })
 
@@ -282,10 +279,6 @@ function JobsPage() {
       patch({ sort: stateToSort(next) })
     },
   })
-
-  if (mode === "client") {
-    return <Navigate to="/requests" search={{ tab: "active", page: 1 }} replace />
-  }
 
   const hasFilters = q.length > 0 || volume.length > 0
   const history = tab === "history"

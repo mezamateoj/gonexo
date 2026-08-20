@@ -1,5 +1,5 @@
 /* Hallmark · genre: modern-minimal · macrostructure: Workbench (editorial spine)
- * theme: locked repo system (index.css · Mintlify green + panel family · Geist/Inter)
+ * theme: CargUp road black, signal red, and Montserrat
  * nav: N1b slim · footer: slim index · enrichment: Tier-A CSS product surfaces
  * diversification: suspended — locked design-system project (index.css is the source of truth)
  */
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { FilePlus2, Inbox, CircleCheck, Truck, Lock, Image, ListChecks, Package, Check, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { GonexoLogo } from "@/components/gonexo-logo"
+import { CargUpLogo } from "@/components/cargup-logo"
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -55,9 +55,9 @@ const HERO_QUOTES = [
 ]
 
 const FAQ_ITEMS = [
-  { q: "¿Cuánto cuesta publicar un flete?", a: "Publicar una solicitud es completamente gratis. Gonexo no cobra comisiones a clientes por recibir ofertas." },
+  { q: "¿Cuánto cuesta publicar un flete?", a: "Publicar una solicitud es completamente gratis. CargUp no cobra comisiones a clientes por recibir ofertas." },
   { q: "¿Cómo elijo al transportista?", a: "Revisa el precio, vehículo, perfil y mensaje de cada oferta. Solo tú decides quién hace el trabajo." },
-  { q: "¿Puedo ser cliente y transportista con la misma cuenta?", a: "Sí, puedes publicar solicitudes y también ofertar por fletes con la misma cuenta." },
+  { q: "¿Puedo ser cliente y transportista con la misma cuenta?", a: "No. Al registrarte eliges una cuenta de cliente o de transportista. Cada una tiene herramientas y responsabilidades distintas." },
   { q: "¿Qué necesito para ofertar como transportista?", a: "Necesitas crear un perfil con los datos de tu vehículo (tipo, patente, fotos) y tu información de contacto." },
   { q: "¿Cuándo veo el teléfono de la otra persona?", a: "Solo después de aceptar una oferta. El contacto queda protegido hasta que hay un match." },
   { q: "¿Qué pasa si el transportista no aparece?", a: "Puedes contactarnos para resolver el problema. Estamos trabajando en un sistema de garantías para estos casos." },
@@ -70,7 +70,7 @@ function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
         <div className={cn(CONTAINER, "flex h-14 items-center justify-between md:h-16")}>
           <div className="flex items-center gap-9">
-            <GonexoLogo size="md" />
+            <CargUpLogo size="md" />
             <nav className="hidden items-center gap-7 md:flex">
               {NAV_LINKS.map(({ label, href }) => (
                 <a key={label} href={href} className="text-sm text-ink-muted transition-colors hover:text-foreground">
@@ -110,10 +110,10 @@ function LandingPage() {
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
               <Button asChild size="lg" className="w-full text-[15px] sm:w-auto">
-                <Link to="/signup">Publicar un flete</Link>
+                <Link to="/signup" search={{ accountType: "client" }}>Publicar un flete</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="w-full text-[15px] sm:w-auto">
-                <Link to="/signup">Soy transportista</Link>
+                <Link to="/signup" search={{ accountType: "driver" }}>Soy transportista</Link>
               </Button>
             </div>
 
@@ -227,7 +227,7 @@ function LandingPage() {
           <div className="flex flex-col items-start gap-6">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-panel-accent">Para transportistas</span>
             <h2 className="font-heading text-[30px] font-bold leading-[1.12] tracking-tight text-surface md:text-[38px]">
-              También puedes trabajar como transportista
+              Encuentra trabajo como transportista
             </h2>
             <p className="max-w-[440px] text-[16px] leading-[1.6] text-panel-muted">
               Crea tu perfil, agrega tu vehículo y encuentra fletes disponibles cerca de ti.
@@ -243,7 +243,7 @@ function LandingPage() {
               ))}
             </div>
             <Button asChild size="lg" className="mt-1 w-full text-[15px] sm:w-fit">
-              <Link to="/signup">Crear perfil de transportista</Link>
+              <Link to="/signup" search={{ accountType: "driver" }}>Crear cuenta de transportista</Link>
             </Button>
           </div>
 
@@ -411,7 +411,7 @@ function LandingPage() {
           </div>
           <div className="flex w-full flex-col gap-3 md:w-auto md:shrink-0 md:flex-row">
             <Button asChild size="lg" className="w-full text-[15px] md:w-auto">
-              <Link to="/signup">Publicar un flete</Link>
+              <Link to="/signup" search={{ accountType: "client" }}>Publicar un flete</Link>
             </Button>
             <Button
               asChild
@@ -419,7 +419,7 @@ function LandingPage() {
               variant="outline"
               className="w-full border-panel-border bg-transparent text-[15px] text-surface hover:bg-panel-card hover:text-surface md:w-auto"
             >
-              <Link to="/signup">Ver oportunidades</Link>
+              <Link to="/signup" search={{ accountType: "driver" }}>Ver oportunidades</Link>
             </Button>
           </div>
         </div>
@@ -430,7 +430,7 @@ function LandingPage() {
         <div className={cn(CONTAINER, "flex flex-col gap-10 pt-12 pb-0")}>
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div className="flex max-w-[280px] flex-col gap-3">
-              <GonexoLogo size="sm" />
+              <CargUpLogo size="sm" />
               <p className="text-[13px] text-ink-muted">El marketplace de fletes de Chile.</p>
             </div>
 
@@ -457,7 +457,7 @@ function LandingPage() {
           </div>
 
           <div className="flex flex-col gap-1 border-t border-border py-5 md:flex-row md:items-center md:justify-between">
-            <span className="text-[12px] text-ink-faint">© 2026 gonexo. Todos los derechos reservados.</span>
+            <span className="text-[12px] text-ink-faint">© 2026 CargUp. Todos los derechos reservados.</span>
             <span className="text-[12px] text-ink-faint">Hecho en Chile 🇨🇱</span>
           </div>
         </div>

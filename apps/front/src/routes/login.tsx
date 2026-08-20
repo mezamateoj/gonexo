@@ -1,12 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { GonexoLogo } from "@/components/gonexo-logo";
+import { CargUpLogo } from "@/components/cargup-logo";
 import { useForm } from "@tanstack/react-form";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { getSession, signIn, useSession } from "@/lib/auth-client";
-import { useAppMode } from "@/lib/app-mode";
-import { api } from "@/lib/api";
-import { queryKeys } from "@/lib/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +60,7 @@ function LoginMobileHeader() {
   return (
     <div className="flex flex-col gap-[14px] bg-panel px-6 pb-8 pt-10 md:hidden">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
+        <CargUpLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
       <h2 className="text-[28px] font-bold leading-[1.1] tracking-[-0.8px] text-surface">
         Bienvenido<br />de vuelta.
@@ -106,7 +103,7 @@ function LoginLeftPanel() {
   return (
     <div className="hidden w-[560px] shrink-0 flex-col justify-between bg-panel px-12 py-10 md:flex">
       <Link to="/">
-        <GonexoLogo size="sm" wordmarkClassName="text-surface" />
+        <CargUpLogo size="sm" wordmarkClassName="text-surface" />
       </Link>
 
       <div className="flex flex-col gap-7">
@@ -166,31 +163,18 @@ function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
-  const { clearMode, setMode } = useAppMode();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const handlingSubmit = useRef(false);
 
-  const openAccountHome = useCallback(async (userId: string) => {
-    const profile = await queryClient.fetchQuery({
-      queryKey: queryKeys.drivers.me(userId),
-      queryFn: api.drivers.me,
-    });
-    clearMode(userId);
-    if (profile) {
-      navigate({ to: "/choose-mode" });
-      return;
-    }
-    setMode("client", userId);
-    navigate({ to: "/requests" });
-  }, [clearMode, navigate, queryClient, setMode]);
-
   useEffect(() => {
     if (session && !handlingSubmit.current) {
-      void openAccountHome(session.user.id);
+      navigate({
+        to: session.user.accountType === "driver" ? "/available" : "/requests",
+      });
     }
-  }, [session, openAccountHome]);
+  }, [session, navigate]);
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
@@ -214,7 +198,12 @@ function LoginPage() {
         setSubmitError("No se pudo cargar tu sesión.");
         return;
       }
-      await openAccountHome(authenticatedSession.data.user.id);
+      navigate({
+        to:
+          authenticatedSession.data.user.accountType === "driver"
+            ? "/available"
+            : "/requests",
+      });
     },
   });
 

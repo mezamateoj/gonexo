@@ -12,6 +12,7 @@ import type { AppEnv } from "./lib/types";
 import { dbMiddleware } from "./middleware/db";
 import { createDb } from "./db";
 import { autoConfirmOverdueJobs } from "./workflows/jobs";
+import { runRequestRescueSweep } from "./workflows/request-rescue";
 import type { Bindings } from "./binding";
 import requests from "./routes/requests";
 import quotes from "./routes/quotes";
@@ -22,9 +23,11 @@ import uploads from "./routes/uploads";
 import geo from "./routes/geo";
 import seed from "./routes/seed";
 import admin from "./routes/admin";
+import attention from "./routes/attention";
 import { isAdmin } from "./middleware/auth";
 import { driverDocument, user as userTable } from "./db/schema";
 import { normalizePhone } from "./lib/normalizers";
+import { accountTypes } from "./domain/accounts";
 import {
   markDocumentReviewFailed,
   processDocumentReview,
@@ -39,17 +42,22 @@ configureSync({
     }),
   },
   loggers: [
-    { category: ["gonexo"], sinks: ["console"], lowestLevel: "debug" },
+    { category: ["cargup"], sinks: ["console"], lowestLevel: "debug" },
     { category: ["logtape", "meta"], sinks: ["console"], lowestLevel: "warning" },
   ],
 });
 
 const app = new Hono<AppEnv>();
-const signUpPrecheckSchema = z.object({ phone: z.string().optional() }).passthrough();
+const CARGUP_ORIGIN = "https://cargup.cl";
+const signUpPrecheckSchema = z.object({
+  accountType: z.enum(accountTypes),
+  phone: z.string().optional(),
+}).passthrough();
 
 app.use("*", (c, next) => {
   const allowedOrigins = [
     ...(c.env.ENVIRONMENT === "local" ? ["http://localhost:5173"] : []),
+    CARGUP_ORIGIN,
     c.env.FRONTEND_URL,
   ];
 
@@ -86,7 +94,7 @@ app.onError((err, c) => {
 });
 
 app.use("*", honoLogger({
-  category: ["gonexo", "http"],
+  category: ["cargup", "http"],
   format: "structured-combined",
   skip: (c) => c.req.path === "/",
 }));
@@ -141,6 +149,7 @@ const api = new Hono<AppEnv>()
   .route("/users", users)
   .route("/uploads", uploads)
   .route("/geo", geo)
+  .route("/attention", attention)
   .route("/admin", admin)
   .route("/__seed", localSeed);
 
@@ -189,10 +198,14 @@ export type AppType = typeof api;
 
 const worker = {
   fetch: app.fetch,
-  // Hourly Cron Trigger (wrangler.jsonc `triggers.crons`): auto-confirm
-  // delivered jobs whose 24h client-confirmation window expired.
+  // Hourly Cron Trigger (wrangler.jsonc `triggers.crons`): advance overdue
+  // lifecycle work and rescue requests before clients reach a dead end.
   scheduled: (_event, env, ctx) => {
-    ctx.waitUntil(autoConfirmOverdueJobs(createDb(env.db)));
+    const db = createDb(env.db);
+    ctx.waitUntil(Promise.all([
+      autoConfirmOverdueJobs(db),
+      runRequestRescueSweep(db, env),
+    ]));
   },
   async queue(batch, env) {
     for (const message of batch.messages) {

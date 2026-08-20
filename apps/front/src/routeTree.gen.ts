@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DriverOnboardingRouteImport } from './routes/driver-onboarding'
-import { Route as ChooseModeRouteImport } from './routes/choose-mode'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
@@ -29,6 +28,7 @@ import { Route as AppDriversIdRouteImport } from './routes/_app/drivers/$id'
 import { Route as AppAvailableIdRouteImport } from './routes/_app/available/$id'
 import { Route as AppAdminUsersIndexRouteImport } from './routes/_app/admin/users/index'
 import { Route as AppAdminDriversIndexRouteImport } from './routes/_app/admin/drivers/index'
+import { Route as AppRequestsIdOffersRouteImport } from './routes/_app/requests/$id_.offers'
 import { Route as AppAdminUsersIdRouteImport } from './routes/_app/admin/users/$id'
 import { Route as AppAdminDriversIdRouteImport } from './routes/_app/admin/drivers/$id'
 
@@ -45,11 +45,6 @@ const LoginRoute = LoginRouteImport.update({
 const DriverOnboardingRoute = DriverOnboardingRouteImport.update({
   id: '/driver-onboarding',
   path: '/driver-onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChooseModeRoute = ChooseModeRouteImport.update({
-  id: '/choose-mode',
-  path: '/choose-mode',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -131,6 +126,11 @@ const AppAdminDriversIndexRoute = AppAdminDriversIndexRouteImport.update({
   path: '/drivers/',
   getParentRoute: () => AppAdminRoute,
 } as any)
+const AppRequestsIdOffersRoute = AppRequestsIdOffersRouteImport.update({
+  id: '/requests/$id_/offers',
+  path: '/requests/$id/offers',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminUsersIdRoute = AppAdminUsersIdRouteImport.update({
   id: '/users/$id',
   path: '/users/$id',
@@ -144,7 +144,6 @@ const AppAdminDriversIdRoute = AppAdminDriversIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/choose-mode': typeof ChooseModeRoute
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -162,12 +161,12 @@ export interface FileRoutesByFullPath {
   '/requests/': typeof AppRequestsIndexRoute
   '/admin/drivers/$id': typeof AppAdminDriversIdRoute
   '/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/requests/$id/offers': typeof AppRequestsIdOffersRoute
   '/admin/drivers/': typeof AppAdminDriversIndexRoute
   '/admin/users/': typeof AppAdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/choose-mode': typeof ChooseModeRoute
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -184,6 +183,7 @@ export interface FileRoutesByTo {
   '/requests': typeof AppRequestsIndexRoute
   '/admin/drivers/$id': typeof AppAdminDriversIdRoute
   '/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/requests/$id/offers': typeof AppRequestsIdOffersRoute
   '/admin/drivers': typeof AppAdminDriversIndexRoute
   '/admin/users': typeof AppAdminUsersIndexRoute
 }
@@ -191,7 +191,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/choose-mode': typeof ChooseModeRoute
   '/driver-onboarding': typeof DriverOnboardingRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
@@ -209,6 +208,7 @@ export interface FileRoutesById {
   '/_app/requests/': typeof AppRequestsIndexRoute
   '/_app/admin/drivers/$id': typeof AppAdminDriversIdRoute
   '/_app/admin/users/$id': typeof AppAdminUsersIdRoute
+  '/_app/requests/$id_/offers': typeof AppRequestsIdOffersRoute
   '/_app/admin/drivers/': typeof AppAdminDriversIndexRoute
   '/_app/admin/users/': typeof AppAdminUsersIndexRoute
 }
@@ -216,7 +216,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/choose-mode'
     | '/driver-onboarding'
     | '/login'
     | '/signup'
@@ -234,12 +233,12 @@ export interface FileRouteTypes {
     | '/requests/'
     | '/admin/drivers/$id'
     | '/admin/users/$id'
+    | '/requests/$id/offers'
     | '/admin/drivers/'
     | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/choose-mode'
     | '/driver-onboarding'
     | '/login'
     | '/signup'
@@ -256,13 +255,13 @@ export interface FileRouteTypes {
     | '/requests'
     | '/admin/drivers/$id'
     | '/admin/users/$id'
+    | '/requests/$id/offers'
     | '/admin/drivers'
     | '/admin/users'
   id:
     | '__root__'
     | '/'
     | '/_app'
-    | '/choose-mode'
     | '/driver-onboarding'
     | '/login'
     | '/signup'
@@ -280,6 +279,7 @@ export interface FileRouteTypes {
     | '/_app/requests/'
     | '/_app/admin/drivers/$id'
     | '/_app/admin/users/$id'
+    | '/_app/requests/$id_/offers'
     | '/_app/admin/drivers/'
     | '/_app/admin/users/'
   fileRoutesById: FileRoutesById
@@ -287,7 +287,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  ChooseModeRoute: typeof ChooseModeRoute
   DriverOnboardingRoute: typeof DriverOnboardingRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
@@ -314,13 +313,6 @@ declare module '@tanstack/react-router' {
       path: '/driver-onboarding'
       fullPath: '/driver-onboarding'
       preLoaderRoute: typeof DriverOnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/choose-mode': {
-      id: '/choose-mode'
-      path: '/choose-mode'
-      fullPath: '/choose-mode'
-      preLoaderRoute: typeof ChooseModeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -435,6 +427,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminDriversIndexRouteImport
       parentRoute: typeof AppAdminRoute
     }
+    '/_app/requests/$id_/offers': {
+      id: '/_app/requests/$id_/offers'
+      path: '/requests/$id/offers'
+      fullPath: '/requests/$id/offers'
+      preLoaderRoute: typeof AppRequestsIdOffersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/users/$id': {
       id: '/_app/admin/users/$id'
       path: '/users/$id'
@@ -484,6 +483,7 @@ interface AppRouteChildren {
   AppJobsIndexRoute: typeof AppJobsIndexRoute
   AppQuotesIndexRoute: typeof AppQuotesIndexRoute
   AppRequestsIndexRoute: typeof AppRequestsIndexRoute
+  AppRequestsIdOffersRoute: typeof AppRequestsIdOffersRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -498,6 +498,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppJobsIndexRoute: AppJobsIndexRoute,
   AppQuotesIndexRoute: AppQuotesIndexRoute,
   AppRequestsIndexRoute: AppRequestsIndexRoute,
+  AppRequestsIdOffersRoute: AppRequestsIdOffersRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -505,7 +506,6 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  ChooseModeRoute: ChooseModeRoute,
   DriverOnboardingRoute: DriverOnboardingRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,

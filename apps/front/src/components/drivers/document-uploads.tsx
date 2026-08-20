@@ -222,7 +222,7 @@ function VerificationStatus({ status }: { status: DriverVerificationStatus }) {
         <CheckCircle2 />
         <AlertTitle>Documentos enviados</AlertTitle>
         <AlertDescription>
-          Estamos preparando tu expediente para una revisión humana. Puedes seguir usando Gonexo.
+          Estamos preparando tu expediente para una revisión humana. Puedes seguir usando CargUp.
         </AlertDescription>
       </Alert>
     )

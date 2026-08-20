@@ -57,3 +57,10 @@
 
 
 
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#1e1e1e"/>
+  <path d="M18 19v18c0 11 15 14 19 3l3-9c3-9 15-8 15 3 0 10-11 12-18 6v13" fill="none" stroke="#fff" stroke-width="10"/>
+  <path d="M18 19v18c0 11 15 14 19 3l3-9c3-9 15-8 15 3 0 10-11 12-18 6v13" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="5 5"/>
+  <path d="M18 4 8 18h6v8h8v-8h6L18 4Z" fill="#e51920"/>
+  <circle cx="37" cy="58" r="4" fill="#fff"/>
+</svg>

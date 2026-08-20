@@ -13,11 +13,11 @@ function buildIcs(job: JobDetail) {
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "BEGIN:VEVENT",
-    `UID:${job.id}@gonexo.cl`,
+    `UID:${job.id}@cargup.cl`,
     `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
-    `SUMMARY:Flete gonexo: ${job.request.originAddress} → ${job.request.destAddress}`,
+    `SUMMARY:Flete CargUp: ${job.request.originAddress} → ${job.request.destAddress}`,
     `DESCRIPTION:${window.location.origin}/jobs/${job.id}`,
     "END:VEVENT",
     "END:VCALENDAR",
@@ -30,7 +30,7 @@ export function CoordinationRow({ job, isClient }: { job: JobDetail; isClient: b
   const otherParty = isClient ? job.driver : job.user
   const roleLabel = isClient ? "Transportista" : "Cliente"
   const phoneDigits = otherParty.phone?.replace(/\D/g, "")
-  const waMessage = `Hola ${otherParty.name}! Te contacto por el flete de gonexo (${shortAddress(job.request.originAddress)} → ${shortAddress(job.request.destAddress)}, ${formatShortDate(job.request.scheduledAt)}).`
+  const waMessage = `Hola ${otherParty.name}! Te contacto por el flete de CargUp (${shortAddress(job.request.originAddress)} → ${shortAddress(job.request.destAddress)}, ${formatShortDate(job.request.scheduledAt)}).`
   const waHref = phoneDigits ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(waMessage)}` : null
   const icsHref = `data:text/calendar;charset=utf-8,${encodeURIComponent(buildIcs(job))}`
 
@@ -67,7 +67,7 @@ export function CoordinationRow({ job, isClient }: { job: JobDetail; isClient: b
             </Button>
           )}
           <Button asChild variant="outline" className="h-11 flex-1 bg-surface-dim text-[13px] font-medium">
-            <a href={icsHref} download={`flete-gonexo-${job.id.slice(-6)}.ics`}>
+            <a href={icsHref} download={`flete-cargup-${job.id.slice(-6)}.ics`}>
               <CalendarPlus className="size-[18px]" data-icon="inline-start" />
               Agregar al calendario
             </a>

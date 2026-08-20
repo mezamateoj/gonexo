@@ -10,16 +10,16 @@ const seed = new Hono<AppEnv>()
 // ─── Static data ─────────────────────────────────────────────────────────────
 
 const CLIENTS = [
-  { email: "maria@gonexo.cl",     name: "María González",   password: "seed1234" },
-  { email: "ana@gonexo.cl",       name: "Ana Sepúlveda",    password: "seed1234" },
-  { email: "diego@gonexo.cl",     name: "Diego Rojas",      password: "seed1234" },
-  { email: "valentina@gonexo.cl", name: "Valentina Castro", password: "seed1234" },
-  { email: "roberto@gonexo.cl",   name: "Roberto Morales",  password: "seed1234" },
+  { email: "maria@cargup.cl",     name: "María González",   password: "seed1234", accountType: "client" as const },
+  { email: "ana@cargup.cl",       name: "Ana Sepúlveda",    password: "seed1234", accountType: "client" as const },
+  { email: "diego@cargup.cl",     name: "Diego Rojas",      password: "seed1234", accountType: "client" as const },
+  { email: "valentina@cargup.cl", name: "Valentina Castro", password: "seed1234", accountType: "client" as const },
+  { email: "roberto@cargup.cl",   name: "Roberto Morales",  password: "seed1234", accountType: "client" as const },
 ]
 
 const DRIVERS = [
-  { email: "carlos@gonexo.cl",  name: "Carlos Méndez",  password: "seed1234" },
-  { email: "pamela@gonexo.cl",  name: "Pamela Soto",    password: "seed1234" },
+  { email: "carlos@cargup.cl",  name: "Carlos Méndez",  password: "seed1234", accountType: "driver" as const },
+  { email: "pamela@cargup.cl",  name: "Pamela Soto",    password: "seed1234", accountType: "driver" as const },
 ]
 
 const COMMUNES = [

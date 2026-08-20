@@ -34,6 +34,7 @@ function isJobActive(job: JobDetail | undefined) {
 function JobDetailPage() {
   const { id } = Route.useParams()
   const { data: session } = useSession()
+  const jobsHome = session?.user.accountType === "driver" ? "/jobs" : "/requests"
 
   const { data: job, isLoading, error } = useQuery({
     queryKey: queryKeys.jobs.detail(id),
@@ -58,7 +59,7 @@ function JobDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
         <p className="text-sm text-muted-foreground">No se encontró el trabajo.</p>
-        <Link to="/jobs" className="text-sm text-primary hover:underline">
+        <Link to={jobsHome} className="text-sm text-primary hover:underline">
           Ver mis fletes
         </Link>
       </div>
@@ -73,7 +74,7 @@ function JobDetailPage() {
   return (
     <div className="p-4 md:p-8">
       <Button asChild variant="link" className="mb-4 h-auto justify-start p-0 text-[13px] text-muted-foreground">
-        <Link to="/jobs">
+        <Link to={jobsHome}>
           <ArrowLeft data-icon="inline-start" />
           Mis fletes
         </Link>

@@ -4,17 +4,16 @@ import { z } from "zod";
 import { eq, and, sql, or, asc, desc, like, exists, count, inArray, notInArray, type SQL } from "drizzle-orm";
 import { job, review, driverProfile, request, user as userTable } from "../db/schema";
 import type { VolumeCategory } from "../lib/pricing";
-import { requireAuth, requireDriver } from "../middleware/auth";
+import { requireAuth, requireClient, requireDriver } from "../middleware/auth";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
-import { sendEmail, confirmReminderEmail } from "../lib/email";
+import { confirmReminderEmail, jobCancelledEmail, sendEmail } from "../lib/email";
 import { advanceJob, cancelScheduledJob, confirmJob } from "../workflows/jobs";
 import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
 
 const jobs = new Hono<AppEnv>();
 
 const myJobsQuerySchema = z.object({
-  role: z.enum(["client", "driver"]).optional(),
   bucket: z.enum(["active", "history"]).optional(),
   page: z.coerce.number().int().positive().catch(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).catch(20).default(20),
@@ -32,9 +31,8 @@ const MY_JOB_SORTS = {
   price_desc: [desc(job.agreedPrice)],
 } as const;
 
-// Jobs list for either role. Paginated per bucket (active = running, history =
-// completed/cancelled) so it scales; omitting `role`/`bucket` returns the
-// caller's full combined set.
+// Jobs list for the caller's immutable account type. Paginated per bucket
+// (active = running, history = completed/cancelled) so it scales.
 jobs.get(
   "/my",
   requireAuth,
@@ -42,18 +40,16 @@ jobs.get(
   async (c) => {
     const db = c.get("db");
     const userId = c.get("user")!.id;
-    const { role, bucket, page, limit, q, volume, sort } = c.req.valid("query");
+    const { bucket, page, limit, q, volume, sort } = c.req.valid("query");
     const offset = (page - 1) * limit;
     const orderBy = MY_JOB_SORTS[sort] ?? MY_JOB_SORTS.recent;
 
     const conditions: SQL[] = [];
-    const roleCond =
-      role === "client"
+    conditions.push(
+      c.get("user")!.accountType === "client"
         ? eq(job.userId, userId)
-        : role === "driver"
-          ? eq(job.driverId, userId)
-          : or(eq(job.userId, userId), eq(job.driverId, userId));
-    if (roleCond) conditions.push(roleCond);
+        : eq(job.driverId, userId),
+    );
     if (bucket === "active") conditions.push(notInArray(job.status, ["completed", "cancelled"]));
     else if (bucket === "history") conditions.push(inArray(job.status, ["completed", "cancelled"]));
 
@@ -188,7 +184,7 @@ jobs.patch(
   }
 );
 
-jobs.post("/:id/confirm", requireAuth, async (c) => {
+jobs.post("/:id/confirm", requireClient, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
 
@@ -201,7 +197,18 @@ jobs.patch("/:id/cancel", requireAuth, async (c) => {
   const db = c.get("db");
   const user = c.get("user")!;
 
-  await cancelScheduledJob(db, user.id, c.req.param("id"));
+  const result = await cancelScheduledJob(db, user.id, c.req.param("id"));
+
+  c.executionCtx.waitUntil(
+    sendEmail(c.env, result.recipient.email, jobCancelledEmail({
+      recipientName: result.recipient.name,
+      cancelledBy: result.cancelledBy === "driver" ? "driver" : "client",
+      origin: result.request.originAddress,
+      dest: result.request.destAddress,
+      requestId: result.requestId,
+      frontendUrl: c.env.FRONTEND_URL,
+    })),
+  );
 
   return c.json({ ok: true });
 });

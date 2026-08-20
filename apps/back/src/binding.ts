@@ -14,6 +14,5 @@ export type Bindings = {
   // Optional until a sending domain is set up — sendEmail skips when absent.
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
-  ADMIN_EMAIL?: string;
   SENTRY_DSN?: string;
 };
