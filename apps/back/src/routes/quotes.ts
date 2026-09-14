@@ -5,6 +5,8 @@ import { requireClient, requireDriver } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
 import { acceptQuote } from "../workflows/quotes";
 import { sendEmail, quoteAcceptedEmail } from "../lib/email";
+import { expireOverdueRequests } from "../workflows/request-rescue";
+import { maskAddress } from "../lib/address";
 
 const quotes = new Hono<AppEnv>();
 
@@ -12,6 +14,7 @@ const quotes = new Hono<AppEnv>();
 quotes.get("/my", requireDriver, async (c) => {
   const db = c.get("db");
   const driver = c.get("user")!;
+  await expireOverdueRequests(db);
 
   const results = await db.query.quote.findMany({
     where: eq(quote.driverId, driver.id),
@@ -23,6 +26,8 @@ quotes.get("/my", requireDriver, async (c) => {
           originAddress: true,
           destAddress: true,
           scheduledAt: true,
+          scheduleType: true,
+          expiresAt: true,
           volumeCategory: true,
           status: true,
         },
@@ -36,7 +41,14 @@ quotes.get("/my", requireDriver, async (c) => {
     },
   });
 
-  return c.json(results);
+  return c.json(results.map((item) => ({
+    ...item,
+    request: {
+      ...item.request,
+      originAddress: maskAddress(item.request.originAddress),
+      destAddress: maskAddress(item.request.destAddress),
+    },
+  })));
 });
 
 // Rejects all other pending quotes on the same request in the same transaction.
@@ -55,8 +67,8 @@ quotes.post("/:id/accept", requireClient, async (c) => {
       if (!driver) return;
       await sendEmail(c.env, driver.email, quoteAcceptedEmail({
         driverName: driver.name,
-        origin: req.originAddress,
-        dest: req.destAddress,
+        origin: maskAddress(req.originAddress),
+        dest: maskAddress(req.destAddress),
         agreedPrice,
         jobId,
         frontendUrl: c.env.FRONTEND_URL,

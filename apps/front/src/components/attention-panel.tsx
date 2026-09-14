@@ -11,7 +11,7 @@ import {
   Star,
 } from "lucide-react"
 import { useSession } from "@/lib/auth-client"
-import { formatCompactDateTime } from "@/lib/display"
+import { formatCompactDateTime, formatSchedule } from "@/lib/display"
 import { useAttentionQueries } from "@/hooks/use-attention-queries"
 import type { ClientAttentionJob, DriverAttentionJob } from "@/lib/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -83,7 +83,7 @@ function JobRow({
       icon: Navigation,
       title: "Tienes un flete por iniciar",
       description: job.type === "start_job"
-        ? `Programado para ${formatCompactDateTime(job.scheduledAt)}.`
+        ? `${formatSchedule(job, formatCompactDateTime)}. Coordina el retiro con el cliente.`
         : "",
       label: "Ver trabajo",
     },

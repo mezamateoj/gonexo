@@ -25,7 +25,7 @@ const NAV_LINKS = [
 ]
 
 const STEPS = [
-  { icon: FilePlus2, num: "01", title: "Publica tu solicitud", desc: "Origen, destino, fecha, fotos y detalles de lo que necesitas mover." },
+  { icon: FilePlus2, num: "01", title: "Solicita tu flete", desc: "Origen, destino, fecha, fotos y detalles de lo que necesitas mover." },
   { icon: Inbox, num: "02", title: "Recibe ofertas", desc: "Transportistas disponibles te envían sus ofertas." },
   { icon: CircleCheck, num: "03", title: "Compara y acepta", desc: "Revisa precio, vehículo, perfil y mensaje antes de elegir." },
   { icon: Truck, num: "04", title: "Coordina el trabajo", desc: "Sigue el estado del flete hasta la entrega final." },
@@ -55,7 +55,7 @@ const HERO_QUOTES = [
 ]
 
 const FAQ_ITEMS = [
-  { q: "¿Cuánto cuesta publicar un flete?", a: "Publicar una solicitud es completamente gratis. CargUp no cobra comisiones a clientes por recibir ofertas." },
+  { q: "¿Cuánto cuesta solicitar un flete?", a: "Solicitar un flete es completamente gratis. CargUp no cobra comisiones a clientes por recibir ofertas." },
   { q: "¿Cómo elijo al transportista?", a: "Revisa el precio, vehículo, perfil y mensaje de cada oferta. Solo tú decides quién hace el trabajo." },
   { q: "¿Puedo ser cliente y transportista con la misma cuenta?", a: "No. Al registrarte eliges una cuenta de cliente o de transportista. Cada una tiene herramientas y responsabilidades distintas." },
   { q: "¿Qué necesito para ofertar como transportista?", a: "Necesitas crear un perfil con los datos de tu vehículo (tipo, patente, fotos) y tu información de contacto." },
@@ -101,7 +101,7 @@ function LandingPage() {
             </span>
 
             <h1 className="font-heading text-[40px] font-bold leading-[1.04] tracking-tight text-foreground md:text-[58px]">
-              Publica tu flete.<br />Recibe ofertas reales.
+              Solicita tu flete.<br />Recibe ofertas reales.
             </h1>
 
             <p className="max-w-[480px] text-[16px] leading-[1.6] text-ink-muted md:text-[18px]">
@@ -110,7 +110,7 @@ function LandingPage() {
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
               <Button asChild size="lg" className="w-full text-[15px] sm:w-auto">
-                <Link to="/signup" search={{ accountType: "client" }}>Publicar un flete</Link>
+                <Link to="/signup" search={{ accountType: "client" }}>Solicitar un flete</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="w-full text-[15px] sm:w-auto">
                 <Link to="/signup" search={{ accountType: "driver" }}>Soy transportista</Link>
@@ -118,7 +118,7 @@ function LandingPage() {
             </div>
 
             <p className="text-[13px] text-ink-muted">
-              Gratis para publicar <span className="text-ink-faint">·</span> Contacto protegido <span className="text-ink-faint">·</span> Sin comisiones a clientes
+              Solicitar es gratis <span className="text-ink-faint">·</span> Contacto protegido <span className="text-ink-faint">·</span> Sin comisiones a clientes
             </p>
           </div>
 
@@ -196,7 +196,7 @@ function LandingPage() {
           <div className="flex max-w-[560px] flex-col gap-3">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Cómo funciona</span>
             <h2 className="font-heading text-[28px] font-bold leading-tight tracking-tight text-foreground md:text-[40px]">
-              De publicar a elegir en pocos pasos
+              De solicitar a elegir en pocos pasos
             </h2>
             <p className="text-[15px] leading-[1.55] text-ink-muted md:text-base">
               Un flujo simple, pensado para que muevas lo que necesitas sin complicaciones.
@@ -310,7 +310,7 @@ function LandingPage() {
               Dos vistas, una misma plataforma
             </h2>
             <p className="max-w-[520px] text-base leading-[1.5] text-ink-muted">
-              Lo que ve quien publica un flete y quien busca trabajo como transportista.
+              Lo que ve quien solicita un flete y quien busca trabajo como transportista.
             </p>
           </div>
 
@@ -406,12 +406,12 @@ function LandingPage() {
               ¿Listo para mover algo?
             </h2>
             <p className="text-[16px] leading-[1.5] text-panel-muted">
-              Publica tu solicitud y deja que los transportistas coticen.
+              Solicita tu flete y deja que los transportistas coticen.
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 md:w-auto md:shrink-0 md:flex-row">
             <Button asChild size="lg" className="w-full text-[15px] md:w-auto">
-              <Link to="/signup" search={{ accountType: "client" }}>Publicar un flete</Link>
+              <Link to="/signup" search={{ accountType: "client" }}>Solicitar un flete</Link>
             </Button>
             <Button
               asChild

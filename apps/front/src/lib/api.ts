@@ -1,11 +1,11 @@
 import type { MyRequestsQuery, MyJobsQuery, MyRequestsResponse, MyJobsResponse, VolumeCategory, DriverProfile, DriverDocument, VerificationDocumentKind, UpsertDriverInput, EnrichVehicleResult, RequestDetail, RequestQuotesResponse, JobDetail, PriceRange, AvailableQuery, AvailableResponse, JobStatusUpdate, CurrentUser, PublicDriverProfile, AdminDriversResponse, AdminDriver, AdminDriverProfile, AdminUserDetail, DriverVerificationStatus, AttentionOffersResponse, AttentionJobsResponse, AttentionVerificationResponse } from "./types"
 
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
+export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8787"
 
 // Documents/photos are served (with an ownership/admin check) from the backend's
 // /cdn/:key route; the session cookie rides along cross-origin like apiFetch.
 export function cdnUrl(key: string) {
-  return `${BASE}/cdn/${encodeURIComponent(key)}`
+  return `${API_BASE}/cdn/${encodeURIComponent(key)}`
 }
 
 type ApiErrorResponse = {
@@ -32,7 +32,7 @@ export class ApiError extends Error {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
@@ -43,7 +43,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export interface CreateRequestInput {
+export type RequestScheduleInput =
+  | { scheduleType: "asap"; scheduledAt?: null; flexibleDate: boolean }
+  | { scheduleType?: "scheduled"; scheduledAt: string; flexibleDate: boolean }
+
+export type CreateRequestInput = RequestScheduleInput & {
   originAddress: string
   originLat: number
   originLng: number
@@ -54,8 +58,6 @@ export interface CreateRequestInput {
   destLng: number
   destFloor?: number
   destHasElevator: boolean
-  scheduledAt: string
-  flexibleDate: boolean
   volumeCategory: VolumeCategory
   itemDescription: string
   notes?: string
@@ -69,30 +71,24 @@ export interface CreateRequestInput {
   longCarry: boolean
 }
 
-export async function uploadFile(file: File): Promise<string> {
-  const form = new FormData()
-  form.append("file", file)
-  const res = await fetch(`${BASE}/api/uploads`, {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  })
-  if (!res.ok) throw new ApiError(await readErrorMessage(res, "Upload failed"), res.status)
-  const data = (await res.json()) as { url: string }
-  return data.url
+export interface UploadedFile {
+  key: string
+  url: string
 }
 
-export async function uploadDriverFile(file: File): Promise<{ key: string; url: string }> {
+export async function uploadFile(file: File): Promise<UploadedFile> {
   const form = new FormData()
   form.append("file", file)
-  const res = await fetch(`${BASE}/api/uploads`, {
+  const res = await fetch(`${API_BASE}/api/uploads`, {
     method: "POST",
     credentials: "include",
     body: form,
   })
   if (!res.ok) throw new ApiError(await readErrorMessage(res, "Upload failed"), res.status)
-  return res.json() as Promise<{ key: string; url: string }>
+  return res.json() as Promise<UploadedFile>
 }
+
+export const uploadDriverFile = uploadFile
 
 export const api = {
   attention: {
@@ -132,7 +128,7 @@ export const api = {
       apiFetch<{ ok: boolean }>(`/api/requests/${id}/cancel`, { method: "PATCH" }),
     reopen: (id: string) =>
       apiFetch<{ ok: boolean }>(`/api/requests/${id}/reopen`, { method: "PATCH" }),
-    republish: (id: string, body: { scheduledAt: string; flexibleDate: boolean }) =>
+    republish: (id: string, body: RequestScheduleInput) =>
       apiFetch<{ id: string }>(`/api/requests/${id}/republish`, {
         method: "POST",
         body: JSON.stringify(body),

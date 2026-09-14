@@ -4,6 +4,13 @@ export type RequestStatus =
   | "in_progress"
   | "completed"
   | "cancelled"
+  | "expired"
+
+export interface RequestSchedule {
+  scheduleType: "scheduled" | "asap"
+  scheduledAt: string | null
+  expiresAt: string | null
+}
 
 export type VolumeCategory = "small" | "medium" | "large" | "full_move"
 
@@ -28,7 +35,7 @@ export type ClientAttentionJob =
   | AttentionJob & { type: "review_job" }
 
 export type DriverAttentionJob =
-  | AttentionJob & { type: "start_job"; scheduledAt: string }
+  | AttentionJob & RequestSchedule & { type: "start_job" }
   | AttentionJob & { type: "mark_arrived" }
   | AttentionJob & { type: "complete_job" }
   | AttentionJob & { type: "review_job" }
@@ -56,8 +63,9 @@ export interface AttentionVerificationResponse {
 }
 
 export type JobStatusUpdate =
-  | { status: "on_the_way" | "arrived" }
-  | { status: "completed"; confirmCode: string }
+  | { status: "on_the_way"; photoKey: string }
+  | { status: "arrived" }
+  | { status: "completed"; photoKey: string; confirmCode: string }
 
 export type VehicleType = "van" | "pickup" | "truck_small" | "truck_large"
 
@@ -226,15 +234,14 @@ export interface AdminUserDetail {
     quotesSent: number
     reviewsReceived: { count: number; avgRating: number | null }
   }
-  recentRequests: {
+  recentRequests: (RequestSchedule & {
     id: string
     status: RequestStatus
     originAddress: string
     destAddress: string
     volumeCategory: VolumeCategory
-    scheduledAt: string
     createdAt: string
-  }[]
+  })[]
   recentJobs: {
     id: string
     status: JobStatus
@@ -345,7 +352,7 @@ export interface PriceRange {
   feeRate: number
 }
 
-export interface RequestDetail {
+export interface RequestDetail extends RequestSchedule {
   id: string
   userId: string
   status: RequestStatus
@@ -360,7 +367,6 @@ export interface RequestDetail {
   destLng: number | null
   destFloor: number | null
   destHasElevator: boolean
-  scheduledAt: string
   flexibleDate: boolean
   volumeCategory: VolumeCategory
   itemDescription: string
@@ -381,11 +387,11 @@ export interface RequestDetail {
   activeQuoteCount: number
   rescueState: RequestRescueState | null
   republishedFrom: { id: string } | null
-  republishedAs: { id: string; scheduledAt: string } | null
+  republishedAs: (RequestSchedule & { id: string }) | null
   job: { id: string; status: JobStatus; confirmedAt: string | null } | null
 }
 
-export interface OpenRequest {
+export interface OpenRequest extends RequestSchedule {
   id: string
   // Addresses are masked to the zone (street + comuna) and coords are withheld
   // on the feed — drivers never see the exact door before winning the job.
@@ -395,7 +401,6 @@ export interface OpenRequest {
   destAddress: string
   destFloor: number | null
   destHasElevator: boolean
-  scheduledAt: string
   flexibleDate: boolean
   volumeCategory: VolumeCategory
   itemDescription: string
@@ -450,15 +455,16 @@ export interface JobDetail {
   confirmedAt: string | null
   cancelledAt: string | null
   cancelledByRole: "user" | "driver" | null
+  beforePhotoKey: string | null
+  afterPhotoKey: string | null
   confirmCode?: string | null
   confirmCodeUsedAt: string | null
   autoConfirmAt: string | null
   createdAt: string
-  request: {
+  request: RequestSchedule & {
     id: string
     originAddress: string
     destAddress: string
-    scheduledAt: string
     volumeCategory: VolumeCategory
     itemDescription: string
     notes: string | null
@@ -476,11 +482,10 @@ export interface JobSummary {
   cancelledAt: string | null
   cancelledByRole: "user" | "driver" | null
   createdAt: string
-  request: {
+  request: RequestSchedule & {
     id: string
     originAddress: string
     destAddress: string
-    scheduledAt: string
     volumeCategory: VolumeCategory
     photos: { url: string }[]
   }
@@ -489,12 +494,11 @@ export interface JobSummary {
   reviews: { reviewerId: string }[]
 }
 
-export interface RequestSummary {
+export interface RequestSummary extends RequestSchedule {
   id: string
   status: RequestStatus
   originAddress: string
   destAddress: string
-  scheduledAt: string
   volumeCategory: VolumeCategory
   itemDescription: string
   notes: string | null

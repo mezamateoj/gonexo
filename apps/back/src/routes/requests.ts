@@ -21,8 +21,15 @@ import { maskAddress } from "../lib/address";
 import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
 import { newQuoteEmail, sendEmail } from "../lib/email";
 import { notifyAvailableDrivers, republishRequest } from "../workflows/requests";
+import { expireOverdueRequests } from "../workflows/request-rescue";
+import { requestDeadlineOpen, requestScheduleSchema } from "../lib/request-schedule";
 
 const requests = new Hono<AppEnv>();
+
+requests.use("*", requireAuth, async (c, next) => {
+  await expireOverdueRequests(c.get("db"));
+  await next();
+});
 
 // Display distance without exposing exact coordinates: real road distance when
 // Mapbox resolved it, else straight-line from the (server-side only) coords.
@@ -56,11 +63,11 @@ function fairPriceRange(req: typeof request.$inferSelect): PriceRange {
     assemblyRequired: req.assemblyRequired,
     packingIncluded: req.packingIncluded,
     hasFragileItems: req.hasFragileItems,
-    scheduledAt: req.scheduledAt,
+    scheduledAt: req.scheduledAt ?? req.createdAt,
   });
 }
 
-const createRequestSchema = z.object({
+const createRequestSchema = requestScheduleSchema.safeExtend({
   originAddress: z.string().min(1),
   originLat: z.number(),
   originLng: z.number(),
@@ -71,8 +78,6 @@ const createRequestSchema = z.object({
   destLng: z.number(),
   destFloor: z.number().int().optional(),
   destHasElevator: z.boolean().default(false),
-  scheduledAt: z.string().datetime(),
-  flexibleDate: z.boolean().default(false),
   volumeCategory: z.enum(["small", "medium", "large", "full_move"]),
   itemDescription: z.string().min(1),
   notes: z.string().optional(),
@@ -94,7 +99,8 @@ requests.post(
     const db = c.get("db");
     const user = c.get("user")!;
     const body = c.req.valid("json");
-    if (new Date(body.scheduledAt).getTime() < Date.now() - 5 * 60 * 1000) {
+    const scheduledAt = body.scheduleType === "scheduled" ? new Date(body.scheduledAt!) : null;
+    if (scheduledAt && scheduledAt.getTime() < Date.now() - 5 * 60 * 1000) {
       throw badRequest("La fecha programada no puede estar en el pasado");
     }
     if (
@@ -111,7 +117,7 @@ requests.post(
     ) {
       throw badRequest("Las coordenadas de destino no son válidas");
     }
-    if (containsContactInfo(body.notes)) throw badRequest(NO_CONTACT_MESSAGE);
+    if ([body.notes, body.itemDescription].some(containsContactInfo)) throw badRequest(NO_CONTACT_MESSAGE);
     const id = crypto.randomUUID();
 
     // Resolve the real driving route once (immutable for a request). Null if
@@ -122,6 +128,7 @@ requests.post(
       { lat: body.destLat, lng: body.destLng },
     );
 
+    const now = new Date();
     const insertRequest = db.insert(request).values({
       id,
       userId: user.id,
@@ -137,8 +144,11 @@ requests.post(
       destLng: body.destLng,
       destFloor: body.destFloor ?? null,
       destHasElevator: body.destHasElevator,
-      scheduledAt: new Date(body.scheduledAt),
-      flexibleDate: body.flexibleDate,
+      scheduleType: body.scheduleType,
+      scheduledAt,
+      expiresAt: body.scheduleType === "asap" ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : null,
+      createdAt: now,
+      flexibleDate: body.scheduleType === "scheduled" && body.flexibleDate,
       volumeCategory: body.volumeCategory,
       itemDescription: body.itemDescription,
       notes: body.notes ?? null,
@@ -179,7 +189,7 @@ requests.post(
       id,
       originAddress: body.originAddress,
       destAddress: body.destAddress,
-      scheduledAt: new Date(body.scheduledAt),
+      scheduledAt,
     }));
 
     return c.json({ id }, 201);
@@ -228,14 +238,14 @@ requests.get("/my", requireClient, async (c) => {
 
   const conditions = [eq(request.userId, user.id)];
   if (bucket === "offers") {
-    conditions.push(eq(request.status, "open"));
+    conditions.push(eq(request.status, "open"), requestDeadlineOpen);
   } else if (bucket === "active") {
     conditions.push(
       ne(request.status, "cancelled"),
       hasJob(ne(job.status, "cancelled"), isNull(job.confirmedAt)),
     );
   } else if (bucket === "history") {
-    const cond = or(eq(request.status, "cancelled"), hasJob(isNotNull(job.confirmedAt)));
+    const cond = or(inArray(request.status, ["cancelled", "expired"]), hasJob(isNotNull(job.confirmedAt)));
     if (cond) conditions.push(cond);
   }
 
@@ -303,7 +313,7 @@ requests.get("/", requireDriver, async (c) => {
     AVAILABLE_SORTS[sortKey as AvailableSort] ?? AVAILABLE_SORTS.recent;
 
   // Only open requests that aren't the caller's own.
-  const conditions = [eq(request.status, "open"), ne(request.userId, user.id)];
+  const conditions = [eq(request.status, "open"), requestDeadlineOpen, ne(request.userId, user.id)];
 
   const volumeParam = c.req.query("volume");
   if (volumeParam) {
@@ -374,7 +384,7 @@ requests.get("/:id", requireAuth, async (c) => {
       user: { columns: { id: true, name: true, image: true, phone: true } },
       originalRequest: { columns: { id: true } },
       republishedRequests: {
-        columns: { id: true, scheduledAt: true },
+        columns: { id: true, scheduleType: true, scheduledAt: true, expiresAt: true },
         limit: 1,
       },
       jobs: {
@@ -404,6 +414,7 @@ requests.get("/:id", requireAuth, async (c) => {
             message: true,
             status: true,
             createdAt: true,
+            expiresAt: true,
           },
         }),
       ]);
@@ -499,6 +510,7 @@ requests.get("/:id/quotes", requireClient, async (c) => {
       message: true,
       status: true,
       createdAt: true,
+      expiresAt: true,
     },
     with: {
       driver: {
@@ -576,7 +588,7 @@ requests.post(
     const requestId = c.req.param("id");
 
     const req = await db.query.request.findFirst({
-      where: and(eq(request.id, requestId), eq(request.status, "open")),
+      where: and(eq(request.id, requestId), eq(request.status, "open"), requestDeadlineOpen),
     });
     if (!req) throw notFound("Request not found or not open");
     if (req.userId === driver.id)
@@ -594,15 +606,25 @@ requests.post(
     }
 
     const id = crypto.randomUUID();
+    const now = new Date();
+    const expiresAt = new Date(Math.min(now.getTime() + 48 * 60 * 60 * 1000, req.expiresAt?.getTime() ?? Infinity));
     try {
-      await db.insert(quote).values({
-        id,
-        requestId,
-        driverId: driver.id,
-        price: body.price,
-        message: body.message ?? null,
-        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
-      });
+      const inserted = await db.insert(quote).select(
+        db.select({
+          id: sql<string>`${id}`.as("id"),
+          requestId: request.id,
+          driverId: sql<string>`${driver.id}`.as("driver_id"),
+          price: sql<number>`${body.price}`.as("price"),
+          message: sql<string | null>`${body.message ?? null}`.as("message"),
+          status: sql<string>`'pending'`.as("status"),
+          expiresAt: sql<Date>`${expiresAt.getTime()}`.as("expires_at"),
+          createdAt: sql<Date>`${now.getTime()}`.as("created_at"),
+          updatedAt: sql<Date>`${now.getTime()}`.as("updated_at"),
+        }).from(request).where(and(
+          eq(request.id, requestId), eq(request.status, "open"), requestDeadlineOpen,
+        )),
+      ).returning({ id: quote.id });
+      if (inserted.length === 0) throw conflict("Request no longer open or has expired");
     } catch (err) {
       // quote_request_driver_unique: one quote per driver per request. Drizzle
       // wraps the D1 error as DrizzleQueryError, whose own .message is just
@@ -656,16 +678,21 @@ requests.patch("/:id/cancel", requireClient, async (c) => {
   if (req.status !== "open")
     throw conflict("Only open requests can be cancelled");
 
-  await db.batch([
+  const [cancelled] = await db.batch([
     db
       .update(request)
       .set({ status: "cancelled" })
-      .where(eq(request.id, req.id)),
+      .where(and(eq(request.id, req.id), eq(request.status, "open"), requestDeadlineOpen))
+      .returning({ id: request.id }),
     db
       .update(quote)
       .set({ status: "cancelled" })
-      .where(and(eq(quote.requestId, req.id), eq(quote.status, "pending"))),
+      .where(and(
+        eq(quote.requestId, req.id), eq(quote.status, "pending"),
+        exists(db.select({ id: request.id }).from(request).where(and(eq(request.id, req.id), eq(request.status, "cancelled")))),
+      )),
   ]);
+  if (cancelled.length === 0) throw conflict("Request no longer open or has expired");
 
   logger.info("Request cancelled: {requestId} by user {userId}", {
     requestId: req.id,
@@ -674,21 +701,16 @@ requests.patch("/:id/cancel", requireClient, async (c) => {
   return c.json({ ok: true });
 });
 
-const republishRequestSchema = z.object({
-  scheduledAt: z.string().datetime(),
-  flexibleDate: z.boolean().default(false),
-});
-
 requests.post(
   "/:id/republish",
   requireClient,
-  zValidator("json", republishRequestSchema),
+  zValidator("json", requestScheduleSchema),
   async (c) => {
     const db = c.get("db");
     const user = c.get("user")!;
     const body = c.req.valid("json");
-    const scheduledAt = new Date(body.scheduledAt);
-    if (scheduledAt <= new Date()) {
+    const scheduledAt = body.scheduleType === "scheduled" ? new Date(body.scheduledAt!) : null;
+    if (scheduledAt && scheduledAt <= new Date()) {
       throw badRequest("La nueva fecha debe estar en el futuro");
     }
 
@@ -698,6 +720,7 @@ requests.post(
       c.req.param("id"),
       scheduledAt,
       body.flexibleDate,
+      body.scheduleType,
     );
 
     c.executionCtx.waitUntil(notifyAvailableDrivers(db, c.env, republished));
@@ -712,7 +735,7 @@ requests.patch("/:id/reopen", requireClient, async (c) => {
 
   const req = await db.query.request.findFirst({
     where: and(eq(request.id, requestId), eq(request.userId, user.id)),
-    columns: { id: true, status: true },
+    columns: { id: true, status: true, expiresAt: true },
     with: {
       republishedRequests: {
         columns: { id: true },
@@ -722,6 +745,9 @@ requests.patch("/:id/reopen", requireClient, async (c) => {
   });
   if (!req) throw notFound();
   if (req.status !== "cancelled") throw conflict("Only cancelled requests can be reopened");
+  if (req.expiresAt && req.expiresAt <= new Date()) {
+    throw conflict("La solicitud venció; publícala de nuevo para recibir ofertas");
+  }
   if (req.republishedRequests.length > 0) {
     throw conflict("Republished requests cannot be reopened");
   }
@@ -733,24 +759,29 @@ requests.patch("/:id/reopen", requireClient, async (c) => {
   if (activeJob) throw conflict("Request has an active job");
 
   const now = new Date();
-  await db.batch([
+  const [reopened] = await db.batch([
     db
       .update(request)
       .set({ status: "open" })
-      .where(eq(request.id, req.id)),
+      .where(and(eq(request.id, req.id), eq(request.status, "cancelled"), requestDeadlineOpen))
+      .returning({ id: request.id }),
     db
       .update(quote)
       .set({ status: "pending" })
       .where(and(
         eq(quote.requestId, req.id),
         inArray(quote.status, ["cancelled", "rejected"]),
-        sql`${quote.expiresAt} > ${now}`,
+        gt(quote.expiresAt, now),
+        exists(db.select({ id: request.id }).from(request).where(and(
+          eq(request.id, req.id), eq(request.status, "open"), requestDeadlineOpen,
+        ))),
         sql`not exists (
           select 1 from ${job}
           where ${job.quoteId} = ${quote.id}
         )`,
       )),
   ]);
+  if (reopened.length === 0) throw conflict("Request no longer cancelled or has expired");
 
   logger.info("Request reopened: {requestId} by user {userId}", {
     requestId: req.id,

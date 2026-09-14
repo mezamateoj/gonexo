@@ -49,7 +49,9 @@ drivers.post(
     const db = c.get("db");
     const user = c.get("user")!;
     const body = c.req.valid("json");
-    if (containsContactInfo(body.bio)) throw badRequest(NO_CONTACT_MESSAGE);
+    if ([body.bio, body.vehicleDescription, body.vehicleCapacity].some(containsContactInfo)) {
+      throw badRequest(NO_CONTACT_MESSAGE);
+    }
     const phone = normalizePhone(body.phone);
     const vehiclePlate = normalizeVehiclePlate(body.vehiclePlate);
 

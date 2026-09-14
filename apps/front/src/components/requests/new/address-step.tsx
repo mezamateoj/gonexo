@@ -14,7 +14,7 @@ export function AddressStep({
   attempted,
 }: {
   value: AddressResult | null
-  onChange: (r: AddressResult) => void
+  onChange: (r: AddressResult | null) => void
   floor: string
   onFloor: (v: string) => void
   elevator: boolean

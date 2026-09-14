@@ -23,9 +23,10 @@ import {
   cancelledByRoleLabels,
   formatPrice,
   formatCompactDateTime,
+  formatSchedule,
   jobStatusClasses,
   jobStatusLabels,
-  shortAddress,
+  approximateAddress,
   volumeColors,
   volumeLabels,
 } from "@/lib/display"
@@ -112,16 +113,16 @@ function DriverJobCard({
             )}
           </div>
           <span className="shrink-0 text-xs text-muted-foreground">
-            {formatCompactDateTime(job.request.scheduledAt)}
+            {formatSchedule(job.request, formatCompactDateTime)}
           </span>
         </CardHeader>
         <CardContent className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">
-              {job.request.originAddress}
+              {approximateAddress(job.request.originAddress)}
             </p>
             <p className="truncate text-xs text-muted-foreground">
-              → {job.request.destAddress}
+              → {approximateAddress(job.request.destAddress)}
             </p>
             {job.status === "cancelled" && job.cancelledByRole && (
               <p className="mt-2 text-xs text-muted-foreground">
@@ -204,13 +205,13 @@ function JobsPage() {
             <div className="flex items-center gap-1.5">
               <span className="size-1.5 shrink-0 rounded-full bg-primary" />
               <span className="max-w-[220px] truncate text-[13px] font-medium text-foreground">
-                {shortAddress(row.original.request.originAddress)}
+                {approximateAddress(row.original.request.originAddress)}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground" />
               <span className="max-w-[220px] truncate text-[13px] text-ink-soft">
-                {shortAddress(row.original.request.destAddress)}
+                {approximateAddress(row.original.request.destAddress)}
               </span>
             </div>
           </div>
@@ -235,7 +236,7 @@ function JobsPage() {
         header: "Fecha",
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-[13px] text-ink-soft">
-            {formatCompactDateTime(row.original.request.scheduledAt)}
+            {formatSchedule(row.original.request, formatCompactDateTime)}
           </span>
         ),
       }),

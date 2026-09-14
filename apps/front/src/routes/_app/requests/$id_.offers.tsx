@@ -7,6 +7,7 @@ import { fireConfetti } from "@/lib/celebrate"
 import {
   formatCLP,
   formatLongDateTime,
+  formatSchedule,
   requestStatusClasses,
   requestStatusLabels,
   shortAddress,
@@ -103,7 +104,7 @@ function RequestOffersPage() {
                 {shortAddress(request.originAddress)} → {shortAddress(request.destAddress)}
               </CardTitle>
               <CardDescription>
-                Flete {volumeLabels[request.volumeCategory].toLocaleLowerCase("es-CL")} · {formatLongDateTime(request.scheduledAt)}
+                Flete {volumeLabels[request.volumeCategory].toLocaleLowerCase("es-CL")} · {formatSchedule(request, formatLongDateTime)}
               </CardDescription>
               <CardAction>
                 <Badge className={cn(requestStatusClasses[request.status] ?? "bg-muted text-muted-foreground")}>

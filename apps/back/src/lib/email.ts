@@ -172,11 +172,11 @@ export function newRequestEmail(p: {
   driverName: string;
   origin: string;
   dest: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
   requestId: string;
   frontendUrl: string;
 }): EmailContent {
-  const scheduledAt = formatDateTime(p.scheduledAt);
+  const scheduledAt = p.scheduledAt ? formatDateTime(p.scheduledAt) : "Lo antes posible";
 
   return {
     subject: `Nuevo flete disponible: ${p.origin} → ${p.dest}`,
@@ -207,7 +207,7 @@ export function adminNoOfferRescueEmail(p: {
   drivers: EmailContact[];
   origin: string;
   dest: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
   requestId: string;
 }): EmailContent {
   const drivers = p.drivers.length > 0
@@ -222,7 +222,7 @@ export function adminNoOfferRescueEmail(p: {
       <h1 style="font-size:18px;margin:0">Una solicitud necesita intervención</h1>
       ${routeLine(p.origin, p.dest)}
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
-        Programada para <strong>${escapeHtml(formatDateTime(p.scheduledAt))}</strong>.
+        Programada para <strong>${escapeHtml(p.scheduledAt ? formatDateTime(p.scheduledAt) : "Lo antes posible")}</strong>.
       </p>
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
         Cliente: ${contactLine(p.client)}
@@ -240,7 +240,7 @@ export function adminOffersExpiringEmail(p: {
   client: EmailContact;
   origin: string;
   dest: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
   requestId: string;
   offers: {
     driver: EmailContact;
@@ -262,7 +262,7 @@ export function adminOffersExpiringEmail(p: {
       <h1 style="font-size:18px;margin:0">Hay ofertas que vencerán pronto</h1>
       ${routeLine(p.origin, p.dest)}
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
-        Flete programado para <strong>${escapeHtml(formatDateTime(p.scheduledAt))}</strong>.
+        Flete programado para <strong>${escapeHtml(p.scheduledAt ? formatDateTime(p.scheduledAt) : "Lo antes posible")}</strong>.
       </p>
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
         Contacta primero al cliente: ${contactLine(p.client)}
@@ -350,6 +350,7 @@ export function driverVerificationDecisionEmail(p: {
 export function jobCancelledEmail(p: {
   recipientName: string;
   cancelledBy: "client" | "driver";
+  requestExpired: boolean;
   origin: string;
   dest: string;
   requestId: string;
@@ -365,7 +366,9 @@ export function jobCancelledEmail(p: {
       <h1 style="font-size:18px;margin:0">Hola ${escapeHtml(p.recipientName)}, el flete fue cancelado</h1>
       <p style="font-size:14px;color:#485450;margin:12px 0 0">
         ${cancelledByDriver
-          ? "El transportista canceló el trabajo. La solicitud volvió a estar disponible para recibir otras ofertas."
+          ? p.requestExpired
+            ? "El transportista canceló el trabajo. La solicitud venció; puedes publicarla de nuevo para recibir otras ofertas."
+            : "El transportista canceló el trabajo. La solicitud volvió a estar disponible para recibir otras ofertas."
           : "El cliente canceló el trabajo programado."}
       </p>
       ${routeLine(p.origin, p.dest)}

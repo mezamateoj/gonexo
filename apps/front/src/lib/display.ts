@@ -5,6 +5,7 @@ import type {
   DriverVerificationStatus,
   JobStatus,
   RequestSummary,
+  RequestSchedule,
   VolumeCategory,
 } from "@/lib/types"
 
@@ -28,6 +29,7 @@ export const requestStatusLabels: Record<string, string> = {
   in_progress: "En camino",
   completed: "Completado",
   cancelled: "Cancelado",
+  expired: "Vencido",
 }
 
 export const requestStatusClasses: Record<string, string> = {
@@ -36,9 +38,11 @@ export const requestStatusClasses: Record<string, string> = {
   in_progress: "bg-accent text-primary",
   completed: "bg-muted text-muted-foreground",
   cancelled: "bg-[#FEF2F2] text-destructive",
+  expired: "bg-muted text-muted-foreground",
 }
 
 export function requestRescueCue(request: RequestSummary) {
+  if (request.status === "expired") return "Puedes republicar"
   if (request.status !== "open") return null
   if (request.quotes.some((quote) => quote.status === "pending")) return null
   if (request.quotes.length > 0) return "Ofertas vencidas"
@@ -141,6 +145,16 @@ export function formatShortDate(iso: string) {
   })
 }
 
+export const asapBookingDescription = "Tu solicitud estará disponible durante 24 horas para recibir y aceptar ofertas. No es un plazo de entrega; coordina el retiro con el transportista."
+
+export function formatSchedule(
+  schedule: Pick<RequestSchedule, "scheduleType" | "scheduledAt">,
+  format: (iso: string) => string = formatCompactDateTime,
+) {
+  if (schedule.scheduleType === "asap") return "Lo antes posible"
+  return schedule.scheduledAt ? format(schedule.scheduledAt) : "Sin fecha"
+}
+
 export function formatLongDateTime(iso: string) {
   return new Date(iso).toLocaleString("es-CL", {
     weekday: "long",
@@ -194,6 +208,12 @@ export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: numbe
       Math.sin(dLng / 2) ** 2
 
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// Only show a named area; unexpected address formats stay hidden.
+export function approximateAddress(address: string) {
+  const area = address.split(",")[1]?.trim()
+  return area && !/\d/.test(area) ? area : "Ubicación reservada"
 }
 
 export function shortAddress(address: string) {

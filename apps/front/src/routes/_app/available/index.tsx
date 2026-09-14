@@ -227,7 +227,9 @@ const columns = [
     enableSorting: true,
     sortDescFirst: false,
     cell: ({ row }) => {
-      const { label, urgent } = relativeDate(row.original.scheduledAt)
+      const { label, urgent } = row.original.scheduleType === "asap"
+        ? { label: "Lo antes posible", urgent: true }
+        : row.original.scheduledAt ? relativeDate(row.original.scheduledAt) : { label: "Sin fecha", urgent: false }
       return (
         <span className={cn("flex items-center gap-1 whitespace-nowrap text-[12px] font-medium", urgent ? "text-amber-600" : "text-ink-soft")}>
           {urgent && <Clock className="size-3" />}

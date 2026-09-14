@@ -2,9 +2,10 @@ import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { formatTime, jobStatusOrder } from "@/lib/display"
+import { formatSchedule, formatTime, jobStatusOrder } from "@/lib/display"
 import { useAdvanceJobStatus } from "@/hooks/use-request-mutations"
 import { ConfirmDeliverySheet } from "./confirm-delivery-sheet"
+import { StartJobSheet } from "./start-job-sheet"
 import type { JobDetail, JobStatus } from "@/lib/types"
 
 function StepDot({ state }: { state: "done" | "active" | "empty" }) {
@@ -24,20 +25,12 @@ function StepDot({ state }: { state: "done" | "active" | "empty" }) {
   )
 }
 
-function AdvanceButton({
-  jobId,
-  label,
-  next,
-}: {
-  jobId: string
-  label: string
-  next: "on_the_way" | "arrived"
-}) {
+function AdvanceButton({ jobId, label }: { jobId: string; label: string }) {
   const advance = useAdvanceJobStatus(jobId)
   return (
     <Button
       type="button"
-      onClick={() => advance.mutate({ status: next })}
+      onClick={() => advance.mutate({ status: "arrived" })}
       disabled={advance.isPending}
       className="mt-1.5 h-9 w-fit px-4 text-[13px] font-semibold active:scale-[0.97]"
     >
@@ -54,18 +47,18 @@ export function JobTrackingStepper({ job, isDriver }: { job: JobDetail; isDriver
   const rows: { status: JobStatus; label: string; meta: ReactNode }[] = [
     {
       status: "scheduled",
-      label: "Agendado",
+      label: job.request.scheduleType === "asap" ? "Por coordinar" : "Agendado",
       meta:
         currentIdx === 0 && isDriver ? (
           <div className="flex flex-col items-start gap-1">
             <p className="text-[12px] tabular-nums text-muted-foreground">
-              {formatTime(job.request.scheduledAt)}
+              {formatSchedule(job.request, formatTime)}
             </p>
-            <AdvanceButton jobId={job.id} label="Iniciar viaje" next="on_the_way" />
+            <StartJobSheet jobId={job.id} />
           </div>
         ) : (
           <p className="text-[12px] tabular-nums text-muted-foreground">
-            {formatTime(job.request.scheduledAt)}
+            {formatSchedule(job.request, formatTime)}
           </p>
         ),
     },
@@ -80,7 +73,7 @@ export function JobTrackingStepper({ job, isDriver }: { job: JobDetail; isDriver
                 {formatTime(job.onTheWayAt)} · en curso
               </p>
             )}
-            <AdvanceButton jobId={job.id} label="Ya llegué" next="arrived" />
+            <AdvanceButton jobId={job.id} label="Ya llegué" />
           </div>
         ) : job.onTheWayAt ? (
           <p className="text-[12px] tabular-nums text-muted-foreground">{formatTime(job.onTheWayAt)}</p>

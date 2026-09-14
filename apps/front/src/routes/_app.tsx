@@ -36,19 +36,23 @@ export const Route = createFileRoute("/_app")({
 
 const CRUMBS: Record<string, string> = {
   "/requests": "Mis fletes",
-  "/requests/new": "Publicar flete",
+  "/requests/new": "Solicitar flete",
   "/jobs": "Mis fletes",
   "/available": "Buscar fletes",
   "/profile": "Configuración",
 }
 
 function TopBar() {
-  const { pathname } = useRouterState({ select: (s) => s.location })
+  const { pathname, search } = useRouterState({ select: (s) => s.location })
   const { session } = Route.useRouteContext()
   const isWizard = pathname === "/requests/new"
 
+  const requestLabel =
+    search.tab === "active" ? "En curso" : search.tab === "history" ? "Historial" : "Ofertas"
   const currentLabel =
-    CRUMBS[pathname] ??
+    pathname === "/requests" || pathname === "/requests/"
+      ? requestLabel
+      : CRUMBS[pathname] ??
     (pathname.startsWith("/requests/")
       ? pathname.endsWith("/offers")
         ? "Ofertas recibidas"
@@ -73,9 +77,9 @@ function TopBar() {
       <div className="flex items-center gap-2">
         {session.user.accountType === "client" && (
           <Button size="sm" asChild>
-            <Link to="/requests/new" aria-label="Publicar flete">
+            <Link to="/requests/new" aria-label="Solicitar flete">
               <Plus data-icon="inline-start" />
-              <span className="hidden sm:inline">Publicar flete</span>
+              <span className="hidden sm:inline">Solicitar flete</span>
             </Link>
           </Button>
         )}

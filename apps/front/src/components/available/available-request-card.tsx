@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { ArrowRight, Calendar, MapPin, Package } from "lucide-react"
-import { formatCLP, formatCompactDateTime, initials, volumeLabels } from "@/lib/display"
+import { formatCLP, formatCompactDateTime, formatSchedule, initials, volumeLabels } from "@/lib/display"
 import type { OpenRequest } from "@/lib/types"
 import { Badge } from "@/components/ui/badge"
 
@@ -46,7 +46,7 @@ export function AvailableRequestCard({ req }: { req: OpenRequest }) {
       <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-surface-dim pt-3">
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Calendar className="size-3.5" />
-          <span className="text-[12px]">{formatCompactDateTime(req.scheduledAt)}</span>
+          <span className="text-[12px]">{formatSchedule(req, formatCompactDateTime)}</span>
         </div>
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Package className="size-3.5" />

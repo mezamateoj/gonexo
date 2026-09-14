@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import {
   formatCLP,
   formatCompactDateTime,
+  formatSchedule,
   requestRescueCue,
   requestStatusClasses,
   requestStatusLabels,
@@ -43,7 +44,7 @@ export function RequestCard({ req }: { req: RequestSummary }) {
                 </Badge>
               )}
             </div>
-            <span className="text-[13px] text-ink-faint">{formatCompactDateTime(req.scheduledAt)}</span>
+            <span className="text-[13px] text-ink-faint">{formatSchedule(req, formatCompactDateTime)}</span>
           </div>
 
           <div className="mt-[14px] flex flex-col gap-[8px]">

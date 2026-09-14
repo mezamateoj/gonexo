@@ -85,6 +85,20 @@
       "when": 1785247397169,
       "tag": "0011_slimy_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1788794868880,
+      "tag": "0012_slippery_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1788817167776,
+      "tag": "0013_flat_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

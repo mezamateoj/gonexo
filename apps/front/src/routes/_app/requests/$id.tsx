@@ -1,10 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, CalendarDays, ChevronLeft, CircleAlert, TriangleAlert } from "lucide-react"
+import { useSession } from "@/lib/auth-client"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import {
+  approximateAddress,
   formatLongDateTime,
+  formatSchedule,
   requestStatusClasses,
   requestStatusLabels,
   shortAddress,
@@ -40,6 +43,7 @@ export const Route = createFileRoute("/_app/requests/$id")({
 
 function RequestDetailPage() {
   const { id } = Route.useParams()
+  const { data: session } = useSession()
   const navigate = useNavigate()
   const requestQuery = useQuery({
     queryKey: queryKeys.requests.detail(id),
@@ -72,7 +76,10 @@ function RequestDetailPage() {
     )
   }
 
-  const request = requestQuery.data
+  const data = requestQuery.data
+  const request = data && data.userId !== session?.user.id
+    ? { ...data, originAddress: approximateAddress(data.originAddress), destAddress: approximateAddress(data.destAddress) }
+    : data
   const job = request?.job
 
   return (
@@ -108,7 +115,7 @@ function RequestDetailPage() {
           </p>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <CalendarDays className="size-4" />
-            {formatLongDateTime(request.scheduledAt)}
+            {formatSchedule(request, formatLongDateTime)}
           </p>
           {request.republishedFrom && (
             <Button asChild variant="link" className="h-auto w-fit justify-start p-0 text-muted-foreground">
