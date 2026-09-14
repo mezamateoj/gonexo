@@ -79,8 +79,8 @@ export function OffersSummaryCard({
           <Empty className="min-h-40 border">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Inbox /></EmptyMedia>
-              <EmptyTitle>Esperando ofertas</EmptyTitle>
-              <EmptyDescription>Te avisaremos cuando un transportista envíe una.</EmptyDescription>
+              <EmptyTitle>{requestStatus === "expired" ? "Solicitud vencida" : "Esperando ofertas"}</EmptyTitle>
+              <EmptyDescription>{requestStatus === "expired" ? "Republica la solicitud para recibir nuevas ofertas." : "Te avisaremos cuando un transportista envíe una."}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (

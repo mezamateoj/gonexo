@@ -6,6 +6,7 @@ import type { AppEnv } from "../lib/types";
 import { acceptQuote } from "../workflows/quotes";
 import { maskAddress } from "../lib/address";
 import { paymentAllowsDriverAccess } from "../domain/payments";
+import { expireOverdueRequests } from "../workflows/request-rescue";
 
 const quotes = new Hono<AppEnv>();
 
@@ -13,6 +14,7 @@ const quotes = new Hono<AppEnv>();
 quotes.get("/my", requireDriver, async (c) => {
   const db = c.get("db");
   const driver = c.get("user")!;
+  await expireOverdueRequests(db);
 
   const results = await db.query.quote.findMany({
     where: eq(quote.driverId, driver.id),
@@ -25,6 +27,8 @@ quotes.get("/my", requireDriver, async (c) => {
           originAddress: true,
           destAddress: true,
           scheduledAt: true,
+          scheduleType: true,
+          expiresAt: true,
           volumeCategory: true,
           status: true,
         },

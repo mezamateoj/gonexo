@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import * as Sentry from "@sentry/cloudflare";
-import { eq, ne, sql } from "drizzle-orm";
+import { eq, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { cors } from "hono/cors";
 import { configureSync, getConsoleSink, logfmtFormatter, resetSync } from "@logtape/logtape";
@@ -25,6 +25,7 @@ import seed from "./routes/seed";
 import admin from "./routes/admin";
 import attention from "./routes/attention";
 import payments from "./routes/payments";
+import intake from "./routes/intake";
 import { isAdmin } from "./middleware/auth";
 import { driverDocument, job, requestPhoto, user as userTable } from "./db/schema";
 import { normalizePhone } from "./lib/normalizers";
@@ -153,6 +154,7 @@ const api = new Hono<AppEnv>()
   .route("/geo", geo)
   .route("/attention", attention)
   .route("/payments", payments)
+  .route("/intake", intake)
   .route("/admin", admin)
   .route("/__seed", localSeed);
 
@@ -165,7 +167,7 @@ app.get("/cdn/:key", async (c) => {
   if (!user) throw notFound();
   const key = c.req.param("key");
   const suffix = `/cdn/${key}`;
-  const [document, photos, obj] = await Promise.all([
+  const [document, photos, photoJobs, obj] = await Promise.all([
     c.get("db").query.driverDocument.findFirst({
       where: eq(driverDocument.key, key),
       with: { driverProfile: { columns: { userId: true } } },
@@ -185,6 +187,10 @@ app.get("/cdn/:key", async (c) => {
         },
       },
     }),
+    c.get("db").query.job.findMany({
+      where: or(eq(job.beforePhotoKey, key), eq(job.afterPhotoKey, key)),
+      columns: { userId: true, driverId: true },
+    }),
     c.env.BUCKET.get(key),
   ]);
   if (!obj) throw notFound();
@@ -200,6 +206,10 @@ app.get("/cdn/:key", async (c) => {
             paymentAllowsDriverAccess(paymentJob.paymentStatus));
       });
       if (!canSeePhoto) throw notFound();
+    } else if (photoJobs.length > 0) {
+      if (!photoJobs.some((item) => item.userId === user.id || item.driverId === user.id)) {
+        throw notFound();
+      }
     } else if (obj.customMetadata?.userId !== user.id) {
       throw notFound();
     }

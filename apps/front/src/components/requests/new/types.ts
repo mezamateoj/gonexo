@@ -10,6 +10,7 @@ export interface Draft {
   dest: AddressResult | null
   destFloor: string
   destHasElevator: boolean
+  scheduleType: "scheduled" | "asap"
   scheduledDate: string
   scheduledTime: string
   flexibleDate: boolean

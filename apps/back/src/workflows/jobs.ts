@@ -4,6 +4,7 @@ import type { Db } from "../db";
 import { paymentAllowsDriverAccess } from "../domain/payments";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { logger } from "../lib/logger";
+import { requestDeadlineOpen } from "../lib/request-schedule";
 
 const STATUS_TRANSITIONS = {
   scheduled: "on_the_way",
@@ -12,8 +13,9 @@ const STATUS_TRANSITIONS = {
 } as const;
 
 export type AdvanceJobInput =
-  | { status: "on_the_way" | "arrived" }
-  | { status: "completed"; confirmCode?: string };
+  | { status: "on_the_way"; photoKey?: string }
+  | { status: "arrived" }
+  | { status: "completed"; photoKey?: string; confirmCode?: string };
 
 export async function advanceJob(db: Db, driverId: string, jobId: string, input: AdvanceJobInput) {
   const j = await db.query.job.findFirst({
@@ -36,13 +38,18 @@ export async function advanceJob(db: Db, driverId: string, jobId: string, input:
     throw badRequest("Código incorrecto. Pídele al cliente su código de entrega.");
   }
 
+  if (input.status === "completed" && input.photoKey && input.photoKey === j.beforePhotoKey) {
+    throw badRequest("Sube una foto nueva al finalizar el flete.");
+  }
+
   const now = new Date();
   const timestampUpdates =
     input.status === "on_the_way"
-      ? { onTheWayAt: now }
+      ? { onTheWayAt: now, beforePhotoKey: input.photoKey }
       : input.status === "arrived"
         ? { arrivedAt: now }
         : {
+            afterPhotoKey: input.photoKey,
             completedAt: now,
             confirmCodeUsedAt: j.confirmCode ? now : null,
             autoConfirmAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
@@ -131,7 +138,6 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
   }
 
   const now = new Date();
-  const requestStatus = actorRole === "driver" ? "open" : "cancelled";
   const claim = and(
     eq(job.id, j.id),
     eq(job.status, "scheduled"),
@@ -166,11 +172,15 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
       eq(quote.status, "rejected"),
       gt(quote.expiresAt, now),
       wasCancelled,
+      exists(db.select({ id: request.id }).from(request).where(and(
+        eq(request.id, j.requestId), eq(request.status, "open"), requestDeadlineOpen,
+      ))),
     ));
   const updateRequest = db
     .update(request)
-    .set({ status: requestStatus })
-    .where(and(eq(request.id, j.requestId), wasCancelled));
+    .set({ status: actorRole === "driver" ? sql`case when ${requestDeadlineOpen} then 'open' else 'expired' end` : "cancelled" })
+    .where(and(eq(request.id, j.requestId), wasCancelled))
+    .returning({ status: request.status });
   const writeEvent = db.insert(jobEvent).select(
     db
       .select({
@@ -185,21 +195,15 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
       .where(and(eq(job.id, j.id), wasCancelled)),
   );
 
-  const [cancelled] = actorRole === "driver"
-    ? await db.batch([
-        cancelJob,
-        cancelAcceptedQuote,
-        restoreRejectedQuotes,
-        updateRequest,
-        writeEvent,
-      ])
-    : await db.batch([
-        cancelJob,
-        cancelAcceptedQuote,
-        updateRequest,
-        writeEvent,
-      ]);
+  const [cancelled, , updatedRequests] = await db.batch([
+      cancelJob,
+      cancelAcceptedQuote,
+      updateRequest,
+      writeEvent,
+      ...(actorRole === "driver" ? [restoreRejectedQuotes] : []),
+    ]);
   if (cancelled.length === 0) throw conflict("Job can no longer be cancelled");
+  const requestStatus = updatedRequests[0]!.status;
 
   logger.info("Job cancelled: {jobId} by {actorRole} {userId}; request is now {requestStatus}", {
     jobId: j.id,
@@ -215,6 +219,7 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
     recipient: actorRole === "driver" ? j.user : j.driver,
     request: j.request,
     requestId: j.requestId,
+    requestStatus,
   };
 }
 

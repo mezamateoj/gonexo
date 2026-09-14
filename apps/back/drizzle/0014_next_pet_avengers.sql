@@ -23,8 +23,12 @@ CREATE TABLE `__new_job` (
 	`mercado_pago_preference_id` text,
 	`mercado_pago_payment_id` text,
 	`paid_at` integer,
+	`driver_settled_at` integer,
+	`driver_settlement_reference` text,
 	`on_the_way_at` integer,
 	`arrived_at` integer,
+	`before_photo_key` text,
+	`after_photo_key` text,
 	`completed_at` integer,
 	`auto_confirm_at` integer,
 	`confirmed_at` integer,
@@ -47,17 +51,19 @@ INSERT INTO `__new_job`(
 	`id`, `request_id`, `quote_id`, `user_id`, `driver_id`, `status`,
 	`agreed_price`, `platform_fee`, `driver_payout`, `payment_status`,
 	`mercado_pago_preference_id`, `mercado_pago_payment_id`, `paid_at`,
-	`on_the_way_at`, `arrived_at`, `completed_at`, `auto_confirm_at`,
-	`confirmed_at`, `cancelled_at`, `cancelled_by_role`, `confirm_code`,
-	`confirm_code_used_at`, `created_at`, `updated_at`
+	`driver_settled_at`, `driver_settlement_reference`, `on_the_way_at`,
+	`arrived_at`, `before_photo_key`, `after_photo_key`, `completed_at`,
+	`auto_confirm_at`, `confirmed_at`, `cancelled_at`, `cancelled_by_role`,
+	`confirm_code`, `confirm_code_used_at`, `created_at`, `updated_at`
 )
 SELECT
 	`id`, `request_id`, `quote_id`, `user_id`, `driver_id`, `status`,
 	`agreed_price`, `platform_fee`, `driver_payout`, 'not_required',
-	NULL, NULL, NULL,
-	`on_the_way_at`, `arrived_at`, `completed_at`, `auto_confirm_at`,
-	`confirmed_at`, `cancelled_at`, `cancelled_by_role`, `confirm_code`,
-	`confirm_code_used_at`, `created_at`, `updated_at`
+	NULL, NULL, NULL, NULL, NULL,
+	`on_the_way_at`, `arrived_at`, `before_photo_key`, `after_photo_key`,
+	`completed_at`, `auto_confirm_at`, `confirmed_at`, `cancelled_at`,
+	`cancelled_by_role`, `confirm_code`, `confirm_code_used_at`,
+	`created_at`, `updated_at`
 FROM `job`;
 
 DROP TABLE `job`;
@@ -139,3 +145,5 @@ CREATE TABLE `mercado_pago_payment` (
 	FOREIGN KEY (`job_id`) REFERENCES `job`(`id`) ON UPDATE no action ON DELETE cascade
 );
 CREATE INDEX `mercado_pago_payment_jobId_idx` ON `mercado_pago_payment` (`job_id`);
+
+PRAGMA defer_foreign_keys=OFF;

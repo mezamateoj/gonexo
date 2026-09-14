@@ -16,6 +16,7 @@ import type { RequestBucket, RequestSort, RequestSummary, VolumeCategory } from 
 import {
   formatCLP,
   formatCompactDateTime,
+  formatSchedule,
   requestRescueCue,
   requestStatusClasses,
   requestStatusLabels,
@@ -77,7 +78,7 @@ const EMPTY_STATES: Record<
   offers: {
     icon: CircleDot,
     title: "No tienes fletes esperando ofertas",
-    description: "Publica un flete para empezar a recibir ofertas de transportistas.",
+    description: "Solicita un flete para empezar a recibir ofertas de transportistas.",
   },
   active: {
     icon: PackagePlus,
@@ -88,6 +89,21 @@ const EMPTY_STATES: Record<
     icon: Archive,
     title: "Tu historial está vacío",
     description: "Los fletes confirmados y cancelados aparecerán aquí.",
+  },
+}
+
+const PAGE_COPY: Record<RequestBucket, { title: string; description: string }> = {
+  offers: {
+    title: "Ofertas",
+    description: "Revisa tus fletes publicados y las ofertas de transportistas.",
+  },
+  active: {
+    title: "En curso",
+    description: "Sigue los fletes que ya tienen una oferta aceptada.",
+  },
+  history: {
+    title: "Historial",
+    description: "Consulta tus fletes confirmados y cancelados.",
   },
 }
 
@@ -227,7 +243,7 @@ function RequestsPage() {
         enableSorting: true,
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-[13px] text-ink-soft">
-            {formatCompactDateTime(row.original.scheduledAt)}
+            {formatSchedule(row.original, formatCompactDateTime)}
           </span>
         ),
       }),
@@ -256,29 +272,19 @@ function RequestsPage() {
 
   const hasFilters = q.length > 0 || volume.length > 0
   const empty = EMPTY_STATES[tab]
+  const pageCopy = PAGE_COPY[tab]
   const EmptyIcon = empty.icon
 
   return (
     <div className="flex w-full flex-col gap-6 p-4 md:p-8">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-foreground">Mis fletes</h1>
-        <p className="text-sm text-muted-foreground">
-          Revisa ofertas, sigue tus fletes activos y consulta tu historial.
-        </p>
+        <h1 className="text-2xl font-bold text-foreground">{pageCopy.title}</h1>
+        <p className="text-sm text-muted-foreground">{pageCopy.description}</p>
       </div>
 
       <AttentionPanel />
 
       <MyFletesToolbar
-        bucket={{
-          value: tab,
-          options: [
-            { value: "offers", label: "Ofertas" },
-            { value: "active", label: "En curso" },
-            { value: "history", label: "Historial" },
-          ],
-          onChange: (value) => patch({ tab: value }),
-        }}
         q={q}
         volume={volume}
         searchPlaceholder="Buscar por dirección…"
@@ -324,7 +330,7 @@ function RequestsPage() {
           {tab === "offers" && (
             <EmptyContent>
               <Button asChild>
-                <Link to="/requests/new">Publicar flete</Link>
+                <Link to="/requests/new">Solicitar flete</Link>
               </Button>
             </EmptyContent>
           )}

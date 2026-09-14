@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { api } from "@/lib/api"
+import type { RequestScheduleInput } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import type { JobStatusUpdate } from "@/lib/types"
 
@@ -56,7 +57,7 @@ export function useRepublishRequest(requestId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (body: { scheduledAt: string; flexibleDate: boolean }) =>
+    mutationFn: (body: RequestScheduleInput) =>
       api.requests.republish(requestId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(requestId) })
@@ -100,6 +101,19 @@ export function useAdvanceJobStatus(jobId: string) {
       toast.error("No pudimos actualizar el estado", {
         description: error.message,
       })
+    },
+  })
+}
+
+export function useReconcileJobPayment(jobId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (paymentId: string) => api.jobs.reconcilePayment(jobId, paymentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
     },
   })
 }

@@ -28,6 +28,9 @@ import {
   CirclePlus,
   Briefcase,
   Truck,
+  CircleDot,
+  PackageCheck,
+  Archive,
   Settings,
   LogOut,
   ChevronsUpDown,
@@ -42,8 +45,13 @@ import { Badge } from "@/components/ui/badge"
 import { useAttentionQueries } from "@/hooks/use-attention-queries"
 
 const CLIENT_NAV = [
-  { label: "Publicar flete", icon: CirclePlus, to: "/requests/new" },
-  { label: "Mis fletes", icon: Briefcase, to: "/requests" },
+  { label: "Solicitar flete", icon: CirclePlus, to: "/requests/new" },
+] as const
+
+const CLIENT_REQUEST_NAV = [
+  { label: "Ofertas", icon: CircleDot, tab: "offers" },
+  { label: "En curso", icon: PackageCheck, tab: "active" },
+  { label: "Historial", icon: Archive, tab: "history" },
 ] as const
 
 const DRIVER_NAV = [
@@ -75,6 +83,35 @@ function NavItem({
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
         <Link to={to} onClick={() => isMobile && setOpenMobile(false)}>
+          <Icon />
+          <span>{label}</span>
+        </Link>
+      </SidebarMenuButton>
+      {!!badge && <SidebarMenuBadge>{badge}</SidebarMenuBadge>}
+    </SidebarMenuItem>
+  )
+}
+
+function RequestNavItem({
+  label,
+  icon: Icon,
+  tab,
+  isActive,
+  badge,
+}: (typeof CLIENT_REQUEST_NAV)[number] & {
+  isActive: boolean
+  badge?: number
+}) {
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
+        <Link
+          to="/requests"
+          search={{ tab }}
+          onClick={() => isMobile && setOpenMobile(false)}
+        >
           <Icon />
           <span>{label}</span>
         </Link>
@@ -119,20 +156,20 @@ export function AppSidebar() {
     })
   }
 
-  const { pathname } = useRouterState({ select: (s) => s.location })
+  const { pathname, search } = useRouterState({ select: (s) => s.location })
 
   const isDriver = session?.user.accountType === "driver"
   const isAdmin = session?.user.role === "admin"
   const nav = isDriver ? DRIVER_NAV : CLIENT_NAV
   const home = isDriver ? "/available" : "/requests"
-  const attentionCount = isDriver
-    ? attention.jobs.data?.count ?? 0
-    : (attention.offers.data?.count ?? 0) + (attention.jobs.data?.count ?? 0)
-  const attentionNav = isDriver ? "/jobs" : "/requests"
+  const attentionCount = attention.jobs.data?.count ?? 0
+  const activeRequestTab =
+    pathname === "/requests" || pathname === "/requests/"
+      ? search.tab === "active" || search.tab === "history"
+        ? search.tab
+        : "offers"
+      : null
 
-  // Pick the single best match: the nav item whose `to` is the longest prefix of
-  // the current path. This keeps "Mis fletes" (/requests) from lighting up on
-  // /requests/new, where "Publicar flete" (/requests/new) is the more specific match.
   const candidates = [
     ...nav.map((i) => i.to),
     ...(isAdmin ? ADMIN_NAV.map((i) => i.to) : []),
@@ -177,11 +214,33 @@ export function AppSidebar() {
                 key={item.to}
                 {...item}
                 isActive={item.to === activeTo}
-                badge={item.to === attentionNav ? attentionCount : undefined}
+                badge={isDriver && item.to === "/jobs" ? attentionCount : undefined}
               />
             ))}
           </SidebarMenu>
         </SidebarGroup>
+
+        {!isDriver && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Mis fletes</SidebarGroupLabel>
+            <SidebarMenu>
+              {CLIENT_REQUEST_NAV.map((item) => (
+                <RequestNavItem
+                  key={item.tab}
+                  {...item}
+                  isActive={item.tab === activeRequestTab}
+                  badge={
+                    item.tab === "offers"
+                      ? attention.offers.data?.count
+                      : item.tab === "active"
+                        ? attention.jobs.data?.count
+                        : undefined
+                  }
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
 
         {isAdmin && (
           <SidebarGroup className="mt-auto">

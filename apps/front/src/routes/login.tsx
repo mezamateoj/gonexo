@@ -171,7 +171,7 @@ function LoginPage() {
   useEffect(() => {
     if (session && !handlingSubmit.current) {
       navigate({
-        to: session.user.accountType === "driver" ? "/available" : "/requests",
+        to: session.user.accountType === "driver" ? "/available" : "/requests/new",
       });
     }
   }, [session, navigate]);
@@ -202,7 +202,7 @@ function LoginPage() {
         to:
           authenticatedSession.data.user.accountType === "driver"
             ? "/available"
-            : "/requests",
+            : "/requests/new",
       });
     },
   });
@@ -367,7 +367,7 @@ function LoginPage() {
 
           <button
             type="button"
-            onClick={() => void signIn.social({ provider: "google" })}
+            onClick={() => void signIn.social({ provider: "google", callbackURL: "/requests/new" })}
             className="flex w-full items-center justify-center gap-2.5 rounded-[8px] border border-border bg-white py-[13px] text-[14px] font-medium text-foreground transition-colors hover:bg-accent"
           >
             <GoogleIcon />

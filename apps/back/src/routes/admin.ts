@@ -10,6 +10,7 @@ import { driverVerificationDecisionEmail, sendEmail } from "../lib/email";
 import type { Db } from "../db";
 import type { AppEnv } from "../lib/types";
 import { recordManualDriverSettlement } from "../workflows/payments";
+import { expireOverdueRequests } from "../workflows/request-rescue";
 
 // All routes here sit under /api/admin and require an admin session. Users
 // list/search comes from the Better Auth admin plugin (`/api/auth/admin/*`);
@@ -219,6 +220,7 @@ admin.get("/users/:id", async (c) => {
     },
   });
   if (!target) throw notFound("User not found");
+  await expireOverdueRequests(db);
 
   const [lastSession, requestAgg, clientJobAgg, driverJobAgg, quoteAgg, reviewAgg, recentRequests, recentJobs] =
     await Promise.all([
@@ -243,6 +245,8 @@ admin.get("/users/:id", async (c) => {
           destAddress: true,
           volumeCategory: true,
           scheduledAt: true,
+          scheduleType: true,
+          expiresAt: true,
           createdAt: true,
         },
       }),

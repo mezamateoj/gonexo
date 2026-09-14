@@ -4,6 +4,7 @@ import { documentReview, driverProfile, job, quote, request, review } from "../d
 import type { ClientJobAction, DriverJobAction } from "../domain/attention";
 import type { AppEnv } from "../lib/types";
 import { requireAuth, requireClient, requireDriverAccount } from "../middleware/auth";
+import { requestDeadlineOpen } from "../lib/request-schedule";
 
 const attention = new Hono<AppEnv>();
 
@@ -15,6 +16,7 @@ attention.get("/offers", requireClient, async (c) => {
     where: and(
       eq(request.userId, userId),
       eq(request.status, "open"),
+      requestDeadlineOpen,
       exists(db.select({ id: quote.id }).from(quote).where(and(
         eq(quote.requestId, request.id),
         eq(quote.status, "pending"),
@@ -115,7 +117,7 @@ attention.get("/jobs", requireAuth, async (c) => {
       createdAt: true,
     },
     with: {
-      request: { columns: { scheduledAt: true } },
+      request: { columns: { scheduleType: true, scheduledAt: true, expiresAt: true } },
     },
     orderBy: [desc(job.createdAt)],
     limit: 20,
@@ -128,6 +130,8 @@ attention.get("/jobs", requireAuth, async (c) => {
           ...shared,
           type: "start_job",
           scheduledAt: item.request.scheduledAt,
+          scheduleType: item.request.scheduleType,
+          expiresAt: item.request.expiresAt,
           createdAt: item.createdAt,
         }];
       case "on_the_way":

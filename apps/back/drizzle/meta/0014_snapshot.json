@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "98822fa0-25d1-4b0d-9996-8ebba96e26e8",
-  "prevId": "6a0ed6e8-9a72-45f4-ae94-181c3dff20ac",
+  "id": "113e6546-3f5f-4442-9cab-e48546ba0754",
+  "prevId": "98822fa0-25d1-4b0d-9996-8ebba96e26e8",
   "tables": {
     "account": {
       "name": "account",
@@ -651,6 +651,41 @@
           "autoincrement": false,
           "default": "'pending'"
         },
+        "mercado_pago_preference_id": {
+          "name": "mercado_pago_preference_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "mercado_pago_payment_id": {
+          "name": "mercado_pago_payment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "driver_settled_at": {
+          "name": "driver_settled_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "driver_settlement_reference": {
+          "name": "driver_settlement_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "on_the_way_at": {
           "name": "on_the_way_at",
           "type": "integer",
@@ -750,6 +785,20 @@
           "name": "job_quote_id_unique",
           "columns": [
             "quote_id"
+          ],
+          "isUnique": true
+        },
+        "job_mercado_pago_preference_id_unique": {
+          "name": "job_mercado_pago_preference_id_unique",
+          "columns": [
+            "mercado_pago_preference_id"
+          ],
+          "isUnique": true
+        },
+        "job_mercado_pago_payment_id_unique": {
+          "name": "job_mercado_pago_payment_id_unique",
+          "columns": [
+            "mercado_pago_payment_id"
           ],
           "isUnique": true
         },
@@ -854,7 +903,7 @@
         },
         "job_payment_status_check": {
           "name": "job_payment_status_check",
-          "value": "\"job\".\"payment_status\" in ('pending', 'held', 'released', 'refunded')"
+          "value": "\"job\".\"payment_status\" in ('not_required', 'pending', 'approved', 'refunded', 'charged_back')"
         },
         "job_cancelled_by_role_check": {
           "name": "job_cancelled_by_role_check",
@@ -1034,6 +1083,131 @@
           "value": "\"job_report\".\"reporter_role\" in ('user', 'driver')"
         }
       }
+    },
+    "mercado_pago_payment": {
+      "name": "mercado_pago_payment",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "external_reference": {
+          "name": "external_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status_detail": {
+          "name": "status_detail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "live_mode": {
+          "name": "live_mode",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_created_at": {
+          "name": "provider_created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "provider_approved_at": {
+          "name": "provider_approved_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "provider_updated_at": {
+          "name": "provider_updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
+        }
+      },
+      "indexes": {
+        "mercado_pago_payment_jobId_idx": {
+          "name": "mercado_pago_payment_jobId_idx",
+          "columns": [
+            "job_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "mercado_pago_payment_job_id_job_id_fk": {
+          "name": "mercado_pago_payment_job_id_job_id_fk",
+          "tableFrom": "mercado_pago_payment",
+          "tableTo": "job",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "quote": {
       "name": "quote",
