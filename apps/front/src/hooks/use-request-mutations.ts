@@ -105,6 +105,19 @@ export function useAdvanceJobStatus(jobId: string) {
   })
 }
 
+export function useReconcileJobPayment(jobId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (paymentId: string) => api.jobs.reconcilePayment(jobId, paymentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.myAll })
+      queryClient.invalidateQueries({ queryKey: queryKeys.attention.all })
+    },
+  })
+}
+
 export function useCancelJob(jobId: string, requestId: string) {
   const queryClient = useQueryClient()
 

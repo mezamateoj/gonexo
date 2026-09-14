@@ -6,6 +6,13 @@ export type RequestStatus =
   | "cancelled"
   | "expired"
 
+export type PaymentStatus =
+  | "not_required"
+  | "pending"
+  | "approved"
+  | "refunded"
+  | "charged_back"
+
 export interface RequestSchedule {
   scheduleType: "scheduled" | "asap"
   scheduledAt: string | null
@@ -448,7 +455,8 @@ export interface JobDetail {
   driverId: string
   status: JobStatus
   agreedPrice: number
-  paymentStatus: string
+  paymentStatus: PaymentStatus
+  canCoordinate: boolean
   onTheWayAt: string | null
   arrivedAt: string | null
   completedAt: string | null
@@ -466,7 +474,7 @@ export interface JobDetail {
     originAddress: string
     destAddress: string
     volumeCategory: VolumeCategory
-    itemDescription: string
+    itemDescription: string | null
     notes: string | null
     photos: { id: string; url: string; order: number }[]
   }

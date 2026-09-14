@@ -1,6 +1,7 @@
-import { and, eq, exists, gt, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, exists, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { job, jobEvent, driverProfile, quote, request } from "../db/schema";
 import type { Db } from "../db";
+import { paymentAllowsDriverAccess } from "../domain/payments";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { requestDeadlineOpen } from "../lib/request-schedule";
@@ -25,6 +26,9 @@ export async function advanceJob(db: Db, driverId: string, jobId: string, input:
     },
   });
   if (!j) throw notFound("Job not found");
+  if (!paymentAllowsDriverAccess(j.paymentStatus)) {
+    throw conflict("Payment approval is required before starting this job");
+  }
 
   if (STATUS_TRANSITIONS[j.status as keyof typeof STATUS_TRANSITIONS] !== input.status) {
     throw conflict(`Cannot transition from '${j.status}' to '${input.status}'`);
@@ -52,23 +56,41 @@ export async function advanceJob(db: Db, driverId: string, jobId: string, input:
           };
 
   const requestStatus = input.status === "completed" ? "completed" : "in_progress";
+  const claim = and(
+    eq(job.id, j.id),
+    eq(job.driverId, driverId),
+    eq(job.status, j.status),
+    inArray(job.paymentStatus, ["approved", "not_required"]),
+  );
+  const canTransition = exists(
+    db.select({ id: job.id }).from(job).where(claim),
+  );
 
-  await db.batch([
-    db
-      .update(job)
-      .set({ status: input.status, ...timestampUpdates })
-      .where(eq(job.id, j.id)),
+  const [, , advanced] = await db.batch([
     db
       .update(request)
       .set({ status: requestStatus })
-      .where(eq(request.id, j.requestId)),
-    db.insert(jobEvent).values({
-      id: crypto.randomUUID(),
-      jobId: j.id,
-      type: input.status,
-      actorRole: "driver",
-    }),
+      .where(and(eq(request.id, j.requestId), canTransition)),
+    db.insert(jobEvent).select(
+      db
+        .select({
+          id: sql<string>`${crypto.randomUUID()}`.as("id"),
+          jobId: job.id,
+          type: sql<string>`${input.status}`.as("type"),
+          actorRole: sql<string>`'driver'`.as("actor_role"),
+          meta: sql<string | null>`null`.as("meta"),
+          createdAt: sql<Date>`cast(unixepoch('subsecond') * 1000 as integer)`.as("created_at"),
+        })
+        .from(job)
+        .where(claim),
+    ),
+    db
+      .update(job)
+      .set({ status: input.status, ...timestampUpdates })
+      .where(claim)
+      .returning({ id: job.id }),
   ]);
+  if (advanced.length === 0) throw conflict("Job status changed; refresh and try again");
 
   return input.status === "completed"
     ? {
@@ -93,6 +115,7 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
       userId: true,
       driverId: true,
       status: true,
+      paymentStatus: true,
       cancelledAt: true,
     },
     with: {
@@ -110,21 +133,37 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
   if (!actorRole) throw notFound("Job not found");
   if (j.cancelledAt || j.status === "cancelled") throw conflict("Job already cancelled");
   if (j.status !== "scheduled") throw conflict("Only scheduled jobs can be cancelled");
+  if (j.paymentStatus !== "pending" && j.paymentStatus !== "not_required") {
+    throw conflict("Paid jobs cannot be cancelled yet");
+  }
 
   const now = new Date();
+  const claim = and(
+    eq(job.id, j.id),
+    eq(job.status, "scheduled"),
+    inArray(job.paymentStatus, ["pending", "not_required"]),
+  );
   const cancelJob = db
     .update(job)
     .set({
       status: "cancelled",
-      paymentStatus: "pending",
       cancelledAt: now,
       cancelledByRole: actorRole,
     })
-    .where(eq(job.id, j.id));
+    .where(claim)
+    .returning({ id: job.id });
+  const wasCancelled = exists(
+    db.select({ id: job.id }).from(job).where(and(
+      eq(job.id, j.id),
+      eq(job.status, "cancelled"),
+      eq(job.cancelledAt, now),
+      eq(job.cancelledByRole, actorRole),
+    )),
+  );
   const cancelAcceptedQuote = db
     .update(quote)
     .set({ status: "cancelled" })
-    .where(eq(quote.id, j.quoteId));
+    .where(and(eq(quote.id, j.quoteId), wasCancelled));
   const restoreRejectedQuotes = db
     .update(quote)
     .set({ status: "pending" })
@@ -132,6 +171,7 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
       eq(quote.requestId, j.requestId),
       eq(quote.status, "rejected"),
       gt(quote.expiresAt, now),
+      wasCancelled,
       exists(db.select({ id: request.id }).from(request).where(and(
         eq(request.id, j.requestId), eq(request.status, "open"), requestDeadlineOpen,
       ))),
@@ -139,22 +179,30 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
   const updateRequest = db
     .update(request)
     .set({ status: actorRole === "driver" ? sql`case when ${requestDeadlineOpen} then 'open' else 'expired' end` : "cancelled" })
-    .where(eq(request.id, j.requestId))
+    .where(and(eq(request.id, j.requestId), wasCancelled))
     .returning({ status: request.status });
-  const writeEvent = db.insert(jobEvent).values({
-    id: crypto.randomUUID(),
-    jobId: j.id,
-    type: "cancelled",
-    actorRole,
-  });
+  const writeEvent = db.insert(jobEvent).select(
+    db
+      .select({
+        id: sql<string>`${crypto.randomUUID()}`.as("id"),
+        jobId: job.id,
+        type: sql<string>`'cancelled'`.as("type"),
+        actorRole: sql<string>`${actorRole}`.as("actor_role"),
+        meta: sql<string | null>`null`.as("meta"),
+        createdAt: sql<Date>`cast(unixepoch('subsecond') * 1000 as integer)`.as("created_at"),
+      })
+      .from(job)
+      .where(and(eq(job.id, j.id), wasCancelled)),
+  );
 
-  const [, , updatedRequests] = await db.batch([
+  const [cancelled, , updatedRequests] = await db.batch([
       cancelJob,
       cancelAcceptedQuote,
       updateRequest,
       writeEvent,
       ...(actorRole === "driver" ? [restoreRejectedQuotes] : []),
     ]);
+  if (cancelled.length === 0) throw conflict("Job can no longer be cancelled");
   const requestStatus = updatedRequests[0]!.status;
 
   logger.info("Job cancelled: {jobId} by {actorRole} {userId}; request is now {requestStatus}", {
@@ -167,6 +215,7 @@ export async function cancelScheduledJob(db: Db, userId: string, jobId: string) 
 
   return {
     cancelledBy: actorRole,
+    notifyRecipient: actorRole === "driver" || j.paymentStatus === "not_required",
     recipient: actorRole === "driver" ? j.user : j.driver,
     request: j.request,
     requestId: j.requestId,
@@ -180,26 +229,22 @@ async function releaseCompletedJob(
   now: Date,
   actorRole: "user" | "system",
 ) {
-  const isClaimed = exists(
+  const isUnconfirmed = exists(
     db
       .select({ id: job.id })
       .from(job)
-      .where(and(eq(job.id, j.id), eq(job.paymentStatus, "held"))),
+      .where(and(eq(job.id, j.id), isNull(job.confirmedAt))),
   );
 
   await db.batch([
     db
-      .update(job)
-      .set({ confirmedAt: now, paymentStatus: "held" })
-      .where(and(eq(job.id, j.id), isNull(job.confirmedAt))),
-    db
       .update(request)
       .set({ status: "completed" })
-      .where(and(eq(request.id, j.requestId), isClaimed)),
+      .where(and(eq(request.id, j.requestId), isUnconfirmed)),
     db
       .update(driverProfile)
       .set({ totalJobs: sql`${driverProfile.totalJobs} + 1` })
-      .where(and(eq(driverProfile.userId, j.driverId), isClaimed)),
+      .where(and(eq(driverProfile.userId, j.driverId), isUnconfirmed)),
     db.insert(jobEvent).select(
       db
         .select({
@@ -211,12 +256,12 @@ async function releaseCompletedJob(
           createdAt: sql<Date>`cast(unixepoch('subsecond') * 1000 as integer)`.as("created_at"),
         })
         .from(job)
-        .where(and(eq(job.id, j.id), eq(job.paymentStatus, "held"))),
+        .where(and(eq(job.id, j.id), isNull(job.confirmedAt))),
     ),
     db
       .update(job)
-      .set({ paymentStatus: "released" })
-      .where(and(eq(job.id, j.id), eq(job.paymentStatus, "held"))),
+      .set({ confirmedAt: now })
+      .where(and(eq(job.id, j.id), isNull(job.confirmedAt))),
   ]);
 }
 

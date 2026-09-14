@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronLeft, CircleAlert, Inbox, PartyPopper } from "lucide-react"
+import { ChevronLeft, CircleAlert, CreditCard, Inbox } from "lucide-react"
 import { api } from "@/lib/api"
-import { fireConfetti } from "@/lib/celebrate"
 import {
   formatCLP,
   formatLongDateTime,
@@ -49,7 +48,6 @@ function RequestOffersPage() {
   function handleAccept(quote: QuoteWithDriver) {
     acceptMutation.mutate(quote.id, {
       onSuccess: ({ jobId }) => {
-        fireConfetti()
         setBooked({ jobId, driverName: quote.driver.name, price: quote.price })
       },
     })
@@ -195,9 +193,9 @@ function RequestOffersPage() {
         open={booked !== null}
         onOpenChange={(open) => !open && setBooked(null)}
         tone="primary"
-        icon={<PartyPopper />}
-        title="¡Flete reservado!"
-        description="Tu transportista fue confirmado. Coordina los detalles y sigue el avance desde tu flete."
+        icon={<CreditCard />}
+        title="Transportista elegido"
+        description="Completa el pago para confirmar el flete y habilitar la coordinación con el transportista."
         details={booked ? [
           { label: "Transportista", value: booked.driverName },
           { label: "Precio acordado", value: formatCLP(booked.price) },
@@ -205,7 +203,7 @@ function RequestOffersPage() {
       >
         {booked && (
           <Button onClick={() => navigate({ to: "/jobs/$id", params: { id: booked.jobId } })}>
-            Ir al trabajo
+            Continuar al pago
           </Button>
         )}
       </CelebrationDialog>

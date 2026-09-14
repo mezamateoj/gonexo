@@ -416,7 +416,7 @@ seed.post("/", async (c) => {
     agreedPrice,
     platformFee,
     driverPayout: agreedPrice - platformFee,
-    paymentStatus: "pending",
+    paymentStatus: "not_required",
     createdAt: now, updatedAt: now,
   })
 

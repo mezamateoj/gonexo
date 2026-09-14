@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { accountTypes } from "../domain/accounts";
 import { driverDocumentKinds } from "../domain/driver-documents";
+import { paymentStatuses } from "../domain/payments";
 
 export const user = sqliteTable(
   "user",
@@ -475,8 +476,14 @@ export const job = sqliteTable(
     platformFee: integer("platform_fee").notNull(),   // CLP (~12%)
     driverPayout: integer("driver_payout").notNull(), // agreedPrice - platformFee
 
-    paymentStatus: text("payment_status").notNull().default("pending"),
-    // 'pending' | 'held' | 'released' | 'refunded'
+    paymentStatus: text("payment_status", { enum: paymentStatuses })
+      .notNull()
+      .default("pending"),
+    mercadoPagoPreferenceId: text("mercado_pago_preference_id").unique(),
+    mercadoPagoPaymentId: text("mercado_pago_payment_id").unique(),
+    paidAt: integer("paid_at", { mode: "timestamp_ms" }),
+    driverSettledAt: integer("driver_settled_at", { mode: "timestamp_ms" }),
+    driverSettlementReference: text("driver_settlement_reference"),
 
     // Status timestamps (set as driver progresses through the job)
     onTheWayAt: integer("on_the_way_at", { mode: "timestamp_ms" }),
@@ -508,7 +515,7 @@ export const job = sqliteTable(
     uniqueIndex("job_one_active_per_request_unique").on(t.requestId).where(sql`${t.status} != 'cancelled'`),
     index("job_pending_autoConfirmAt_idx").on(t.autoConfirmAt).where(sql`${t.confirmedAt} is null`),
     check("job_status_check", sql`${t.status} in ('scheduled', 'on_the_way', 'arrived', 'completed', 'cancelled')`),
-    check("job_payment_status_check", sql`${t.paymentStatus} in ('pending', 'held', 'released', 'refunded')`),
+    check("job_payment_status_check", sql`${t.paymentStatus} in ('not_required', 'pending', 'approved', 'refunded', 'charged_back')`),
     check("job_cancelled_by_role_check", sql`${t.cancelledByRole} is null or ${t.cancelledByRole} in ('user', 'driver')`),
   ],
 );
@@ -530,6 +537,33 @@ export const jobRelations = relations(job, ({ one, many }) => ({
   events: many(jobEvent),
   reports: many(jobReport),
 }));
+
+export const mercadoPagoPayment = sqliteTable(
+  "mercado_pago_payment",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => job.id, { onDelete: "cascade" }),
+    externalReference: text("external_reference").notNull(),
+    status: text("status").notNull(),
+    statusDetail: text("status_detail"),
+    amount: integer("amount").notNull(),
+    currency: text("currency").notNull(),
+    liveMode: integer("live_mode", { mode: "boolean" }).notNull(),
+    providerCreatedAt: integer("provider_created_at", { mode: "timestamp_ms" }),
+    providerApprovedAt: integer("provider_approved_at", { mode: "timestamp_ms" }),
+    providerUpdatedAt: integer("provider_updated_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("mercado_pago_payment_jobId_idx").on(t.jobId)],
+);
 
 export const jobEvent = sqliteTable(
   "job_event",

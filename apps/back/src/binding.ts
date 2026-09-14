@@ -9,6 +9,8 @@ export type Bindings = {
   ANTHROPIC_API_KEY: string;
   GOOGLE_GENERATIVE_AI_API_KEY: string;
   MAPBOX_TOKEN: string;
+  MERCADO_PAGO_ACCESS_TOKEN: string;
+  MERCADO_PAGO_WEBHOOK_SECRET: string;
   BETTER_AUTH_URL: string;
   FRONTEND_URL: string;
   // Optional until a sending domain is set up — sendEmail skips when absent.

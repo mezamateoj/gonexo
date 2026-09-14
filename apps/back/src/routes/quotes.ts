@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import { desc, eq } from "drizzle-orm";
-import { quote, user } from "../db/schema";
+import { quote } from "../db/schema";
 import { requireClient, requireDriver } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
 import { acceptQuote } from "../workflows/quotes";
-import { sendEmail, quoteAcceptedEmail } from "../lib/email";
-import { expireOverdueRequests } from "../workflows/request-rescue";
 import { maskAddress } from "../lib/address";
+import { paymentAllowsDriverAccess } from "../domain/payments";
+import { expireOverdueRequests } from "../workflows/request-rescue";
 
 const quotes = new Hono<AppEnv>();
 
@@ -20,6 +20,7 @@ quotes.get("/my", requireDriver, async (c) => {
     where: eq(quote.driverId, driver.id),
     orderBy: [desc(quote.createdAt)],
     with: {
+      job: { columns: { paymentStatus: true } },
       request: {
         columns: {
           id: true,
@@ -41,14 +42,18 @@ quotes.get("/my", requireDriver, async (c) => {
     },
   });
 
-  return c.json(results.map((item) => ({
-    ...item,
-    request: {
-      ...item.request,
-      originAddress: maskAddress(item.request.originAddress),
-      destAddress: maskAddress(item.request.destAddress),
-    },
-  })));
+  return c.json(results.map(({ job: paymentJob, request, ...result }) => {
+    const canCoordinate = !!paymentJob && paymentAllowsDriverAccess(paymentJob.paymentStatus);
+    return {
+      ...result,
+      request: {
+        ...request,
+        originAddress: canCoordinate ? request.originAddress : maskAddress(request.originAddress),
+        destAddress: canCoordinate ? request.destAddress : maskAddress(request.destAddress),
+        photos: canCoordinate ? request.photos : [],
+      },
+    };
+  }));
 });
 
 // Rejects all other pending quotes on the same request in the same transaction.
@@ -56,25 +61,7 @@ quotes.post("/:id/accept", requireClient, async (c) => {
   const db = c.get("db");
   const client = c.get("user")!;
   const quoteId = c.req.param("id");
-  const { jobId, driverId, agreedPrice, request: req } = await acceptQuote(db, client.id, quoteId);
-
-  c.executionCtx.waitUntil(
-    (async () => {
-      const driver = await db.query.user.findFirst({
-        where: eq(user.id, driverId),
-        columns: { name: true, email: true },
-      });
-      if (!driver) return;
-      await sendEmail(c.env, driver.email, quoteAcceptedEmail({
-        driverName: driver.name,
-        origin: maskAddress(req.originAddress),
-        dest: maskAddress(req.destAddress),
-        agreedPrice,
-        jobId,
-        frontendUrl: c.env.FRONTEND_URL,
-      }));
-    })(),
-  );
+  const { jobId } = await acceptQuote(db, client.id, quoteId);
 
   return c.json({ jobId }, 201);
 });

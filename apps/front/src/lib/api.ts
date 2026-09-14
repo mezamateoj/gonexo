@@ -147,6 +147,13 @@ export const api = {
       return apiFetch<MyJobsResponse>(`/api/jobs/my?${params.toString()}`)
     },
     get: (id: string) => apiFetch<JobDetail>(`/api/jobs/${id}`),
+    checkout: (id: string) =>
+      apiFetch<{ preferenceId: string }>(`/api/jobs/${id}/checkout`, { method: "POST" }),
+    reconcilePayment: (id: string, paymentId: string) =>
+      apiFetch<{ paymentStatus: string }>(`/api/jobs/${id}/payment/reconcile`, {
+        method: "POST",
+        body: JSON.stringify({ paymentId }),
+      }),
     updateStatus: (id: string, body: JobStatusUpdate) =>
       apiFetch<{ status: string }>(`/api/jobs/${id}/status`, {
         method: "PATCH",

@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { initials } from "@/lib/display"
 import type { JobDetail } from "@/lib/types"
 
@@ -8,6 +9,7 @@ export function CoordinationRow({ job, isClient }: { job: JobDetail; isClient: b
 
   const otherParty = isClient ? job.driver : job.user
   const roleLabel = isClient ? "Transportista" : "Cliente"
+  const canCall = job.canCoordinate && otherParty.phone
 
   return (
     <Card className="rounded-2xl border-border bg-white p-0 ring-0">
@@ -29,9 +31,15 @@ export function CoordinationRow({ job, isClient }: { job: JobDetail; isClient: b
             <p className="text-[12px] text-muted-foreground">{roleLabel}</p>
           </div>
         </div>
-        <p className="text-[13px] text-muted-foreground">
-          Información disponible después del pago.
-        </p>
+        {canCall ? (
+          <Button asChild variant="outline" className="w-full">
+            <a href={`tel:${otherParty.phone}`}>Llamar al {roleLabel.toLocaleLowerCase("es-CL")}</a>
+          </Button>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">
+            Información disponible después del pago.
+          </p>
+        )}
       </CardContent>
     </Card>
   )

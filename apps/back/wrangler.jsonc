@@ -15,7 +15,7 @@
     "BETTER_AUTH_URL": "https://gonexo-back.mezamateoj.workers.dev",
     "FRONTEND_URL": "https://gonexo-front.mezamateoj.workers.dev",
   },
-  // Hourly sweep: auto-confirm delivered jobs past their 24h window.
+  // Hourly sweep: advance overdue lifecycle work and rescue requests.
   "triggers": {
     "crons": ["0 * * * *"],
   },

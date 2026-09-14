@@ -99,6 +99,7 @@ attention.get("/jobs", requireAuth, async (c) => {
   const rows = await db.query.job.findMany({
     where: and(
       eq(job.driverId, user.id),
+      inArray(job.paymentStatus, ["approved", "not_required"]),
       or(
         inArray(job.status, ["scheduled", "on_the_way", "arrived"]),
         and(
