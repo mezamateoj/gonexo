@@ -11,7 +11,9 @@ export type ClientJobAction =
 export type DriverJobAction =
   | JobAction & {
       type: "start_job";
-      scheduledAt: Date;
+      scheduleType: "scheduled" | "asap";
+      scheduledAt: Date | null;
+      expiresAt: Date | null;
     }
   | JobAction & { type: "mark_arrived" }
   | JobAction & { type: "complete_job" }

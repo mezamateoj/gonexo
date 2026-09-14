@@ -20,6 +20,7 @@ import {
 } from "../lib/email";
 import { logger } from "../lib/logger";
 import { sendEmailToAdmins } from "./admin-notifications";
+import { requestDeadlineOpen } from "../lib/request-schedule";
 
 const HOUR_MS = 60 * 60 * 1000;
 const ADMIN_NO_OFFER_AFTER_MS = 12 * HOUR_MS;
@@ -27,6 +28,24 @@ const CLIENT_NO_OFFER_AFTER_MS = 24 * HOUR_MS;
 const ADMIN_EXPIRY_WINDOW_MS = 18 * HOUR_MS;
 const CLIENT_EXPIRY_WINDOW_MS = 12 * HOUR_MS;
 const URGENT_SCHEDULE_WINDOW_MS = 24 * HOUR_MS;
+
+export async function expireOverdueRequests(db: Db, now = new Date()) {
+  const [expired, expiredOffers] = await db.batch([
+    db.update(request).set({ status: "expired" }).where(and(
+      eq(request.status, "open"),
+      eq(request.scheduleType, "asap"),
+      lte(request.expiresAt, now),
+    )).returning({ id: request.id }),
+    db.update(quote).set({ status: "expired" }).where(and(
+      eq(quote.status, "pending"),
+      exists(db.select({ id: request.id }).from(request).where(and(
+        eq(request.id, quote.requestId),
+        eq(request.status, "expired"),
+      ))),
+    )).returning({ id: quote.id }),
+  ]);
+  return { expiredRequests: expired.length, expiredOffers: expiredOffers.length };
+}
 
 function hasActiveOffer(db: Db, now: Date) {
   return exists(
@@ -77,8 +96,10 @@ async function notifyAdminAboutRequestsWithoutOffers(
     where: and(
       eq(request.status, "open"),
       isNull(request.adminNoQuoteNotifiedAt),
+      requestDeadlineOpen,
       not(hasActiveOffer(db, now)),
       or(
+        eq(request.scheduleType, "asap"),
         lte(request.createdAt, new Date(now.getTime() - ADMIN_NO_OFFER_AFTER_MS)),
         lte(request.scheduledAt, new Date(now.getTime() + URGENT_SCHEDULE_WINDOW_MS)),
       ),
@@ -151,6 +172,7 @@ async function notifyAdminAboutExpiringOffers(
     where: and(
       eq(request.status, "open"),
       isNull(request.adminExpiryNotifiedAt),
+      requestDeadlineOpen,
       hasOfferExpiringBefore(db, now, deadline),
     ),
     columns: {
@@ -214,6 +236,7 @@ async function notifyClientsWithoutOffers(
     where: and(
       eq(request.status, "open"),
       isNull(request.zeroQuoteNotifiedAt),
+      requestDeadlineOpen,
       lte(request.createdAt, new Date(now.getTime() - CLIENT_NO_OFFER_AFTER_MS)),
       not(hasActiveOffer(db, now)),
     ),
@@ -261,6 +284,7 @@ async function notifyClientsAboutExpiringOffers(
     where: and(
       eq(request.status, "open"),
       isNull(request.expiryRemindNotifiedAt),
+      requestDeadlineOpen,
       hasOfferExpiringBefore(db, now, deadline),
     ),
     columns: {
@@ -302,10 +326,12 @@ export async function runRequestRescueSweep(
   env: Bindings,
   now = new Date(),
 ) {
-  const expiredOffers = await expirePendingOffers(db, now);
+  const expired = await expireOverdueRequests(db, now);
+  const expiredRequests = expired.expiredRequests;
+  const expiredOffers = expired.expiredOffers + await expirePendingOffers(db, now);
   if (!env.RESEND_API_KEY) {
     logger.warn("Request rescue emails skipped because RESEND_API_KEY is not set");
-    return { expiredOffers, adminNoOffer: 0, adminExpiry: 0, clientNoOffer: 0, clientExpiry: 0 };
+    return { expiredRequests, expiredOffers, adminNoOffer: 0, adminExpiry: 0, clientNoOffer: 0, clientExpiry: 0 };
   }
 
   const adminNoOffer = await notifyAdminAboutRequestsWithoutOffers(db, env, now);
@@ -314,9 +340,9 @@ export async function runRequestRescueSweep(
   const clientExpiry = await notifyClientsAboutExpiringOffers(db, env, now);
 
   logger.info(
-    "Request rescue sweep: {expiredOffers} expired offers, {adminNoOffer} admin no-offer alerts, {adminExpiry} admin expiry alerts, {clientNoOffer} client no-offer alerts, {clientExpiry} client expiry alerts",
-    { expiredOffers, adminNoOffer, adminExpiry, clientNoOffer, clientExpiry },
+    "Request rescue sweep: {expiredRequests} expired requests, {expiredOffers} expired offers, {adminNoOffer} admin no-offer alerts, {adminExpiry} admin expiry alerts, {clientNoOffer} client no-offer alerts, {clientExpiry} client expiry alerts",
+    { expiredRequests, expiredOffers, adminNoOffer, adminExpiry, clientNoOffer, clientExpiry },
   );
 
-  return { expiredOffers, adminNoOffer, adminExpiry, clientNoOffer, clientExpiry };
+  return { expiredRequests, expiredOffers, adminNoOffer, adminExpiry, clientNoOffer, clientExpiry };
 }

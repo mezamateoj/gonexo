@@ -46,7 +46,7 @@ const formSchema = z.object({
 });
 
 const BULLETS = [
-  "Publica tu solicitud en minutos",
+  "Solicita tu flete en minutos",
   "Recibe ofertas reales de transportistas",
   "Compara, elige y coordina desde la plataforma",
 ];
@@ -245,7 +245,7 @@ function SignupPage() {
                         <Package />
                         <span className="font-semibold">Necesito un flete</span>
                         <span className="text-pretty text-xs font-normal text-muted-foreground">
-                          Publica solicitudes, compara ofertas y elige transportista.
+                          Solicita fletes, compara ofertas y elige transportista.
                         </span>
                       </ToggleGroupItem>
                       <ToggleGroupItem

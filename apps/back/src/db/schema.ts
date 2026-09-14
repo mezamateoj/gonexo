@@ -280,7 +280,7 @@ export const request = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
 
     status: text("status").notNull().default("open"),
-    // 'open' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'
+    // 'open' | 'accepted' | 'in_progress' | 'completed' | 'cancelled' | 'expired'
 
     republishedFromId: text("republished_from_id")
       .references((): AnySQLiteColumn => request.id, { onDelete: "set null" }),
@@ -303,7 +303,9 @@ export const request = sqliteTable(
       .default(false)
       .notNull(),
 
-    scheduledAt: integer("scheduled_at", { mode: "timestamp_ms" }).notNull(),
+    scheduleType: text("schedule_type", { enum: ["scheduled", "asap"] }).default("scheduled").notNull(),
+    scheduledAt: integer("scheduled_at", { mode: "timestamp_ms" }),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
     flexibleDate: integer("flexible_date", { mode: "boolean" }).default(false).notNull(),
 
     volumeCategory: text("volume_category").notNull(),
@@ -345,10 +347,12 @@ export const request = sqliteTable(
   (t) => [
     index("request_userId_idx").on(t.userId),
     index("request_status_scheduledAt_idx").on(t.status, t.scheduledAt),
+    index("request_open_expiresAt_idx").on(t.expiresAt).where(sql`${t.status} = 'open'`),
     index("request_status_createdAt_idx").on(t.status, t.createdAt),
     index("request_status_routeDistanceM_idx").on(t.status, t.routeDistanceM),
     uniqueIndex("request_republishedFromId_unique").on(t.republishedFromId),
-    check("request_status_check", sql`${t.status} in ('open', 'accepted', 'in_progress', 'completed', 'cancelled')`),
+    check("request_status_check", sql`${t.status} in ('open', 'accepted', 'in_progress', 'completed', 'cancelled', 'expired')`),
+    check("request_schedule_check", sql`(${t.scheduleType} = 'scheduled' and ${t.scheduledAt} is not null and ${t.expiresAt} is null) or (${t.scheduleType} = 'asap' and ${t.scheduledAt} is null and ${t.expiresAt} is not null and ${t.flexibleDate} = false)`),
   ],
 );
 
@@ -477,6 +481,8 @@ export const job = sqliteTable(
     // Status timestamps (set as driver progresses through the job)
     onTheWayAt: integer("on_the_way_at", { mode: "timestamp_ms" }),
     arrivedAt: integer("arrived_at", { mode: "timestamp_ms" }),
+    beforePhotoKey: text("before_photo_key"),
+    afterPhotoKey: text("after_photo_key"),
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),
     autoConfirmAt: integer("auto_confirm_at", { mode: "timestamp_ms" }), // cron sweeps jobs past this
     confirmedAt: integer("confirmed_at", { mode: "timestamp_ms" }),

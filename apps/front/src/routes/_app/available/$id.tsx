@@ -1,3 +1,4 @@
+import { approximateAddress } from "@/lib/display"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { useForm } from "@tanstack/react-form"
@@ -9,7 +10,7 @@ import { cn } from "@/lib/utils"
 import { api, ApiError } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { useSession } from "@/lib/auth-client"
-import { floorLine, formatCLP, formatLongDateTime, initials, volumeLabels } from "@/lib/display"
+import { floorLine, formatCLP, formatLongDateTime, formatSchedule, initials, volumeLabels } from "@/lib/display"
 import { useSubmitQuote } from "@/hooks/use-request-mutations"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -292,7 +293,7 @@ function DriverOpportunityPage() {
             <div className="mb-5 flex items-center gap-3 text-[12px] text-ink-faint">
               <span className="flex items-center gap-1">
                 <Calendar className="size-3.5" />
-                {formatLongDateTime(req.scheduledAt)}
+                {formatSchedule(req, formatLongDateTime)}
               </span>
               <span>·</span>
               <span className="flex items-center gap-1">
@@ -309,7 +310,7 @@ function DriverOpportunityPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Origen</p>
-                  <p className="text-[14px] font-medium text-foreground">{req.originAddress}</p>
+                  <p className="text-[14px] font-medium text-foreground">{approximateAddress(req.originAddress)}</p>
                   {(req.originFloor != null || req.originHasElevator) && (
                     <p className="text-[12px] text-muted-foreground">{floorLine(req.originFloor, req.originHasElevator)}</p>
                   )}
@@ -322,7 +323,7 @@ function DriverOpportunityPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Destino</p>
-                  <p className="text-[14px] font-medium text-foreground">{req.destAddress}</p>
+                  <p className="text-[14px] font-medium text-foreground">{approximateAddress(req.destAddress)}</p>
                   {(req.destFloor != null || req.destHasElevator) && (
                     <p className="text-[12px] text-muted-foreground">{floorLine(req.destFloor, req.destHasElevator)}</p>
                   )}
@@ -330,6 +331,7 @@ function DriverOpportunityPage() {
               </div>
             </div>
 
+            <p className="mt-3 text-[12px] text-muted-foreground">Direcciones exactas disponibles después del pago.</p>
             <Separator className="my-4" />
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Qué se mueve</p>

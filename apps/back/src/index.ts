@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import * as Sentry from "@sentry/cloudflare";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { cors } from "hono/cors";
 import { configureSync, getConsoleSink, logfmtFormatter, resetSync } from "@logtape/logtape";
@@ -24,8 +24,9 @@ import geo from "./routes/geo";
 import seed from "./routes/seed";
 import admin from "./routes/admin";
 import attention from "./routes/attention";
+import intake from "./routes/intake";
 import { isAdmin } from "./middleware/auth";
-import { driverDocument, user as userTable } from "./db/schema";
+import { driverDocument, job, user as userTable } from "./db/schema";
 import { normalizePhone } from "./lib/normalizers";
 import { accountTypes } from "./domain/accounts";
 import {
@@ -150,6 +151,7 @@ const api = new Hono<AppEnv>()
   .route("/uploads", uploads)
   .route("/geo", geo)
   .route("/attention", attention)
+  .route("/intake", intake)
   .route("/admin", admin)
   .route("/__seed", localSeed);
 
@@ -172,6 +174,14 @@ app.get("/cdn/:key", async (c) => {
   ) {
     throw notFound();
   }
+  const photoJobs = await c.get("db").query.job.findMany({
+    where: or(eq(job.beforePhotoKey, key), eq(job.afterPhotoKey, key)),
+    columns: { userId: true, driverId: true },
+  });
+  if (photoJobs.length > 0 && !isAdmin(c) && !photoJobs.some(
+    (j) => j.userId === c.get("user")!.id || j.driverId === c.get("user")!.id,
+  )) throw notFound();
+
   const obj = await c.env.BUCKET.get(key);
   if (!obj) throw notFound();
   const headers = new Headers();

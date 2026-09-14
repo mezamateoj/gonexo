@@ -9,9 +9,10 @@ import { useSession } from "@/lib/auth-client"
 import { api } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { cn } from "@/lib/utils"
-import { formatLongDateTime, formatPrice, jobStatusClasses, jobStatusLabels, volumeLabels } from "@/lib/display"
+import { approximateAddress, formatLongDateTime, formatPrice, formatSchedule, jobStatusClasses, jobStatusLabels, volumeLabels } from "@/lib/display"
 import { DeliveryCodeCard } from "@/components/jobs/delivery-code-card"
 import { JobTrackingStepper } from "@/components/jobs/job-tracking-stepper"
+import { JobPhotosCard } from "@/components/jobs/job-photos-card"
 import { JobCancelledBlock } from "@/components/jobs/job-cancelled-block"
 import { CancelJobAction } from "@/components/jobs/cancel-job-action"
 import { ConfirmReceptionBanner } from "@/components/jobs/confirm-reception-banner"
@@ -85,7 +86,7 @@ function JobDetailPage() {
           <h1 className="text-[20px] font-bold text-foreground md:text-[22px]">
             Trabajo #{id.slice(-6).toUpperCase()}
           </h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">{formatLongDateTime(job.request.scheduledAt)}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">{formatSchedule(job.request, formatLongDateTime)}</p>
         </div>
         <Badge className={cn("shrink-0", jobStatusClasses[job.status])}>
           {jobStatusLabels[job.status]}
@@ -102,6 +103,8 @@ function JobDetailPage() {
           ) : (
             <JobTrackingStepper job={job} isDriver={isDriver} />
           )}
+
+          <JobPhotosCard job={job} />
 
           {isClient && <ConfirmReceptionBanner job={job} hasReviewed={hasReviewed} />}
 
@@ -121,12 +124,13 @@ function JobDetailPage() {
           <Card className="rounded-xl border-border bg-white p-0 ring-0">
             <CardContent className="p-4">
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ruta</p>
+              {!isClient && <p className="mb-3 text-[12px] text-muted-foreground">Direcciones exactas disponibles después del pago.</p>}
               <div className="flex flex-col gap-2">
                 <div className="flex items-start gap-2.5">
                   <div className="mt-1 size-2 shrink-0 rounded-full bg-primary" />
                   <div>
                     <p className="text-[11px] text-muted-foreground">Origen</p>
-                    <p className="text-[13px] font-medium text-foreground">{job.request.originAddress}</p>
+                    <p className="text-[13px] font-medium text-foreground">{isClient ? job.request.originAddress : approximateAddress(job.request.originAddress)}</p>
                   </div>
                 </div>
                 <div className="ml-[3px] h-5 w-[2px] bg-border" />
@@ -134,7 +138,7 @@ function JobDetailPage() {
                   <div className="mt-1 size-2 shrink-0 rounded-full bg-ink-soft" />
                   <div>
                     <p className="text-[11px] text-muted-foreground">Destino</p>
-                    <p className="text-[13px] font-medium text-foreground">{job.request.destAddress}</p>
+                    <p className="text-[13px] font-medium text-foreground">{isClient ? job.request.destAddress : approximateAddress(job.request.destAddress)}</p>
                   </div>
                 </div>
               </div>

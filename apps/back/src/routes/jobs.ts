@@ -10,6 +10,8 @@ import type { AppEnv } from "../lib/types";
 import { confirmReminderEmail, jobCancelledEmail, sendEmail } from "../lib/email";
 import { advanceJob, cancelScheduledJob, confirmJob } from "../workflows/jobs";
 import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
+import { uploadKeySchema } from "../domain/driver-documents";
+import { requireOwnedUpload } from "../lib/uploads";
 
 const jobs = new Hono<AppEnv>();
 
@@ -88,6 +90,7 @@ jobs.get(
     const [results, countRows] = await Promise.all([
       db.query.job.findMany({
         where,
+        columns: { confirmCode: false },
         orderBy: [...orderBy],
         limit,
         offset,
@@ -98,6 +101,8 @@ jobs.get(
               originAddress: true,
               destAddress: true,
               scheduledAt: true,
+              scheduleType: true,
+              expiresAt: true,
               volumeCategory: true,
             },
             with: {
@@ -145,10 +150,15 @@ jobs.get("/:id", requireAuth, async (c) => {
   return c.json(j);
 });
 
-const updateStatusSchema = z.object({
-  status: z.enum(["on_the_way", "arrived", "completed"]),
-  confirmCode: z.string().optional(),
-});
+const updateStatusSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("on_the_way"), photoKey: uploadKeySchema.optional() }),
+  z.object({ status: z.literal("arrived") }),
+  z.object({
+    status: z.literal("completed"),
+    photoKey: uploadKeySchema.optional(),
+    confirmCode: z.string().optional(),
+  }),
+]);
 
 jobs.patch(
   "/:id/status",
@@ -157,15 +167,16 @@ jobs.patch(
   async (c) => {
     const db = c.get("db");
     const driver = c.get("user")!;
-    const { status: nextStatus, confirmCode } = c.req.valid("json");
+    const input = c.req.valid("json");
+    if (input.status !== "arrived" && input.photoKey) {
+      await requireOwnedUpload(c.env.BUCKET, input.photoKey, driver.id);
+    }
 
     const result = await advanceJob(
       db,
       driver.id,
       c.req.param("id"),
-      nextStatus === "completed"
-        ? { status: nextStatus, confirmCode }
-        : { status: nextStatus },
+      input,
     );
 
     if (result.completed) {
@@ -180,7 +191,7 @@ jobs.patch(
       );
     }
 
-    return c.json({ status: nextStatus });
+    return c.json({ status: input.status });
   }
 );
 
@@ -203,6 +214,7 @@ jobs.patch("/:id/cancel", requireAuth, async (c) => {
     sendEmail(c.env, result.recipient.email, jobCancelledEmail({
       recipientName: result.recipient.name,
       cancelledBy: result.cancelledBy === "driver" ? "driver" : "client",
+      requestExpired: result.requestStatus === "expired",
       origin: result.request.originAddress,
       dest: result.request.destAddress,
       requestId: result.requestId,

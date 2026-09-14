@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { DetailRow } from "@/components/requests/detail-row"
 import { RequestRoute } from "@/components/requests/request-route"
-import { formatCLP, formatLongDateTime, volumeLabels } from "@/lib/display"
+import { formatCLP, formatLongDateTime, formatSchedule, volumeLabels } from "@/lib/display"
 import type { RequestDetail } from "@/lib/types"
 
 export function RequestOverviewCard({ request }: { request: RequestDetail }) {
@@ -35,7 +35,10 @@ export function RequestOverviewCard({ request }: { request: RequestDetail }) {
         <Separator />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <DetailRow label="Fecha" value={formatLongDateTime(request.scheduledAt)} />
+          <DetailRow label="Fecha" value={formatSchedule(request, formatLongDateTime)} />
+          {request.scheduleType === "asap" && request.status === "open" && request.expiresAt && (
+            <DetailRow label="Recibir y aceptar ofertas hasta" value={formatLongDateTime(request.expiresAt)} />
+          )}
           <DetailRow label="Volumen" value={volumeLabels[request.volumeCategory]} />
           <DetailRow label="Artículos" value={request.itemDescription} />
         </div>

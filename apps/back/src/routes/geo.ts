@@ -1,12 +1,9 @@
 import { Hono } from "hono";
-import { badRequest, upstreamError } from "../lib/errors";
+import { badRequest } from "../lib/errors";
 import { requireClient } from "../middleware/auth";
 import type { AppEnv } from "../lib/types";
 import { enforceRateLimit } from "../lib/rate-limit";
-
-const MAPBOX_SUGGEST_URL = "https://api.mapbox.com/search/searchbox/v1/suggest";
-const MAPBOX_RETRIEVE_URL =
-  "https://api.mapbox.com/search/searchbox/v1/retrieve";
+import { retrieveAddress, suggestAddresses } from "../lib/mapbox-search";
 
 const geo = new Hono<AppEnv>();
 
@@ -24,20 +21,7 @@ geo.get("/suggest", requireClient, async (c) => {
     throw badRequest("q and session are required");
   }
 
-  const url = new URL(MAPBOX_SUGGEST_URL);
-  url.searchParams.set("q", q);
-  url.searchParams.set("session_token", session);
-  url.searchParams.set("language", "es");
-  url.searchParams.set("country", "CL");
-  url.searchParams.set("access_token", c.env.MAPBOX_TOKEN);
-
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw upstreamError("Geocoding service error");
-  }
-
-  const data = await res.json();
-  return c.json(data);
+  return c.json(await suggestAddresses(c.env.MAPBOX_TOKEN, q, session));
 });
 
 // GET /api/geo/retrieve?id=...&session=...
@@ -54,17 +38,7 @@ geo.get("/retrieve", requireClient, async (c) => {
     throw badRequest("id and session are required");
   }
 
-  const url = new URL(`${MAPBOX_RETRIEVE_URL}/${encodeURIComponent(id)}`);
-  url.searchParams.set("session_token", session);
-  url.searchParams.set("access_token", c.env.MAPBOX_TOKEN);
-
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw upstreamError("Geocoding service error");
-  }
-
-  const data = await res.json();
-  return c.json(data);
+  return c.json(await retrieveAddress(c.env.MAPBOX_TOKEN, id, session));
 });
 
 export default geo;

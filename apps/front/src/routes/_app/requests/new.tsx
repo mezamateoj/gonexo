@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm, useStore } from "@tanstack/react-form"
-import { useState, useRef, useMemo } from "react"
+import { useState, useRef } from "react"
 import { toast } from "sonner"
 import { z } from "zod"
 import {
   Package, Boxes, Truck, Building2,
   ArrowRight, ArrowLeft, Loader2,
-  Users, AlertTriangle, Wrench, Box, MoveRight, CalendarDays,
+  Users, AlertTriangle, Wrench, Box, MoveRight,
   MapPin, Calendar, SlidersHorizontal, ClipboardCheck, Check, CircleCheck,
   Car, ParkingCircle,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/api"
@@ -17,20 +18,30 @@ import { queryKeys } from "@/lib/query-keys"
 import {
   canAdvanceRequestStep,
   defaultRequestDraft,
-  formatDraftDate,
   formatDraftDateTime,
+  hasValidDraftSchedule,
+  itemDescriptionSchema,
+  scheduledDateSchema,
+  scheduledTimeSchema,
   getDraftVolumeLabel,
   toCreateRequestInput,
 } from "@/lib/request-draft"
 import { Input } from "@/components/ui/input"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Calendar as CalendarUI } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Switch } from "@/components/ui/switch"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { asapBookingDescription } from "@/lib/display"
 import { AddressStep } from "@/components/requests/new/address-step"
 import { PhotoUploader } from "@/components/requests/new/photo-uploader"
+import { RequestIntakeWorkspace } from "@/components/requests/new/request-intake-workspace"
 import { CargUpLogo } from "@/components/cargup-logo"
 import type { Draft, Step } from "@/components/requests/new/types"
+import type { UploadedFile } from "@/lib/api"
 import type { VolumeCategory } from "@/lib/types"
+import { noContactInfo } from "../../../../../back/src/lib/content-safety"
 
 export const Route = createFileRoute("/_app/requests/new")({
   component: NewRequestPage,
@@ -41,12 +52,6 @@ const VOLUMES: { value: VolumeCategory; label: string; sub: string; Icon: React.
   { value: "medium", label: "Mediano", sub: "Pieza amoblada", Icon: Boxes },
   { value: "large", label: "Grande", sub: "Departamento", Icon: Truck },
   { value: "full_move", label: "Mudanza completa", sub: "Casa o más", Icon: Building2 },
-]
-
-const TIME_SLOTS = [
-  ["09:00", "09:30", "10:00", "11:00"],
-  ["12:00", "13:00", "14:00", "15:00"],
-  ["16:00", "17:00", "18:00", "19:00"],
 ]
 
 const PARKING_OPTIONS: {
@@ -80,25 +85,32 @@ const addressSchema = z.object({
 
 const requestFormSchema = z.object({
   origin: addressSchema.nullable().refine((value) => !!value, "Selecciona una dirección de origen"),
-  originFloor: z.string(),
+  originFloor: z.string().refine((value) => !value || Number.isSafeInteger(Number(value)), "Indica un piso válido"),
   originHasElevator: z.boolean(),
   dest: addressSchema.nullable().refine((value) => !!value, "Selecciona una dirección de destino"),
-  destFloor: z.string(),
+  destFloor: z.string().refine((value) => !value || Number.isSafeInteger(Number(value)), "Indica un piso válido"),
   destHasElevator: z.boolean(),
-  scheduledDate: z.string().min(1, "Selecciona una fecha"),
-  scheduledTime: z.string().min(1, "Selecciona una hora"),
+  scheduleType: z.enum(["scheduled", "asap"]),
+  scheduledDate: z.string(),
+  scheduledTime: z.string(),
   flexibleDate: z.boolean(),
   volumeCategory: z.enum(["small", "medium", "large", "full_move"]).or(z.literal("")).refine((value) => value !== "", "Selecciona un volumen"),
-  itemDescription: z.string().min(5, "Describe qué vas a mover"),
-  notes: z.string(),
+  itemDescription: itemDescriptionSchema,
+  notes: z.string().refine(noContactInfo.check, noContactInfo.message),
   photoUrls: z.array(z.string()),
-  budgetMax: z.string(),
+  budgetMax: z.string().refine((value) => {
+    const amount = Number(value.replace(/\D/g, ""))
+    return !value || (Number.isSafeInteger(amount) && amount > 0)
+  }, "Indica un presupuesto mayor a cero"),
   helpersNeeded: z.number().int().min(0).max(3),
   hasFragileItems: z.boolean(),
   assemblyRequired: z.boolean(),
   packingIncluded: z.boolean(),
   parkingType: z.enum(["street", "garage", "loading_dock"]),
   longCarry: z.boolean(),
+}).refine(hasValidDraftSchedule, {
+  path: ["scheduledTime"],
+  message: "Selecciona una fecha y hora válidas en el futuro",
 })
 
 const STEP_META: { n: Step; label: string; sub: string }[] = [
@@ -107,8 +119,69 @@ const STEP_META: { n: Step; label: string; sub: string }[] = [
   { n: 3, label: "Cuándo", sub: "Fecha y hora" },
   { n: 4, label: "Qué", sub: "Lo que vas a mover" },
   { n: 5, label: "Detalles", sub: "Info extra para ofertar" },
-  { n: 6, label: "Confirmar", sub: "Revisa y publica" },
+  { n: 6, label: "Confirmar", sub: "Revisa y solicita" },
 ]
+
+type RequestMode = "agent" | "manual"
+
+function RequestMethodChoice({ onChoose }: { onChoose: (mode: RequestMode) => void }) {
+  return (
+    <div className="flex min-h-full flex-col bg-muted/30">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 py-10 md:py-16">
+        <div className="mx-auto mb-8 max-w-xl text-center">
+          <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            ¿Cómo quieres solicitar tu flete?
+          </h1>
+          <p className="mt-3 text-pretty text-base text-muted-foreground">
+            Elige cómo quieres contarnos lo que necesitas. Ambas opciones crean la misma solicitud.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="h-full transition-transform hover:-translate-y-0.5 hover:ring-primary/30">
+            <CardHeader className="gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Sparkles className="size-5" />
+              </div>
+              <CardTitle className="text-lg">Con asistente</CardTitle>
+              <CardDescription className="text-sm leading-relaxed">
+                Cuéntanos lo que necesitas en una conversación y completaremos el borrador contigo.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="mt-auto">
+              <Button className="w-full" size="lg" onClick={() => onChoose("agent")}>
+                Usar asistente
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="h-full transition-transform hover:-translate-y-0.5 hover:ring-primary/30">
+            <CardHeader className="gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-secondary text-foreground">
+                <ClipboardCheck className="size-5" />
+              </div>
+              <CardTitle className="text-lg">Paso a paso</CardTitle>
+              <CardDescription className="text-sm leading-relaxed">
+                Completa tú mismo los datos en un formulario guiado de seis pasos.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="mt-auto">
+              <Button className="w-full" size="lg" variant="outline" onClick={() => onChoose("manual")}>
+                Completar formulario
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Puedes cambiar de método después sin perder los datos ingresados.
+        </p>
+      </main>
+    </div>
+  )
+}
 
 const SECTION_ICONS: Record<Step, React.ComponentType<{ className?: string }>> = {
   1: MapPin, 2: MapPin, 3: Calendar, 4: Package, 5: SlidersHorizontal, 6: ClipboardCheck,
@@ -120,7 +193,7 @@ const SECTION_TITLES: Record<Step, { title: string; sub: string }> = {
   3: { title: "Cuándo", sub: "Fecha y hora" },
   4: { title: "Qué", sub: "Lo que vas a mover" },
   5: { title: "Detalles", sub: "Info extra para ofertar" },
-  6: { title: "Confirmar", sub: "Revisa y publica" },
+  6: { title: "Confirmar", sub: "Revisa y solicita" },
 }
 
 function previousStep(step: Step): Step {
@@ -252,17 +325,19 @@ function NewRequestPage() {
   const sessionTokenRef = useRef<string | null>(null)
   if (sessionTokenRef.current === null) sessionTokenRef.current = crypto.randomUUID()
   const sessionToken = sessionTokenRef.current
-  const today = useMemo(() => new Date().toISOString().split("T")[0], [])
+  const today = new Date().toLocaleDateString("sv")
 
   const [step, setStep] = useState<Step>(1)
+  const [mode, setMode] = useState<RequestMode | null>(null)
+  const [photoUploads, setPhotoUploads] = useState<UploadedFile[]>([])
+  const [isUploading, setIsUploading] = useState(false)
   const [attempted, setAttempted] = useState(false)
-  const [calendarOpen, setCalendarOpen] = useState(false)
 
   const mutation = useMutation({
     mutationFn: (draft: Draft) => api.requests.create(toCreateRequestInput(draft)),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.requests.myAll })
-      toast.success("Solicitud publicada", {
+      toast.success("Solicitud enviada", {
         description: "Los transportistas ya pueden verla y enviarte ofertas.",
         action: {
           label: "Mis fletes",
@@ -272,7 +347,7 @@ function NewRequestPage() {
       navigate({ to: "/requests/$id", params: { id } })
     },
     onError: (error) => {
-      toast.error("No se pudo publicar la solicitud", {
+      toast.error("No se pudo enviar la solicitud", {
         description: error instanceof Error ? error.message : "Intenta de nuevo.",
       })
     },
@@ -282,11 +357,41 @@ function NewRequestPage() {
     defaultValues: defaultRequestDraft,
     validators: { onSubmit: requestFormSchema },
     onSubmit: async ({ value }) => {
-      await mutation.mutateAsync(value)
+      if (!isUploading && !mutation.isPending) await mutation.mutateAsync(value)
     },
   })
 
   const draft = useStore(form.store, (state) => state.values)
+
+  function applyDraftPatch(patch: Partial<Omit<Draft, "origin" | "dest" | "photoUrls">>) {
+    if (patch.scheduleType !== undefined) form.setFieldValue("scheduleType", patch.scheduleType)
+    if (patch.originFloor !== undefined) form.setFieldValue("originFloor", patch.originFloor)
+    if (patch.originHasElevator !== undefined) form.setFieldValue("originHasElevator", patch.originHasElevator)
+    if (patch.destFloor !== undefined) form.setFieldValue("destFloor", patch.destFloor)
+    if (patch.destHasElevator !== undefined) form.setFieldValue("destHasElevator", patch.destHasElevator)
+    if (patch.scheduledDate !== undefined) form.setFieldValue("scheduledDate", patch.scheduledDate)
+    if (patch.scheduledTime !== undefined) form.setFieldValue("scheduledTime", patch.scheduledTime)
+    if (patch.flexibleDate !== undefined) form.setFieldValue("flexibleDate", patch.flexibleDate)
+    if (form.state.values.scheduleType === "asap") form.setFieldValue("flexibleDate", false)
+    if (patch.volumeCategory !== undefined) form.setFieldValue("volumeCategory", patch.volumeCategory)
+    if (patch.itemDescription !== undefined) form.setFieldValue("itemDescription", patch.itemDescription)
+    if (patch.notes !== undefined) form.setFieldValue("notes", patch.notes)
+    if (patch.budgetMax !== undefined) form.setFieldValue("budgetMax", patch.budgetMax)
+    if (patch.helpersNeeded !== undefined) form.setFieldValue("helpersNeeded", patch.helpersNeeded)
+    if (patch.hasFragileItems !== undefined) form.setFieldValue("hasFragileItems", patch.hasFragileItems)
+    if (patch.assemblyRequired !== undefined) form.setFieldValue("assemblyRequired", patch.assemblyRequired)
+    if (patch.packingIncluded !== undefined) form.setFieldValue("packingIncluded", patch.packingIncluded)
+    if (patch.parkingType !== undefined) form.setFieldValue("parkingType", patch.parkingType)
+    if (patch.longCarry !== undefined) form.setFieldValue("longCarry", patch.longCarry)
+  }
+
+  function addPhotoUploads(files: UploadedFile[]) {
+    setPhotoUploads((current) => [...current, ...files])
+  }
+
+  function removePhotoUpload(url: string) {
+    setPhotoUploads((current) => current.filter((file) => file.url !== url))
+  }
 
   function setCharacteristic(key: (typeof CHARACTERISTICS)[number]["key"], value: boolean) {
     if (key === "hasFragileItems") return form.setFieldValue("hasFragileItems", value)
@@ -310,6 +415,7 @@ function NewRequestPage() {
   }
 
   function goNext() {
+    if (step === 4) void form.validateField("itemDescription", "blur")
     if (!canNext()) {
       setAttempted(true)
       return
@@ -319,15 +425,141 @@ function NewRequestPage() {
   }
 
   const volumeLabel = getDraftVolumeLabel(draft)
-  const dateDisplay = formatDraftDate(draft)
   const dateTimeDisplay = formatDraftDateTime(draft)
   const StepIcon = SECTION_ICONS[step]
   const stepMeta = SECTION_TITLES[step]
   const mutationError = mutation.error instanceof Error ? mutation.error.message : null
   const submit = () => form.handleSubmit()
+  const ready = requestFormSchema.safeParse(draft).success
+
+  const cargoFields = (
+    <FieldGroup>
+      <form.Field name="volumeCategory" validators={{ onBlur: requestFormSchema.shape.volumeCategory }}>
+        {(field) => (
+          <Field data-invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel id="intake-volume-label">Volumen estimado</FieldLabel>
+            <ToggleGroup type="single" variant="outline" value={field.state.value}
+              onBlur={field.handleBlur} onValueChange={(value) => {
+                const volume = VOLUMES.find((option) => option.value === value)
+                if (volume) field.handleChange(volume.value)
+              }} aria-labelledby="intake-volume-label" className="grid w-full grid-cols-2 gap-2">
+              {VOLUMES.map(({ value, label }) => <ToggleGroupItem key={value} value={value} className="h-auto min-h-11 whitespace-normal">{label}</ToggleGroupItem>)}
+            </ToggleGroup>
+            <FieldError errors={field.state.meta.errors} />
+          </Field>
+        )}
+      </form.Field>
+      <form.Field name="itemDescription" validators={{ onBlur: itemDescriptionSchema }}>
+        {(field) => (
+          <Field data-invalid={field.state.meta.errors.length > 0}>
+            <FieldLabel htmlFor="intake-description">¿Qué vas a mover?</FieldLabel>
+            <Input id="intake-description" value={field.state.value} onBlur={field.handleBlur}
+              onChange={(event) => field.handleChange(event.target.value)} aria-invalid={field.state.meta.errors.length > 0} />
+            <FieldDescription>No incluyas teléfono, correo ni redes sociales.</FieldDescription>
+            <FieldError errors={field.state.meta.errors} />
+          </Field>
+        )}
+      </form.Field>
+    </FieldGroup>
+  )
+
+  const scheduleFields = (
+    <FieldGroup>
+      <form.Field name="scheduleType" validators={{ onBlur: requestFormSchema.shape.scheduleType }}>
+        {(field) => (
+          <Field>
+            <FieldLabel id="schedule-type-label">¿Cuándo necesitas el flete?</FieldLabel>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onValueChange={(value) => {
+                if (value === "asap" || value === "scheduled") {
+                  applyDraftPatch({ scheduleType: value })
+                  setAttempted(false)
+                }
+              }}
+              aria-labelledby="schedule-type-label"
+              className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2"
+            >
+              <ToggleGroupItem value="asap" className="min-h-11">Lo antes posible</ToggleGroupItem>
+              <ToggleGroupItem value="scheduled" className="min-h-11">Elegir fecha y hora</ToggleGroupItem>
+            </ToggleGroup>
+            {draft.scheduleType === "asap" && <FieldDescription>{asapBookingDescription}</FieldDescription>}
+            <FieldError errors={field.state.meta.errors} />
+          </Field>
+        )}
+      </form.Field>
+      {draft.scheduleType === "scheduled" && <>
+        <form.Field name="scheduledDate" validators={{ onBlur: scheduledDateSchema }}>
+          {(field) => (
+            <Field data-invalid={field.state.meta.errors.length > 0}>
+              <FieldLabel htmlFor={field.name}>Fecha</FieldLabel>
+              <Input id={field.name} type="date" min={today} value={field.state.value}
+                onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)}
+                aria-invalid={field.state.meta.errors.length > 0} />
+              <FieldError errors={field.state.meta.errors} />
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="scheduledTime" validators={{ onBlur: scheduledTimeSchema }}>
+          {(field) => (
+            <Field data-invalid={field.state.meta.errors.length > 0}>
+              <FieldLabel htmlFor={field.name}>Hora preferida</FieldLabel>
+              <Input id={field.name} type="time" step={60} value={field.state.value}
+                onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)}
+                aria-invalid={field.state.meta.errors.length > 0} />
+              <FieldDescription>Puedes elegir cualquier hora del día o de la noche.</FieldDescription>
+              <FieldError errors={field.state.meta.errors} />
+              {(attempted || (draft.scheduledDate && draft.scheduledTime)) && !hasValidDraftSchedule(draft) && <FieldError>Selecciona una fecha y hora válidas en el futuro</FieldError>}
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="flexibleDate" validators={{ onBlur: requestFormSchema.shape.flexibleDate }}>
+          {(field) => (
+            <Field orientation="horizontal">
+              <Switch id={field.name} checked={field.state.value} onCheckedChange={field.handleChange} onBlur={field.handleBlur} />
+              <div>
+                <FieldLabel htmlFor={field.name}>Fecha flexible</FieldLabel>
+                <FieldDescription>El transportista puede sugerir otro horario.</FieldDescription>
+              </div>
+              <FieldError errors={field.state.meta.errors} />
+            </Field>
+          )}
+        </form.Field>
+      </>}
+    </FieldGroup>
+  )
+
+  if (mode === null) return <RequestMethodChoice onChoose={setMode} />
 
   return (
-    <div className="flex min-h-full flex-col md:flex-row">
+    <>
+      <div className={mode === "agent" ? "contents" : "hidden"}>
+        <RequestIntakeWorkspace
+          draft={draft}
+          sessionToken={sessionToken}
+          photoKeys={photoUploads.slice(0, 4).map(({ key }) => key)}
+          ready={ready}
+          isPublishing={mutation.isPending}
+          publishError={mutationError}
+          onPatch={applyDraftPatch}
+          onOriginChange={(address) => form.setFieldValue("origin", address)}
+          onDestChange={(address) => form.setFieldValue("dest", address)}
+          onPhotosChange={(urls) => form.setFieldValue("photoUrls", urls)}
+          onPhotosUploaded={addPhotoUploads}
+          onPhotoRemoved={removePhotoUpload}
+          onManual={() => setMode("manual")}
+          onPublish={submit}
+          scheduleFields={mode === "agent" ? scheduleFields : null}
+          cargoFields={mode === "agent" ? cargoFields : null}
+          isUploading={isUploading}
+          onUploadingChange={setIsUploading}
+        />
+      </div>
+
+      {mode === "manual" && <div className="flex min-h-full flex-col md:flex-row">
       {/* Mobile: wizard nav bar */}
       <div className="sticky top-0 z-10 flex h-14 items-center border-b border-border bg-background px-[18px] md:hidden">
         <div className="flex w-14 items-center">
@@ -375,11 +607,16 @@ function NewRequestPage() {
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
         {/* Desktop: Page Header */}
-        <div className="hidden border-b border-border bg-background px-8 py-[22px] md:block">
-          <h1 className="text-[26px] font-bold tracking-[-0.5px] text-foreground">Nueva solicitud</h1>
-          <p className="mt-1 text-[14px] text-muted-foreground">
-            Completa los pasos y recibe ofertas de transportistas.
-          </p>
+        <div className="hidden items-center justify-between gap-4 border-b border-border bg-background px-11 py-3 md:flex">
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-0.5px] text-foreground">Nueva solicitud</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Completa los pasos y recibe ofertas de transportistas.
+            </p>
+          </div>
+          <Button type="button" variant="outline" className="min-h-10" onClick={() => setMode("agent")}>
+            <Sparkles data-icon="inline-start" /> Usar asistente
+          </Button>
         </div>
 
         {/* Mobile: step header */}
@@ -392,6 +629,10 @@ function NewRequestPage() {
             <p className="text-[13px] text-muted-foreground">{stepMeta.sub}</p>
           </div>
         </div>
+
+        <Button type="button" variant="outline" className="mx-[18px] min-h-10 md:hidden" onClick={() => setMode("agent")}>
+          <Sparkles data-icon="inline-start" /> Volver al asistente
+        </Button>
 
         {/* Step Content */}
         <div className="flex flex-col gap-4 px-[18px] py-3 md:gap-5 md:px-11 md:py-7">
@@ -428,92 +669,7 @@ function NewRequestPage() {
               />
             )}
 
-            {step === 3 && (
-              <FieldGroup>
-                {/* Date picker */}
-                <Field data-invalid={attempted && !draft.scheduledDate}>
-                  <FieldLabel className="text-[14px] font-semibold">Fecha</FieldLabel>
-                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        aria-invalid={attempted && !draft.scheduledDate}
-                        className={cn(
-                          "flex h-10 w-full items-center justify-between gap-2 rounded-[8px] border border-border bg-white px-[14px] text-left text-[14px] outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 aria-invalid:border-destructive",
-                          draft.scheduledDate ? "text-foreground" : "text-muted-foreground",
-                        )}
-                      >
-                        <span>{dateDisplay}</span>
-                        <CalendarDays className="size-[15px] shrink-0 text-muted-foreground" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarUI
-                        mode="single"
-                        selected={draft.scheduledDate ? new Date(draft.scheduledDate + "T00:00:00") : undefined}
-                        onSelect={(date) => {
-                          if (date) {
-                            form.setFieldValue("scheduledDate", date.toLocaleDateString("sv"))
-                            setCalendarOpen(false)
-                          }
-                        }}
-                        disabled={(date) => date < new Date(today + "T00:00:00")}
-                        autoFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {attempted && !draft.scheduledDate && <FieldError>Selecciona una fecha</FieldError>}
-                </Field>
-
-                {/* Time slot grid */}
-                <Field data-invalid={attempted && !draft.scheduledTime}>
-                  <FieldLabel className="text-[14px] font-semibold">Hora preferida</FieldLabel>
-                  <div className="flex flex-col gap-2">
-                    {TIME_SLOTS.map((row, ri) => (
-                      <div key={ri} className="grid grid-cols-4 gap-2">
-                        {row.map((time) => (
-                          <button
-                            key={time}
-                            type="button"
-                            onClick={() => form.setFieldValue("scheduledTime", time)}
-                            className={cn(
-                              "rounded-[8px] border py-2.5 text-[13px] font-medium transition-colors",
-                              draft.scheduledTime === time
-                                ? "border-primary bg-primary text-white"
-                                : "border-border bg-white text-foreground hover:border-primary/50 hover:bg-primary/5",
-                            )}
-                          >
-                            {time}
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                  {attempted && !draft.scheduledTime && <FieldError>Selecciona una hora</FieldError>}
-                </Field>
-
-                {/* Flexible date */}
-                <button
-                  type="button"
-                  onClick={() => form.setFieldValue("flexibleDate", !draft.flexibleDate)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-[8px] border px-4 py-3 text-left transition-colors",
-                    draft.flexibleDate ? "border-primary bg-primary/5" : "border-border bg-card",
-                  )}
-                >
-                  <div className={cn(
-                    "flex size-[18px] shrink-0 items-center justify-center rounded-[4px] border-[1.5px] transition-colors",
-                    draft.flexibleDate ? "border-primary bg-primary" : "border-border bg-white",
-                  )}>
-                    {draft.flexibleDate && <Check className="size-3 text-white" strokeWidth={3} />}
-                  </div>
-                  <div>
-                    <p className="text-[14px] font-medium text-foreground">Fecha flexible</p>
-                    <p className="text-[12px] text-muted-foreground">El transportista puede sugerir otro horario</p>
-                  </div>
-                </button>
-              </FieldGroup>
-            )}
+            {step === 3 && scheduleFields}
 
             {step === 4 && (
               <FieldGroup>
@@ -535,32 +691,24 @@ function NewRequestPage() {
                   {attempted && !draft.volumeCategory && <FieldError>Selecciona un volumen</FieldError>}
                 </Field>
 
-                <Field data-invalid={attempted && draft.itemDescription.length < 5}>
-                  <FieldLabel className="text-[14px] font-semibold">¿Qué vas a mover?</FieldLabel>
-                  <Input
-                    placeholder="Ej: 2 camas, 1 sofá, cajas de ropa…"
-                    value={draft.itemDescription}
-                    aria-invalid={attempted && draft.itemDescription.length < 5}
-                    onChange={(e) => form.setFieldValue("itemDescription", e.target.value)}
-                  />
-                  {attempted && draft.itemDescription.length < 5 && (
-                    <FieldError>Describe qué vas a mover (mínimo 5 caracteres)</FieldError>
+                <form.Field name="itemDescription" validators={{ onBlur: itemDescriptionSchema }}>
+                  {(field) => (
+                    <Field data-invalid={field.state.meta.errors.length > 0}>
+                      <FieldLabel htmlFor={field.name} className="text-[14px] font-semibold">¿Qué vas a mover?</FieldLabel>
+                      <Textarea
+                        id={field.name}
+                        rows={4}
+                        placeholder="Ej: 2 camas, 1 sofá y cajas de ropa. Incluye detalles como artículos frágiles o embalaje especial."
+                        value={field.state.value}
+                        aria-invalid={field.state.meta.errors.length > 0}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      />
+                      <FieldDescription>Describe todo en un solo lugar. No incluyas teléfono, correo ni redes sociales.</FieldDescription>
+                      <FieldError errors={field.state.meta.errors} />
+                    </Field>
                   )}
-                </Field>
-
-                <Field>
-                  <FieldLabel className="text-[14px] font-semibold">
-                    Notas adicionales{" "}
-                    <span className="font-normal text-muted-foreground">(opcional)</span>
-                  </FieldLabel>
-                  <textarea
-                    className="w-full resize-none rounded-[8px] border border-border bg-white px-[14px] py-[11px] text-[14px] text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
-                    rows={3}
-                    placeholder="Frágil, requiere embalaje especial…"
-                    value={draft.notes}
-                    onChange={(e) => form.setFieldValue("notes", e.target.value)}
-                  />
-                </Field>
+                </form.Field>
 
                 <div className="rounded-[10px] border border-primary/20 bg-primary/5 p-3">
                   <p className="text-[13px] font-medium text-foreground">Las fotos son opcionales, pero ayudan bastante.</p>
@@ -569,7 +717,14 @@ function NewRequestPage() {
                   </p>
                 </div>
 
-                <PhotoUploader urls={draft.photoUrls} onChange={(u) => form.setFieldValue("photoUrls", u)} />
+                <PhotoUploader
+                  urls={draft.photoUrls}
+                  onChange={(urls) => form.setFieldValue("photoUrls", urls)}
+                  onUploaded={addPhotoUploads}
+                  onRemoved={removePhotoUpload}
+                  disabled={mutation.isPending}
+                  onUploadingChange={setIsUploading}
+                />
               </FieldGroup>
             )}
 
@@ -586,27 +741,6 @@ function NewRequestPage() {
                   >
                     Omitir
                   </button>
-                </div>
-
-                {/* Budget */}
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-semibold text-foreground">Presupuesto máximo</span>
-                    <span className="text-[13px] text-muted-foreground">(opcional)</span>
-                  </div>
-                  <div className="relative">
-                    <span className="absolute left-[14px] top-1/2 -translate-y-1/2 text-[14px] text-muted-foreground">$</span>
-                    <Input
-                      className="pl-7"
-                      placeholder="50.000"
-                      value={draft.budgetMax}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, "")
-                        form.setFieldValue("budgetMax", raw ? parseInt(raw).toLocaleString("es-CL") : "")
-                      }}
-                    />
-                  </div>
-                  <p className="text-[12px] text-muted-foreground">Los transportistas ven este monto y ajustan su oferta.</p>
                 </div>
 
                 {/* Helpers */}
@@ -696,12 +830,12 @@ function NewRequestPage() {
                 <div className="flex items-center gap-[10px] rounded-[8px] bg-primary/5 px-4 py-3">
                   <CircleCheck className="size-[18px] shrink-0 text-primary" />
                   <p className="text-[14px] font-medium text-primary">
-                    Todo listo. Revisa los detalles y publica tu solicitud.
+                    Todo listo. Revisa los detalles y envía tu solicitud.
                   </p>
                 </div>
 
                 {/* Summary grid */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {/* Route card */}
                   <div className="flex flex-col gap-3 rounded-[10px] border border-border p-4">
                     <div className="flex items-center justify-between">
@@ -733,7 +867,8 @@ function NewRequestPage() {
                         </button>
                       </div>
                       <p className="text-[13px] text-foreground">{dateTimeDisplay}</p>
-                      {draft.flexibleDate && (
+                      {draft.scheduleType === "asap" && <p className="text-[12px] text-muted-foreground">{asapBookingDescription}</p>}
+                      {draft.scheduleType === "scheduled" && draft.flexibleDate && (
                         <p className="text-[12px] text-muted-foreground">Fecha flexible</p>
                       )}
                     </div>
@@ -814,13 +949,13 @@ function NewRequestPage() {
               <button
                 type="button"
                 onClick={submit}
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || isUploading}
                 className="flex items-center gap-1.5 rounded-[9px] bg-primary px-[22px] py-[11px] text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {mutation.isPending ? (
-                  <><Loader2 className="size-4 animate-spin" /> Publicando…</>
+                  <><Loader2 className="size-4 animate-spin" /> Enviando…</>
                 ) : (
-                  <>Publicar solicitud <CircleCheck className="size-[15px]" /></>
+                  <>Solicitar flete <CircleCheck className="size-[15px]" /></>
                 )}
               </button>
             )}
@@ -842,17 +977,18 @@ function NewRequestPage() {
           <button
             type="button"
             onClick={submit}
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || isUploading}
             className="flex w-full items-center justify-center gap-2 rounded-[9px] bg-primary py-[13px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {mutation.isPending ? (
-              <><Loader2 className="size-4 animate-spin" /> Publicando…</>
+              <><Loader2 className="size-4 animate-spin" /> Enviando…</>
             ) : (
-              <>Publicar solicitud <CircleCheck className="size-[15px]" /></>
+              <>Solicitar flete <CircleCheck className="size-[15px]" /></>
             )}
           </button>
         )}
       </div>
-    </div>
+      </div>}
+    </>
   )
 }

@@ -23,6 +23,7 @@ import {
   driverVerificationLabels,
   formatCLP,
   formatShortDate,
+  formatSchedule,
   initials,
   jobStatusClasses,
   jobStatusLabels,
@@ -149,7 +150,7 @@ function UserProfile({ detail }: { detail: AdminUserDetail }) {
                           {shortAddress(r.destAddress)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {volumeLabels[r.volumeCategory]} · agendada para el {formatShortDate(r.scheduledAt)}
+                          {volumeLabels[r.volumeCategory]} · {formatSchedule(r, formatShortDate)}
                         </p>
                       </div>
                       <Badge variant="secondary" className={cn(requestStatusClasses[r.status])}>
