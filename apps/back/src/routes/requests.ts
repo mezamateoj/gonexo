@@ -19,6 +19,7 @@ import {
 import { mapboxDirections } from "../lib/directions";
 import { maskAddress } from "../lib/address";
 import { containsContactInfo, NO_CONTACT_MESSAGE } from "../lib/content-safety";
+import { paymentAllowsDriverAccess } from "../domain/payments";
 import { newQuoteEmail, sendEmail } from "../lib/email";
 import { notifyAvailableDrivers, republishRequest } from "../workflows/requests";
 
@@ -111,7 +112,9 @@ requests.post(
     ) {
       throw badRequest("Las coordenadas de destino no son válidas");
     }
-    if (containsContactInfo(body.notes)) throw badRequest(NO_CONTACT_MESSAGE);
+    if (containsContactInfo(body.itemDescription) || containsContactInfo(body.notes)) {
+      throw badRequest(NO_CONTACT_MESSAGE);
+    }
     const id = crypto.randomUUID();
 
     // Resolve the real driving route once (immutable for a request). Null if
@@ -333,7 +336,6 @@ requests.get("/", requireDriver, async (c) => {
       limit,
       offset,
       with: {
-        photos: { orderBy: [asc(requestPhoto.order)], columns: { url: true } },
         user: { columns: { name: true, image: true } },
         quotes: {
           columns: { id: true, driverId: true, status: true },
@@ -347,6 +349,7 @@ requests.get("/", requireDriver, async (c) => {
   // coordinates. Fair price is included so they can gauge earnings from the feed.
   const data = rows.map(({ quotes, ...r }) => ({
     ...r,
+    photos: [],
     quotes: quotes.map(({ id }) => ({ id })),
     quoteCount: quotes.length,
     myQuoteStatus:
@@ -380,7 +383,13 @@ requests.get("/:id", requireAuth, async (c) => {
       jobs: {
         where: ne(job.status, "cancelled"),
         limit: 1,
-          columns: { id: true, status: true, driverId: true, confirmedAt: true },
+          columns: {
+            id: true,
+            status: true,
+            driverId: true,
+            confirmedAt: true,
+            paymentStatus: true,
+          },
       },
     },
   });
@@ -442,10 +451,12 @@ requests.get("/:id", requireAuth, async (c) => {
           ? "needs_rescue"
           : "waiting";
 
-  // Exact address + coords are revealed only to the owner and the matched driver
-  // (once their quote is accepted). Everyone else sees the masked zone.
+  // Exact route and request photos unlock for the matched driver only after
+  // verified payment. The owner retains access while checkout is pending.
   const isMatchedDriver = !!activeJob && activeJob.driverId === user.id;
-  const canSeeExact = isOwner || isMatchedDriver;
+  const canCoordinate = !!activeJob && paymentAllowsDriverAccess(activeJob.paymentStatus);
+  const canSeeExact = isOwner || (isMatchedDriver && canCoordinate);
+  const hideUnpaidCoordination = isMatchedDriver && !canCoordinate;
 
   return c.json({
     ...result,
@@ -455,6 +466,12 @@ requests.get("/:id", requireAuth, async (c) => {
     originLng: canSeeExact ? result.originLng : null,
     destLat: canSeeExact ? result.destLat : null,
     destLng: canSeeExact ? result.destLng : null,
+    originFloor: hideUnpaidCoordination ? null : result.originFloor,
+    destFloor: hideUnpaidCoordination ? null : result.destFloor,
+    scheduledAt: hideUnpaidCoordination ? null : result.scheduledAt,
+    itemDescription: hideUnpaidCoordination ? null : result.itemDescription,
+    notes: hideUnpaidCoordination ? null : result.notes,
+    photos: canSeeExact ? result.photos : [],
     distanceKm: displayDistanceKm(result),
     // Client phone is exchanged on job detail only, never on request detail.
     user: { ...result.user, phone: isOwner ? result.user.phone : null },
@@ -473,7 +490,7 @@ requests.get("/:id", requireAuth, async (c) => {
     jobs: undefined,
     originalRequest: undefined,
     republishedRequests: undefined,
-    job: activeJob
+    job: activeJob && (isOwner || isMatchedDriver)
       ? { id: activeJob.id, status: activeJob.status, confirmedAt: activeJob.confirmedAt }
       : null,
   });

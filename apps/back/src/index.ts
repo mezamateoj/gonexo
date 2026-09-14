@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import * as Sentry from "@sentry/cloudflare";
-import { eq } from "drizzle-orm";
+import { eq, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { cors } from "hono/cors";
 import { configureSync, getConsoleSink, logfmtFormatter, resetSync } from "@logtape/logtape";
@@ -24,10 +24,12 @@ import geo from "./routes/geo";
 import seed from "./routes/seed";
 import admin from "./routes/admin";
 import attention from "./routes/attention";
+import payments from "./routes/payments";
 import { isAdmin } from "./middleware/auth";
-import { driverDocument, user as userTable } from "./db/schema";
+import { driverDocument, job, requestPhoto, user as userTable } from "./db/schema";
 import { normalizePhone } from "./lib/normalizers";
 import { accountTypes } from "./domain/accounts";
+import { paymentAllowsDriverAccess } from "./domain/payments";
 import {
   markDocumentReviewFailed,
   processDocumentReview,
@@ -150,30 +152,58 @@ const api = new Hono<AppEnv>()
   .route("/uploads", uploads)
   .route("/geo", geo)
   .route("/attention", attention)
+  .route("/payments", payments)
   .route("/admin", admin)
   .route("/__seed", localSeed);
 
 app.route("/api", api);
 
-// All uploads require a session. Driver documents additionally belong only to
-// the driver who registered them; request photos remain visible to signed-in users.
+// All uploads require a session. Driver documents belong to their owner/admin;
+// request photos unlock to the matched driver only after verified payment.
 app.get("/cdn/:key", async (c) => {
-  if (!c.get("user")) throw notFound();
+  const user = c.get("user");
+  if (!user) throw notFound();
   const key = c.req.param("key");
-  const document = await c.get("db").query.driverDocument.findFirst({
-    where: eq(driverDocument.key, key),
-    with: { driverProfile: { columns: { userId: true } } },
-  });
-  // Owners see their own documents; admins can review any driver's documents.
-  if (
-    document &&
-    document.driverProfile.userId !== c.get("user")?.id &&
-    !isAdmin(c)
-  ) {
-    throw notFound();
-  }
-  const obj = await c.env.BUCKET.get(key);
+  const suffix = `/cdn/${key}`;
+  const [document, photos, obj] = await Promise.all([
+    c.get("db").query.driverDocument.findFirst({
+      where: eq(driverDocument.key, key),
+      with: { driverProfile: { columns: { userId: true } } },
+    }),
+    c.get("db").query.requestPhoto.findMany({
+      where: sql`substr(${requestPhoto.url}, -${suffix.length}) = ${suffix}`,
+      with: {
+        request: {
+          columns: { userId: true },
+          with: {
+            jobs: {
+              where: ne(job.status, "cancelled"),
+              limit: 1,
+              columns: { driverId: true, paymentStatus: true },
+            },
+          },
+        },
+      },
+    }),
+    c.env.BUCKET.get(key),
+  ]);
   if (!obj) throw notFound();
+  if (!isAdmin(c)) {
+    if (document) {
+      if (document.driverProfile.userId !== user.id) throw notFound();
+    } else if (photos.length > 0) {
+      const canSeePhoto = photos.some((photo) => {
+        const paymentJob = photo.request.jobs[0];
+        return photo.request.userId === user.id ||
+          (!!paymentJob &&
+            paymentJob.driverId === user.id &&
+            paymentAllowsDriverAccess(paymentJob.paymentStatus));
+      });
+      if (!canSeePhoto) throw notFound();
+    } else if (obj.customMetadata?.userId !== user.id) {
+      throw notFound();
+    }
+  }
   const headers = new Headers();
   obj.writeHttpMetadata(headers);
   headers.set("cache-control", "private, max-age=3600");
@@ -198,8 +228,7 @@ export type AppType = typeof api;
 
 const worker = {
   fetch: app.fetch,
-  // Hourly Cron Trigger (wrangler.jsonc `triggers.crons`): advance overdue
-  // lifecycle work and rescue requests before clients reach a dead end.
+  // Hourly Cron Trigger: advance overdue lifecycle work and rescue requests.
   scheduled: (_event, env, ctx) => {
     const db = createDb(env.db);
     ctx.waitUntil(Promise.all([

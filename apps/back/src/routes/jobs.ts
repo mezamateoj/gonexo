@@ -4,11 +4,14 @@ import { z } from "zod";
 import { eq, and, sql, or, asc, desc, like, exists, count, inArray, notInArray, type SQL } from "drizzle-orm";
 import { job, review, driverProfile, request, user as userTable } from "../db/schema";
 import type { VolumeCategory } from "../lib/pricing";
+import { paymentAllowsDriverAccess } from "../domain/payments";
+import { maskAddress } from "../lib/address";
 import { requireAuth, requireClient, requireDriver } from "../middleware/auth";
 import { conflict, forbidden, notFound } from "../lib/errors";
 import type { AppEnv } from "../lib/types";
-import { confirmReminderEmail, jobCancelledEmail, sendEmail } from "../lib/email";
+import { confirmReminderEmail, jobCancelledEmail, quoteAcceptedEmail, sendEmail } from "../lib/email";
 import { advanceJob, cancelScheduledJob, confirmJob } from "../workflows/jobs";
+import { createJobCheckout, reconcileMercadoPagoPayment } from "../workflows/payments";
 import { throwConflictOnUniqueConstraint } from "../lib/database-errors";
 
 const jobs = new Hono<AppEnv>();
@@ -45,11 +48,11 @@ jobs.get(
     const orderBy = MY_JOB_SORTS[sort] ?? MY_JOB_SORTS.recent;
 
     const conditions: SQL[] = [];
-    conditions.push(
-      c.get("user")!.accountType === "client"
-        ? eq(job.userId, userId)
-        : eq(job.driverId, userId),
-    );
+    const isClient = c.get("user")!.accountType === "client";
+    conditions.push(isClient ? eq(job.userId, userId) : eq(job.driverId, userId));
+    if (!isClient) {
+      conditions.push(inArray(job.paymentStatus, ["approved", "not_required"]));
+    }
     if (bucket === "active") conditions.push(notInArray(job.status, ["completed", "cancelled"]));
     else if (bucket === "history") conditions.push(inArray(job.status, ["completed", "cancelled"]));
 
@@ -115,7 +118,74 @@ jobs.get(
       db.select({ n: count() }).from(job).where(where),
     ]);
 
-    return c.json({ data: results, page, limit, total: countRows[0]?.n ?? 0 });
+    const data = results.map(({
+      mercadoPagoPreferenceId: _preferenceId,
+      mercadoPagoPaymentId: _paymentId,
+      driverSettlementReference: _settlementReference,
+      ...result
+    }) => {
+      if (isClient) return result;
+      const { confirmCode: _confirmCode, ...driverResult } = result;
+      return driverResult;
+    });
+    return c.json({ data, page, limit, total: countRows[0]?.n ?? 0 });
+  },
+);
+
+jobs.post("/:id/checkout", requireClient, async (c) => {
+  const user = c.get("user")!;
+  const result = await createJobCheckout(c.get("db"), {
+    accessToken: c.env.MERCADO_PAGO_ACCESS_TOKEN,
+    backendUrl: c.env.BETTER_AUTH_URL,
+    frontendUrl: c.env.FRONTEND_URL,
+    jobId: c.req.param("id"),
+    userId: user.id,
+    payerEmail: user.email,
+  });
+
+  return c.json(result);
+});
+
+const reconcilePaymentSchema = z.object({
+  paymentId: z.union([
+    z.string().regex(/^\d+$/),
+    z.number().int().positive(),
+  ]).transform(String),
+});
+
+jobs.post(
+  "/:id/payment/reconcile",
+  requireClient,
+  zValidator("json", reconcilePaymentSchema),
+  async (c) => {
+    const db = c.get("db");
+    const user = c.get("user")!;
+    const ownedJob = await db.query.job.findFirst({
+      where: and(eq(job.id, c.req.param("id")), eq(job.userId, user.id)),
+      columns: { id: true },
+    });
+    if (!ownedJob) throw notFound("Job not found");
+
+    const result = await reconcileMercadoPagoPayment(
+      db,
+      c.env.MERCADO_PAGO_ACCESS_TOKEN,
+      c.req.valid("json").paymentId,
+      ownedJob.id,
+    );
+    if (result.becameApproved) {
+      c.executionCtx.waitUntil(
+        sendEmail(c.env, result.driver.email, quoteAcceptedEmail({
+          driverName: result.driver.name,
+          origin: result.request.originAddress,
+          dest: result.request.destAddress,
+          agreedPrice: result.agreedPrice,
+          jobId: result.jobId,
+          frontendUrl: c.env.FRONTEND_URL,
+        })),
+      );
+    }
+
+    return c.json({ paymentStatus: result.paymentStatus });
   },
 );
 
@@ -137,12 +207,54 @@ jobs.get("/:id", requireAuth, async (c) => {
   if (j.userId !== userId && j.driverId !== userId)
     throw forbidden();
 
+  const canCoordinate = paymentAllowsDriverAccess(j.paymentStatus);
+  const {
+    mercadoPagoPreferenceId: _preferenceId,
+    mercadoPagoPaymentId: _paymentId,
+    driverSettlementReference: _settlementReference,
+    ...publicJob
+  } = j;
+
   // The handoff code belongs to the client — the driver must get it in person.
   if (userId !== j.userId) {
-    const { confirmCode: _confirmCode, ...withoutCode } = j;
-    return c.json(withoutCode);
+    const {
+      confirmCode: _confirmCode,
+      ...withoutPrivatePaymentData
+    } = publicJob;
+    return c.json({
+      ...withoutPrivatePaymentData,
+      canCoordinate,
+      request: canCoordinate
+        ? withoutPrivatePaymentData.request
+        : {
+            ...withoutPrivatePaymentData.request,
+            originAddress: maskAddress(withoutPrivatePaymentData.request.originAddress),
+            destAddress: maskAddress(withoutPrivatePaymentData.request.destAddress),
+            originLat: null,
+            originLng: null,
+            originFloor: null,
+            destLat: null,
+            destLng: null,
+            destFloor: null,
+            scheduledAt: null,
+            itemDescription: null,
+            notes: null,
+            photos: [],
+          },
+      user: {
+        ...withoutPrivatePaymentData.user,
+        phone: canCoordinate ? withoutPrivatePaymentData.user.phone : null,
+      },
+    });
   }
-  return c.json(j);
+  return c.json({
+    ...publicJob,
+    canCoordinate,
+    driver: {
+      ...publicJob.driver,
+      phone: canCoordinate ? publicJob.driver.phone : null,
+    },
+  });
 });
 
 const updateStatusSchema = z.object({
@@ -199,16 +311,18 @@ jobs.patch("/:id/cancel", requireAuth, async (c) => {
 
   const result = await cancelScheduledJob(db, user.id, c.req.param("id"));
 
-  c.executionCtx.waitUntil(
-    sendEmail(c.env, result.recipient.email, jobCancelledEmail({
-      recipientName: result.recipient.name,
-      cancelledBy: result.cancelledBy === "driver" ? "driver" : "client",
-      origin: result.request.originAddress,
-      dest: result.request.destAddress,
-      requestId: result.requestId,
-      frontendUrl: c.env.FRONTEND_URL,
-    })),
-  );
+  if (result.notifyRecipient) {
+    c.executionCtx.waitUntil(
+      sendEmail(c.env, result.recipient.email, jobCancelledEmail({
+        recipientName: result.recipient.name,
+        cancelledBy: result.cancelledBy === "driver" ? "driver" : "client",
+        origin: result.request.originAddress,
+        dest: result.request.destAddress,
+        requestId: result.requestId,
+        frontendUrl: c.env.FRONTEND_URL,
+      })),
+    );
+  }
 
   return c.json({ ok: true });
 });

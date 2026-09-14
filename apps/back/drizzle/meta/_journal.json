@@ -85,6 +85,20 @@
       "when": 1785247397169,
       "tag": "0011_slimy_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789044651598,
+      "tag": "0012_uneven_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1789048357876,
+      "tag": "0013_icy_dark_beast",
+      "breakpoints": true
     }
   ]
 }

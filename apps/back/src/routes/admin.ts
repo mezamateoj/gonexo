@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { asc, avg, count, desc, eq, or, type SQL } from "drizzle-orm";
+import { and, asc, avg, count, desc, eq, isNotNull, isNull, ne, or, type SQL } from "drizzle-orm";
 import { documentTriageResultSchema } from "../ai/document-review";
 import { documentReview, driverDocument, driverProfile, job, quote, request, review, session, user } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
@@ -9,13 +9,78 @@ import { badRequest, notFound } from "../lib/errors";
 import { driverVerificationDecisionEmail, sendEmail } from "../lib/email";
 import type { Db } from "../db";
 import type { AppEnv } from "../lib/types";
+import { recordManualDriverSettlement } from "../workflows/payments";
 
 // All routes here sit under /api/admin and require an admin session. Users
 // list/search comes from the Better Auth admin plugin (`/api/auth/admin/*`);
-// this module owns driver verification and the per-user profile page.
+// this module owns driver verification, settlements, and the per-user profile page.
 const admin = new Hono<AppEnv>();
 
 admin.use("*", requireAdmin);
+
+admin.get(
+  "/settlements",
+  zValidator(
+    "query",
+    z.object({
+      status: z.enum(["pending", "settled"]).default("pending"),
+      page: z.coerce.number().int().min(1).default(1),
+      limit: z.coerce.number().int().min(1).max(50).default(20),
+    }),
+  ),
+  async (c) => {
+    const { status, page, limit } = c.req.valid("query");
+    const db = c.get("db");
+    const where = status === "pending"
+      ? and(
+          eq(job.paymentStatus, "approved"),
+          isNull(job.driverSettledAt),
+          ne(job.status, "cancelled"),
+        )
+      : isNotNull(job.driverSettledAt);
+    const [data, countRows] = await Promise.all([
+      db.query.job.findMany({
+        where,
+        orderBy: [desc(job.paidAt)],
+        limit,
+        offset: (page - 1) * limit,
+        columns: {
+          id: true,
+          status: true,
+          paymentStatus: true,
+          driverPayout: true,
+          paidAt: true,
+          driverSettledAt: true,
+          driverSettlementReference: true,
+        },
+        with: {
+          driver: { columns: { id: true, name: true, email: true } },
+          request: { columns: { originAddress: true, destAddress: true } },
+        },
+      }),
+      db.select({ n: count() }).from(job).where(where),
+    ]);
+
+    return c.json({ data, page, limit, total: countRows[0]?.n ?? 0 });
+  },
+);
+
+admin.post(
+  "/settlements/:jobId",
+  zValidator(
+    "json",
+    z.object({ reference: z.string().trim().min(1).max(200) }),
+  ),
+  async (c) => {
+    const settlement = await recordManualDriverSettlement(
+      c.get("db"),
+      c.req.param("jobId"),
+      c.req.valid("json").reference,
+      c.get("user")!.id,
+    );
+    return c.json({ settlement });
+  },
+);
 
 // Shared load + serialization for queue rows and the single expediente page.
 async function loadAdminDrivers(db: Db, where: SQL, limit: number, offset: number) {
