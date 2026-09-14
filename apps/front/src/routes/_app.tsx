@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/sidebar"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
@@ -47,6 +46,8 @@ function TopBar() {
   const { session } = Route.useRouteContext()
   const isWizard = pathname === "/requests/new"
 
+  if (isWizard) return null
+
   const requestLabel =
     search.tab === "active" ? "En curso" : search.tab === "history" ? "Historial" : "Ofertas"
   const currentLabel =
@@ -60,10 +61,7 @@ function TopBar() {
       : "CargUp")
 
   return (
-    <header className={cn(
-      "flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-white px-3 sm:px-6",
-      isWizard && "hidden md:flex",
-    )}>
+    <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-border bg-white px-3 sm:px-6">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <SidebarTrigger className="text-muted-foreground" />
         <div className="h-5 w-px bg-border" />

@@ -28,6 +28,8 @@ import {
 } from "@/lib/request-draft"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -119,6 +121,67 @@ const STEP_META: { n: Step; label: string; sub: string }[] = [
   { n: 5, label: "Detalles", sub: "Info extra para ofertar" },
   { n: 6, label: "Confirmar", sub: "Revisa y solicita" },
 ]
+
+type RequestMode = "agent" | "manual"
+
+function RequestMethodChoice({ onChoose }: { onChoose: (mode: RequestMode) => void }) {
+  return (
+    <div className="flex min-h-full flex-col bg-muted/30">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 py-10 md:py-16">
+        <div className="mx-auto mb-8 max-w-xl text-center">
+          <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            ¿Cómo quieres solicitar tu flete?
+          </h1>
+          <p className="mt-3 text-pretty text-base text-muted-foreground">
+            Elige cómo quieres contarnos lo que necesitas. Ambas opciones crean la misma solicitud.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="h-full transition-transform hover:-translate-y-0.5 hover:ring-primary/30">
+            <CardHeader className="gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Sparkles className="size-5" />
+              </div>
+              <CardTitle className="text-lg">Con asistente</CardTitle>
+              <CardDescription className="text-sm leading-relaxed">
+                Cuéntanos lo que necesitas en una conversación y completaremos el borrador contigo.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="mt-auto">
+              <Button className="w-full" size="lg" onClick={() => onChoose("agent")}>
+                Usar asistente
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="h-full transition-transform hover:-translate-y-0.5 hover:ring-primary/30">
+            <CardHeader className="gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-secondary text-foreground">
+                <ClipboardCheck className="size-5" />
+              </div>
+              <CardTitle className="text-lg">Paso a paso</CardTitle>
+              <CardDescription className="text-sm leading-relaxed">
+                Completa tú mismo los datos en un formulario guiado de seis pasos.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="mt-auto">
+              <Button className="w-full" size="lg" variant="outline" onClick={() => onChoose("manual")}>
+                Completar formulario
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Puedes cambiar de método después sin perder los datos ingresados.
+        </p>
+      </main>
+    </div>
+  )
+}
 
 const SECTION_ICONS: Record<Step, React.ComponentType<{ className?: string }>> = {
   1: MapPin, 2: MapPin, 3: Calendar, 4: Package, 5: SlidersHorizontal, 6: ClipboardCheck,
@@ -265,7 +328,7 @@ function NewRequestPage() {
   const today = new Date().toLocaleDateString("sv")
 
   const [step, setStep] = useState<Step>(1)
-  const [mode, setMode] = useState<"agent" | "manual">("agent")
+  const [mode, setMode] = useState<RequestMode | null>(null)
   const [photoUploads, setPhotoUploads] = useState<UploadedFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [attempted, setAttempted] = useState(false)
@@ -469,6 +532,8 @@ function NewRequestPage() {
     </FieldGroup>
   )
 
+  if (mode === null) return <RequestMethodChoice onChoose={setMode} />
+
   return (
     <>
       <div className={mode === "agent" ? "contents" : "hidden"}>
@@ -542,16 +607,16 @@ function NewRequestPage() {
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
         {/* Desktop: Page Header */}
-        <div className="hidden items-center justify-between border-b border-border bg-background px-8 py-[22px] md:flex">
+        <div className="hidden items-center justify-between gap-4 border-b border-border bg-background px-11 py-3 md:flex">
           <div>
-            <h1 className="text-[26px] font-bold tracking-[-0.5px] text-foreground">Nueva solicitud</h1>
-            <p className="mt-1 text-[14px] text-muted-foreground">
+            <h1 className="text-2xl font-bold tracking-[-0.5px] text-foreground">Nueva solicitud</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Completa los pasos y recibe ofertas de transportistas.
             </p>
           </div>
-          <button type="button" onClick={() => setMode("agent")} className="flex items-center gap-1.5 text-sm font-medium text-primary">
-            <Sparkles className="size-4" /> Usar asistente
-          </button>
+          <Button type="button" variant="outline" className="min-h-10" onClick={() => setMode("agent")}>
+            <Sparkles data-icon="inline-start" /> Usar asistente
+          </Button>
         </div>
 
         {/* Mobile: step header */}
@@ -565,9 +630,9 @@ function NewRequestPage() {
           </div>
         </div>
 
-        <button type="button" onClick={() => setMode("agent")} className="mx-[18px] flex items-center justify-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 py-2 text-sm font-medium text-primary md:hidden">
-          <Sparkles className="size-4" /> Volver al asistente
-        </button>
+        <Button type="button" variant="outline" className="mx-[18px] min-h-10 md:hidden" onClick={() => setMode("agent")}>
+          <Sparkles data-icon="inline-start" /> Volver al asistente
+        </Button>
 
         {/* Step Content */}
         <div className="flex flex-col gap-4 px-[18px] py-3 md:gap-5 md:px-11 md:py-7">

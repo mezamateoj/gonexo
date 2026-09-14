@@ -230,18 +230,18 @@ export function RequestIntakeWorkspace({
 
   return (
     <div className="min-h-full bg-muted/30">
-      <header className="border-b border-border bg-background px-4 py-4 sm:px-7">
-        <div className="mx-auto flex max-w-[1240px] flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+      <header className="border-b border-border bg-background py-3">
+        <div className="mx-auto flex max-w-[1240px] flex-col items-start justify-between gap-3 px-4 sm:flex-row sm:items-center lg:px-7">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Nueva solicitud</h1>
               <Badge variant="secondary"><Sparkles /> Con asistente</Badge>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">Cuéntanos el flete como lo explicarías por WhatsApp.</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">Cuéntanos el flete como lo explicarías por WhatsApp.</p>
           </div>
-          <Button variant="outline" className="min-h-11 w-full sm:w-auto" disabled={isLocked} onClick={onManual}>Completar paso a paso</Button>
+          <Button variant="outline" className="min-h-10 w-full sm:w-auto" disabled={isLocked} onClick={onManual}>Completar paso a paso</Button>
         </div>
-        <div className="mt-3 lg:hidden">
+        <div className="mt-2 px-4 lg:hidden">
           <Button variant="secondary" asChild className="min-h-11 w-full"><a href="#intake-draft">Revisar borrador <ArrowRight /></a></Button>
         </div>
       </header>
